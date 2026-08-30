@@ -32,6 +32,7 @@ halves.
 
 ## Start here
 
+- **Downloading data?** [`docs/DOWNLOAD_GUIDE.md`](docs/DOWNLOAD_GUIDE.md) — step-by-step, with links.
 - **Member 2:** [`docs/HANDOFF.md`](docs/HANDOFF.md). It has everything needed to
   build the full application before a model exists.
 - **Member 1:** [`docs/SIH26057_GhostNet_AI_BASIC_BUILD_PLAN.md`](docs/SIH26057_GhostNet_AI_BASIC_BUILD_PLAN.md)

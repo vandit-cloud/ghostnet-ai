@@ -1,5 +1,8 @@
 # Data acquisition — Phase 0
 
+> **Just want the steps?** → **[DOWNLOAD_GUIDE.md](DOWNLOAD_GUIDE.md)** has the
+> click-by-click instructions. This document is the *reasoning* behind them.
+
 **Nothing is downloaded yet.** This document says what to get, in what order,
 and what each source is actually good for. Verified against published sources on
 2026-08-30; see `ai/data/provenance/dataset_candidates.csv` for the machine-readable
@@ -34,17 +37,20 @@ The plan's J1 hard-negative strategy depends on KLSG's 578 plain-seafloor images
 That count is **confirmed**: KLSG is 1,190 images — 385 wrecks, 36 drowning
 victims, 62 planes, 129 mines, 578 seafloor.
 
-**But the widely-cited public repository,
-`huoguanying/SeabedObjects-Ship-and-Airplane-dataset`, contains only the 385 ships
-and 62 airplanes. It has no seafloor images at all.**
+**But they are not published anywhere.** Verified against the GitHub API on
+2026-08-30:
 
-Clone that repo expecting hard negatives and you get zero. The seafloor images
-are advertised in `HHUCzCz/-SeabedObjects-KLSG--II` (66 airplane / 487 ship /
-578 seafloor), whose browsable contents are a single sample JPEG — actual
-download access is **unconfirmed**, and there is an open issue on the repo asking
-about exactly this.
+| Repository | Actual contents |
+|---|---|
+| `huoguanying/SeabedObjects-Ship-and-Airplane-dataset` | 4 zips: `plane-real.zip` + `ship-real-1/2/3.zip`, ~50 MB. Ships and planes **only**. |
+| `HHUCzCz/-SeabedObjects-KLSG--II` (advertises the 578) | **One 45 KB file, `A SSS image sample.jpg`. That is the entire repository.** |
 
-**Resolve this early.** If the 578 turn out to be unobtainable, J1 needs a
+Clone either expecting hard negatives and you get zero, with no error. Open
+issues #1, #2 and #4 on the second repo all ask for the complete dataset and
+none have been answered, so **email is the only remaining route** and it may not
+work.
+
+**Treat the Zenodo fallback as the likely path, not the emergency one.** If the 578 stay unobtainable, J1 needs a
 different negative source (the Zenodo sediments set below is the fallback), and
 that is a plan change you want in week one, not week three.
 
@@ -58,6 +64,8 @@ The only source that is real side-scan, has real bounding boxes, and downloads
 without emailing anyone. `SCTD.zip` and `SCTD2.0.rar` are committed straight to
 <https://github.com/MingqiangNing/SCTD>.
 
+- `SCTD.zip`, **79 MB** of real data, no account needed. (`SCTD2.0.rar` is a
+  134-byte Git LFS pointer, not a dataset — ignore it.)
 - ~357 images: 57 plane, 266 ship, 34 drowning victim
 - **Pascal VOC XML** boxes, with a `voc2coco.py` in the repo
 - Count caveat: the SCTD 1.0 paper cites 596 images, but the published class
@@ -82,7 +90,10 @@ Extract to `ai/data/raw/research/AI4SHIPWRECKS/`.
 
 Try in this order:
 
-1. `HHUCzCz/-SeabedObjects-KLSG--II` — advertises the 578 seafloor images.
+1. ~~`HHUCzCz/-SeabedObjects-KLSG--II`~~ — **dead end, confirmed.** The repo
+   advertises the 578 seafloor images in its description but contains exactly one
+   45 KB sample JPEG and nothing else. Three open issues ask for the full set;
+   none answered.
 2. The Kaggle mirror, `enochkwatehdongbo/seabedobjects-klsg-dataset` — direct
    download with an account, but **verify it actually includes the seafloor
    class**; a mirror may carry only the public subset.
