@@ -67,11 +67,12 @@ from collections import Counter
 from pathlib import Path
 
 import cv2
-import numpy as np
 
 AI_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(AI_ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from _screening import DEFAULT_LIMITS, overlay_signals, screen  # noqa: E402
 from ghostnet.taxonomy import (  # noqa: E402
     KEEP_AS_BACKGROUND,
     TRAINING_CLASSES,
@@ -88,61 +89,6 @@ def show(path: Path) -> str:
         return str(path.relative_to(AI_ROOT.parent))
     except ValueError:
         return str(path)
-
-
-def overlay_signals(image: np.ndarray) -> dict[str, float]:
-    """Three measurements that separate raw sonar from a screenshot.
-
-    off_hue      Sonar palettes are one hue -- greyscale, or a single amber or
-                 copper ramp. A saturated colour far from the frame's dominant
-                 hue is paint: an annotator's red circle, a cyan box, a leader
-                 line. Almost never present in genuine imagery.
-    flat_midtone Blocks with no texture at all, at mid brightness. Sonar always
-                 carries speckle; a smooth grey panel is a toolbar. Explicitly
-                 mid-tone, because flat DARK is acoustic shadow and precious.
-    ui_rows      Image rows that are near-constant across the full width and
-                 not dark. Window borders and toolbars span the frame; seabed
-                 does not.
-    """
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    hue, sat, val = (hsv[..., i].astype(np.int16) for i in range(3))
-
-    saturated = sat > 60
-    dominant = int(np.bincount(hue[saturated], minlength=180).argmax()) if saturated.any() else 0
-    delta = np.minimum(np.abs(hue - dominant), 180 - np.abs(hue - dominant))
-    off_hue = float(((sat > 120) & (val > 80) & (delta > 25)).mean())
-
-    grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    k = 16
-    h, w = grey.shape[0] // k * k, grey.shape[1] // k * k
-    if h and w:
-        blocks = grey[:h, :w].reshape(h // k, k, w // k, k).swapaxes(1, 2).reshape(-1, k, k)
-        sd, mu = blocks.std(axis=(1, 2)), blocks.mean(axis=(1, 2))
-        flat_midtone = float(((sd < 3.0) & (mu > 55) & (mu < 225)).mean())
-    else:
-        flat_midtone = 0.0
-
-    ui_rows = float(((grey.std(axis=1) < 4.0) & (grey.mean(axis=1) > 40)).mean())
-
-    # Fully-saturated maximum-value pixels. Annotation paint is exactly
-    # S=255; a sonar ramp compressed to JPEG rarely is, over any area.
-    pure_paint = float(((sat >= 250) & (val >= 200)).mean())
-
-    return {"off_hue": off_hue, "flat_midtone": flat_midtone,
-            "ui_rows": ui_rows, "pure_paint": pure_paint}
-
-
-def screen(signals: dict[str, float], limits: dict[str, float]) -> str | None:
-    """Return the reason this frame is contaminated, or None to keep it."""
-    if signals["off_hue"] > limits["off_hue"]:
-        return f"burned-in coloured graphics (off_hue {signals['off_hue']:.3f})"
-    if signals["flat_midtone"] > limits["flat_midtone"]:
-        return f"UI panel or caption bar (flat_midtone {signals['flat_midtone']:.3f})"
-    if signals["ui_rows"] > limits["ui_rows"]:
-        return f"toolbar or window border (ui_rows {signals['ui_rows']:.3f})"
-    if signals["pure_paint"] > limits["pure_paint"]:
-        return f"large area of pure paint (pure_paint {signals['pure_paint']:.3f})"
-    return None
 
 
 def find_dataset(name: str) -> Path | None:
@@ -186,12 +132,12 @@ def main() -> int:
     # bright amber returns shift hue enough to look like paint against a
     # darker copper background. 0.040 keeps both true positives and returns
     # six real frames to a class we are already short of.
-    ap.add_argument("--max-off-hue", type=float, default=0.040)
-    ap.add_argument("--max-flat-midtone", type=float, default=0.120)
-    ap.add_argument("--max-ui-rows", type=float, default=0.060)
+    ap.add_argument("--max-off-hue", type=float, default=DEFAULT_LIMITS["off_hue"])
+    ap.add_argument("--max-flat-midtone", type=float, default=DEFAULT_LIMITS["flat_midtone"])
+    ap.add_argument("--max-ui-rows", type=float, default=DEFAULT_LIMITS["ui_rows"])
     # Conservative on purpose. Real frames reach ~5% pure-saturated pixels
     # from bright amber returns, so anything tighter costs real data.
-    ap.add_argument("--max-pure-paint", type=float, default=0.150)
+    ap.add_argument("--max-pure-paint", type=float, default=DEFAULT_LIMITS["pure_paint"])
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 

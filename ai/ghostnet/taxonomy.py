@@ -83,6 +83,16 @@ SOURCE_ALIASES: dict[str, str] = {
     # It still needs the section 11 annotation audit before it is trusted.
     "other": "debris",
     "debris": "debris",
+    # Marine-PULSE and SubPipe: engineering structures on the seabed. They
+    # are man-made objects, so `debris` is right within our closed contract
+    # vocabulary -- but note that a live pipeline is infrastructure, not
+    # litter. Say so in the report rather than implying every hit is waste.
+    "pipeline": "debris",
+    "pipeline or cable": "debris",
+    "cable": "debris",
+    "pipe": "debris",
+    "engineering platform": "debris",
+    "platform": "debris",
     "litter": "debris",
     "trash": "debris",
 }
@@ -98,6 +108,7 @@ SOURCE_ALIASES: dict[str, str] = {
 BACKGROUND_SOURCES: dict[str, str] = {
     "seafloor": "plain seabed: a hard negative, kept as an empty label rather than a class",
     "seabed": "see 'seafloor'",
+    "seabed surface": "Marine-PULSE's plain-seabed class; 88 images across five different sonars",
     "sediment": "see 'seafloor'",
     "rock": "natural seabed feature; the thing the model must learn NOT to report",
     "ripple": "see 'rock'",
@@ -119,6 +130,8 @@ EXCLUDED_SOURCES: dict[str, str] = {
     "mine": "ordnance; out of scope, and KLSG withholds the mine images from public release anyway",
     "fish": "WRONG MODALITY. The 208 'fish' boxes in sonar_detect are fish-finder / echosounder screenshots -- the classic arch a downward-looking single-beam sounder draws as a boat passes over a target. That is not side-scan seabed imagery, and several frames have the annotator's red circle burned into the pixels. Training on them teaches the detector to find drawn circles and sounder arches. Same principle that excludes MDT and UATD (docs/DATA.md).",
     "shoal": "see 'fish'",
+    "underwater residual mound": "anthropogenic seabed MODIFICATION rather than a discrete object -- spoil and burial mounds left by engineering work. It is neither a man-made thing lying on the seabed nor untouched natural topology, so it sits astride the one distinction the whole metric rests on. Excluded until there is a reason to take a side.",
+    "residual mound": "see 'underwater residual mound'",
 }
 
 # ---------------------------------------------------------------------------
