@@ -219,6 +219,6 @@ def test_data_yaml_and_report_are_written(run):
     mask[100:300, 100:300] = 1
     code, out = run({"f": (img, mask)})
     yaml = (out / "data.yaml").read_text()
-    assert "nc: 4" in yaml and "0: wreck" in yaml
+    assert "nc: 3" in yaml and "0: wreck" in yaml
     assert "leakage" in yaml, "the split warning must travel with the dataset"
     assert (out / "tiling_report.json").exists()

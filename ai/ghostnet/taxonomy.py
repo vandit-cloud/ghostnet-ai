@@ -41,8 +41,24 @@ TRAINING_CLASSES: tuple[str, ...] = (
                 #      wreckage, unidentified artificial returns. The closest
                 #      thing to actual marine debris in any side-scan data we
                 #      have found, and therefore the class nearest the PS.
-    "natural",  # 3 -- plain seabed, rock, ripple. The hard negatives.
 )
+
+# `natural` is NOT a training class, and that is deliberate.
+#
+# Nobody has drawn boxes around rocks. Every natural example we have is a
+# hard negative -- an image, or a tile, with no object on it -- and YOLO
+# already expresses that as an empty label file. A `natural` class would
+# therefore carry zero instances, exactly the NaN-in-every-metrics-table
+# problem that keeps `ghost_net` out of the list above.
+#
+# The artificial-vs-natural separation is still measured, and measured more
+# honestly than a class score would: it is the FALSE-POSITIVE RATE on the
+# thousands of verified-empty seabed tiles in the validation and test splits.
+# A model that cries wolf at rocks scores badly there, which is the claim the
+# problem statement actually asks us to support.
+#
+# It stays in TRAINING_TO_CONTRACT below because the contract vocabulary is
+# frozen and a future model, or a second-stage classifier, may yet emit it.
 
 CLASS_TO_ID: dict[str, int] = {name: i for i, name in enumerate(TRAINING_CLASSES)}
 
@@ -69,14 +85,25 @@ SOURCE_ALIASES: dict[str, str] = {
     "debris": "debris",
     "litter": "debris",
     "trash": "debris",
-    # KLSG / sediment sets (folder-name classes)
-    "seafloor": "natural",
-    "seabed": "natural",
-    "sediment": "natural",
-    "rock": "natural",
-    "ripple": "natural",
-    "background": "natural",
-    "nothing": "natural",
+}
+
+# ---------------------------------------------------------------------------
+# Source names that mean "plain seabed".
+# ---------------------------------------------------------------------------
+# These are NOT unmapped, and treating them as such would be actively harmful:
+# an unmapped name quarantines its image, and these images are precisely the
+# hard negatives we most want to keep. They are not a class either, for the
+# reason given above. They are BACKGROUND -- an empty label file, which is how
+# YOLO expresses "nothing here" and how the model learns not to cry wolf.
+BACKGROUND_SOURCES: dict[str, str] = {
+    "seafloor": "plain seabed: a hard negative, kept as an empty label rather than a class",
+    "seabed": "see 'seafloor'",
+    "sediment": "see 'seafloor'",
+    "rock": "natural seabed feature; the thing the model must learn NOT to report",
+    "ripple": "see 'rock'",
+    "terrain": "see 'seafloor'",
+    "background": "see 'seafloor'",
+    "nothing": "see 'seafloor'",
 }
 
 # ---------------------------------------------------------------------------
@@ -116,12 +143,7 @@ TRAINING_TO_CONTRACT: dict[str, str] = {
 # empirical question, and this makes it a one-flag experiment rather than a
 # re-conversion.
 COLLAPSE_MAPS: dict[str, dict[str, str]] = {
-    "artificial": {
-        "wreck": "artificial",
-        "plane": "artificial",
-        "debris": "artificial",
-        "natural": "natural",
-    },
+    "artificial": {"wreck": "artificial", "plane": "artificial", "debris": "artificial"},
 }
 
 
@@ -134,12 +156,17 @@ def source_to_training(name: str) -> tuple[str | None, str]:
     """Map one source class name onto a training class.
 
     Returns (training_class, reason). training_class is None when the instance
-    must not be used, and `reason` always explains why -- 'excluded: ...' for a
-    deliberate policy drop, 'unmapped' for a name nobody has taught us yet.
+    must not become a box, and `reason` says which of three cases applies:
 
-    The two are kept distinct on purpose. An unmapped name is a bug in this
-    table and should be loud; an excluded one is a decision and should be quiet
-    but counted.
+      'excluded: ...'   a deliberate policy drop (victims, fish, mines).
+      'background: ...' plain seabed -- becomes an empty label, not a class.
+      'unmapped'        a name nobody has taught us yet.
+
+    The three are kept distinct because the callers must act differently. An
+    unmapped name is a bug in this table: it is reported loudly, and its image
+    is quarantined rather than written as background, since asserting "nothing
+    here" over an unrecognised real object is a false lesson. Excluded and
+    background names are decisions, so their images ARE kept as negatives.
     """
     key = normalise_source(name)
     # "sea bed", "sea-bed" and "seabed" are the same word to a human and should
@@ -149,9 +176,16 @@ def source_to_training(name: str) -> tuple[str | None, str]:
     for candidate in (key, joined):
         if candidate in EXCLUDED_SOURCES:
             return None, "excluded: " + EXCLUDED_SOURCES[candidate]
+        if candidate in BACKGROUND_SOURCES:
+            return None, "background: " + BACKGROUND_SOURCES[candidate]
         if candidate in SOURCE_ALIASES:
             return SOURCE_ALIASES[candidate], "mapped"
     return None, "unmapped"
+
+
+#: Reasons whose images stay usable as negatives. Anything else is a bug in the
+#: alias table and must quarantine its image rather than assert it is empty.
+KEEP_AS_BACKGROUND = ("excluded", "background")
 
 
 def training_to_contract(name: str) -> str:

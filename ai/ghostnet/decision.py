@@ -84,9 +84,16 @@ def normalise_class(model_class: str) -> str:
         return "ghost_net"
     if name in TRAINING_TO_CONTRACT:
         return training_to_contract(name)
-    training_class, _reason = source_to_training(model_class)
+    training_class, reason = source_to_training(model_class)
     if training_class is not None:
         return training_to_contract(training_class)
+    if reason.startswith("background"):
+        # 'seafloor', 'rock' and friends are background at TRAINING time -- an
+        # empty label, not a class. But the contract vocabulary still carries
+        # `natural`, and a second-stage classifier or a future model may emit
+        # one of these names. Reporting it as `unknown` would throw away a
+        # confident, correct statement that this is natural seabed.
+        return "natural"
     return "unknown"
 
 

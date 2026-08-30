@@ -47,6 +47,7 @@ sys.path.insert(0, str(AI_ROOT))
 
 from ghostnet.taxonomy import (  # noqa: E402
     COLLAPSE_MAPS,
+    KEEP_AS_BACKGROUND,
     TRAINING_CLASSES,
     source_to_training,
 )
@@ -241,9 +242,10 @@ def parse_annotation(
 
         training_class, reason = source_to_training(raw_name)
         if training_class is None:
-            if reason.startswith("excluded"):
-                # A deliberate policy drop. Treating the region as background
-                # is intended: we do not want the model finding these at all.
+            if reason.startswith(KEEP_AS_BACKGROUND):
+                # A deliberate policy drop, or a name meaning plain seabed.
+                # Either way the region becoming background is intended: we
+                # do not want the model reporting these at all.
                 report.dropped_excluded[raw_name or "(blank)"] += 1
             else:
                 report.dropped_unmapped[raw_name or "(blank)"] += 1

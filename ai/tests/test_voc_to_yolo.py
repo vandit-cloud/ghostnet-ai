@@ -35,17 +35,27 @@ SCRIPT = AI_ROOT / "scripts" / "voc_to_yolo.py"
 def test_training_class_ids_are_stable():
     """Order is the YOLO class id and therefore a wire format. Reshuffling it
     silently relabels every previously converted dataset."""
-    assert TRAINING_CLASSES == ("wreck", "plane", "debris", "natural")
-    assert CLASS_TO_ID == {"wreck": 0, "plane": 1, "debris": 2, "natural": 3}
+    assert TRAINING_CLASSES == ("wreck", "plane", "debris")
+    assert CLASS_TO_ID == {"wreck": 0, "plane": 1, "debris": 2}
 
 
 @pytest.mark.parametrize(
     "source,expected",
     [("ship", "wreck"), ("Shipwreck", "wreck"), ("aircraft", "plane"),
-     ("seafloor", "natural"), ("Rock", "natural"), ("sea-bed", "natural")],
+     ("shipwreck", "wreck"), ("Boat", "wreck")],
 )
 def test_source_names_map_to_training_classes(source, expected):
     assert source_to_training(source)[0] == expected
+
+
+@pytest.mark.parametrize("name", ["seafloor", "Rock", "sea-bed", "terrain", "ripple"])
+def test_plain_seabed_names_are_background_not_a_class(name):
+    """Nobody draws boxes around rocks. These must resolve to background -- an
+    empty label -- and NOT to 'unmapped', which would quarantine exactly the
+    hard-negative images the artificial-vs-natural metric depends on."""
+    cls, reason = source_to_training(name)
+    assert cls is None
+    assert reason.startswith("background")
 
 
 def test_fish_is_excluded_as_a_modality_mismatch():
@@ -252,7 +262,7 @@ def test_unmapped_class_is_reported_loudly(convert, capsys):
 def test_data_yaml_matches_the_taxonomy(convert):
     code, out, _ = convert(box("ship", 10, 10, 90, 90))
     yaml = (out / "data.yaml").read_text()
-    assert "nc: 4" in yaml
+    assert "nc: 3" in yaml
     for i, name in enumerate(TRAINING_CLASSES):
         assert f"  {i}: {name}" in yaml
 
@@ -262,5 +272,7 @@ def test_collapse_produces_the_binary_framing(convert):
         box("ship", 10, 10, 90, 90), argv_extra=("--collapse", "artificial")
     )
     assert code == 0
-    assert "nc: 2" in (out / "data.yaml").read_text()
+    # Only one class survives the collapse: "artificial". Background stays
+    # implicit, as YOLO expects, so a single-class detector is correct here.
+    assert "nc: 1" in (out / "data.yaml").read_text()
     assert text.split()[0] == "0"   # artificial
