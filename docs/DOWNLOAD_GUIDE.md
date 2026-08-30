@@ -139,18 +139,39 @@ have to look.
 
 **Link:** <https://www.kaggle.com/datasets/enochkwatehdongbo/seabedobjects-klsg-dataset>
 
-### What to do
+### Just download it — the preview often will not load
 
-1. Sign in to Kaggle (free).
-2. Look at the **Data** tab file listing **before downloading**.
-3. **Is there a folder called `seafloor`, `seabed`, or similar, with roughly 578
-   images?**
-   - **Yes** → download it. You have just skipped the email wait entirely. Extract to
-     `E:\New folder\ai\data\raw\research\KLSG-KAGGLE\`
-   - **No** → it is only the ships-and-planes subset you already have. Skip it,
-     and rely on Step 2 or Step 5.
+Kaggle's file browser frequently fails to render for anonymous or new accounts.
+**Do not let that stop you.** Download blind:
 
-Tell me which one you find — it decides whether Step 5 is optional or essential.
+- **Cost if it is the wrong thing:** ten minutes and a few hundred MB.
+- **Payoff if it is the right thing:** the email in Step 2 stops mattering, and
+  your hard-negative problem is solved today.
+
+That trade is not close.
+
+Weak but real evidence it is the full set: this mirror is titled
+`SeabedObjects-KLSG_Dataset`, not "Ship-and-Airplane" like the partial GitHub
+repo, and its description lists the seafloor sub-types (rock, mud, sand, sand
+waves, sand ridges, clay) — detail that only appears in the full dataset.
+
+1. Sign in to Kaggle (free) and hit **Download**.
+2. Extract to `E:\New folder\ai\data\raw\research\KLSG-KAGGLE\`
+3. Check what you actually got:
+
+```bash
+.venv/Scripts/python ai/scripts/inventory.py --verbose
+```
+
+Look at the **`classes`** line in the `== KLSG-KAGGLE` block. It counts images
+per folder, so it tells you immediately whether a seafloor class is present.
+
+- **`seafloor:578`** or similar → you are done, and Step 5 becomes optional.
+- **only ship / plane** → it is the subset you already have. Delete it and rely
+  on Step 2 or Step 5.
+
+Tell me the `classes` line either way — it decides whether Step 5 is optional
+or essential.
 
 ---
 
