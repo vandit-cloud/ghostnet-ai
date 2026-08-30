@@ -1,0 +1,105 @@
+{
+  "created_utc": "2026-08-30T18:43:27.188641+00:00",
+  "git_commit": "13f55af",
+  "weights_init": "E:\\New folder\\ai\\models\\pretrained\\yolo11s.pt",
+  "args": {
+    "model": "yolo11s",
+    "data": "E:\\New folder\\ai\\data\\processed\\data.yaml",
+    "name": "gv-yolo11s",
+    "epochs": 40,
+    "imgsz": 640,
+    "batch": 4,
+    "patience": 12,
+    "workers": 0,
+    "seed": 0,
+    "device": null,
+    "resume": false,
+    "dry_run": false
+  },
+  "device": "0",
+  "torch": "2.13.0+cu126",
+  "cuda_available": true,
+  "gpu": "NVIDIA GeForce RTX 3050 Laptop GPU",
+  "dataset_build": {
+    "sources": [
+      "AI4SHIPWRECKS",
+      "GHOSTVISION",
+      "MARINE-PULSE",
+      "SCTD",
+      "SONARDETECT"
+    ],
+    "images_per_source": {
+      "AI4SHIPWRECKS": 4200,
+      "GHOSTVISION": 6655,
+      "MARINE-PULSE": 88,
+      "SCTD": 327,
+      "SONARDETECT": 70
+    },
+    "exact_duplicates_dropped": {
+      "SCTD": 30
+    },
+    "split_sizes": {
+      "test": 3410,
+      "train": 7147,
+      "val": 783
+    },
+    "background_per_split": {
+      "train": 2174,
+      "test": 2620,
+      "val": 149
+    },
+    "boxes_per_class_per_split": {
+      "train": {
+        "plane": 39,
+        "wreck": 1430,
+        "ghost_pot": 7434,
+        "debris": 122
+      },
+      "val": {
+        "plane": 9,
+        "wreck": 228,
+        "ghost_pot": 1213,
+        "debris": 37
+      },
+      "test": {
+        "plane": 9,
+        "wreck": 836,
+        "ghost_pot": 567,
+        "debris": 14
+      }
+    },
+    "frames_per_class_per_split": {
+      "train": {
+        "plane": 39,
+        "wreck": 613,
+        "ghost_pot": 4274,
+        "debris": 47
+      },
+      "val": {
+        "plane": 9,
+        "wreck": 109,
+        "ghost_pot": 500,
+        "debris": 16
+      },
+      "test": {
+        "plane": 9,
+        "wreck": 440,
+        "ghost_pot": 334,
+        "debris": 7
+      }
+    },
+    "declared_classes": [
+      "wreck",
+      "plane",
+      "debris",
+      "ghost_pot"
+    ],
+    "ratios": [
+      0.7,
+      0.15,
+      0.15
+    ],
+    "seed": 0,
+    "warnings": []
+  }
+}

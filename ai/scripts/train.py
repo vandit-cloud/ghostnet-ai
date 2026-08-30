@@ -66,7 +66,16 @@ def main() -> int:
     ap.add_argument("--imgsz", type=int, default=640)
     ap.add_argument("--batch", type=int, default=4, help="4 GB VRAM fits 4 at 640 with AMP; 8 does not")
     ap.add_argument("--patience", type=int, default=25, help="early stop after this many epochs without gain")
-    ap.add_argument("--workers", type=int, default=2, help="Windows dataloader workers; high values stall")
+    # 0 means "load in the main process", and on Windows that is the reliable
+    # setting, not a conservative one. With 2 workers this run died at
+    # iteration 17 of 1787 -- a worker process vanished and the pin-memory
+    # thread failed inside rebuild_storage_filename, which is torch's
+    # shared-memory path. The same setting had been fine on 1,335 images and
+    # only broke at 7,147, so it fails late and looks like a fluke.
+    # Throughput barely changes here: at batch 4 on 4 GB the GPU is the
+    # bottleneck, not image decoding. On Linux, raise it.
+    ap.add_argument("--workers", type=int, default=0,
+                    help="dataloader workers. 0 on Windows: worker processes die at scale")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--device", default=None)
     ap.add_argument("--resume", action="store_true")
