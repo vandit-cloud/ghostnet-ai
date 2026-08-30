@@ -185,8 +185,22 @@ def looks_geotagged(root: Path) -> tuple[str, str]:
     return metadata, gps
 
 
+# Directories whose image files are ANNOTATIONS, not samples. Segmentation
+# masks are usually PNGs sitting beside the images, so counting them doubles
+# every mask dataset's size and makes the claim check fire on a healthy set.
+LABEL_DIRS = {"labels", "masks", "annotations", "gt", "groundtruth", "seg"}
+
+
+def is_label_file(path: Path, root: Path) -> bool:
+    return any(part.lower() in LABEL_DIRS for part in path.relative_to(root).parts[:-1])
+
+
 def scan(dataset_dir: Path, candidates: dict[str, dict[str, str]]) -> dict[str, str] | None:
-    images = [p for p in dataset_dir.rglob("*") if p.suffix.lower() in IMAGE_EXTS]
+    images = [
+        p
+        for p in dataset_dir.rglob("*")
+        if p.suffix.lower() in IMAGE_EXTS and not is_label_file(p, dataset_dir)
+    ]
     logs = [p for p in dataset_dir.rglob("*") if p.suffix.lower() in SONAR_LOG_EXTS]
     if not images and not logs:
         return None
