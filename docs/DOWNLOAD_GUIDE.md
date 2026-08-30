@@ -203,23 +203,40 @@ better than being asked about it.
 If the KLSG seafloor images never arrive, **this replaces them**, and it is a
 public direct download with nothing to ask anyone for.
 
-**Link:** <https://zenodo.org/records/10209445>
+### ❌ Do not download the Zenodo set — mine negatives instead
 
-434,000 side-scan images of plain seafloor — sediment, rocks, marine life.
+<https://zenodo.org/records/10209445> looked like the fallback. It is not usable:
 
-### ⚠️ Do not download all of it
+| File | Size |
+|---|---|
+| `sss_ssl_dataset_N713_384.z01` | 21.5 GB |
+| `sss_ssl_dataset_N713_384.z02` | 21.5 GB |
+| `sss_ssl_dataset_N713_384.zip` | 9.3 GB |
 
-It is enormous and you do not need it. **A few thousand images is plenty.**
-Download one archive part, not the whole record.
+Those are **one split archive totalling 52.3 GB**, not three choices. The `.zip`
+is the final segment holding the central directory; alone it extracts nothing.
+There is no way to take a small slice.
 
-Extract to:
+**The better source is the data you already have.** SONARDETECT ships 581 frames
+with boxes on every object, and most of the pixel area in those frames is plain
+seabed. Tiles that overlap no box are hard negatives — from the same sensors,
+the same survey, the same processing as the positives.
 
-```
-E:\New folder\ai\data\raw\public\SEDIMENTS\
-```
+That is strictly better than Zenodo, not merely cheaper. A different survey's
+seabed can be separated from yours on texture or gain alone, which would inflate
+the artificial-vs-natural score without the model learning anything about
+objects. Negatives cut from the same frames as the positives cannot be told
+apart by anything except the object itself.
 
-Tell me once it is there and I will write the sampling script — pulling a
-balanced few thousand rather than dumping the lot into training.
+This is plan §22, *Hard-Negative Mining*, and it needs no download.
+
+Constraints, both enforced by the miner:
+
+- **SONARDETECT only.** KLSG images carry no boxes, so there is no way to know
+  where the ship is and any crop might contain one.
+- **`fish` frames excluded**, along with everything else flagged in
+  `ai/data/provenance/quality_audit/` — echosounder imagery is the wrong
+  instrument and must not become "typical seabed".
 
 ---
 

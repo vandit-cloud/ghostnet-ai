@@ -109,9 +109,17 @@ and fine for a `natural` class. Not a detection source.
 <https://zenodo.org/records/10209445> — 434,164 SSS images of seafloor sediments,
 rocks and marine life. Direct download.
 
-Enormous. **Sample it; do not ingest it whole.** A few thousand well-chosen
-frames is the entire requirement for a `natural` class and hard negatives, and
-this is the insurance policy if KLSG's 578 stay out of reach.
+**Not usable, checked 2026-08-30.** The record is a single split archive --
+`.z01` (21.5 GB) + `.z02` (21.5 GB) + `.zip` (9.3 GB) -- totalling 52.3 GB. The
+`.zip` is the final segment carrying the central directory, so no part extracts
+on its own and there is no way to take a small slice.
+
+**Replaced by hard-negative mining from SONARDETECT** (plan §22). Its 581 frames
+carry boxes on every object, so any tile overlapping no box is plain seabed from
+the same sensor and survey as the positives. That is better than a foreign
+survey, not just cheaper: a different seabed can be separated on texture or gain
+alone, inflating the artificial-vs-natural score without the model learning
+anything about objects.
 
 ---
 
