@@ -1,347 +1,169 @@
-# Download guide — do these in order
+# Download guide
 
-Plain steps for getting the sonar data onto your PC. Every link below was
-checked on **2026-08-30**. File sizes are real, read from the GitHub API, not
-guessed.
+Every link and file size below was checked against the source on **2026-08-30**.
+Sizes are real, not guessed.
 
-**Total hands-on time: about 40 minutes.** Most of that is waiting for downloads.
+**Already on disk — nothing to do:**
 
-Run every command from the project root (`E:\New folder`) in **Git Bash** or
-PowerShell.
+| Dataset | Images | What it gives |
+|---|---|---|
+| SCTD | 357 | 271 wreck + 57 plane boxes, clean |
+| AI4Shipwrecks | 286 | full waterfalls, 125 empty-seabed frames → 4,200 tiles |
+| SONARDETECT | 581 | 173 debris boxes (screened) |
+| KLSG | 447 | classification only, no boxes |
 
----
-
-## Before you start: folder names matter
-
-The inventory tool matches your folder name against the dataset registry. Use
-the **exact** names given in each step. Get it wrong and the tool reports
-`provenance unrecorded` and cannot check the data against what was promised.
-
----
-
-# STEP 1 — SCTD  ⏱️ 10 min  🟢 do this first
-
-**The best dataset available to you.** Real side-scan sonar, real bounding
-boxes, no account and no permission needed.
-
-### Download
-
-**Link:** <https://github.com/MingqiangNing/SCTD>
-
-Click **`SCTD.zip`**, then the **Download** button. It is **79 MB**.
-
-Or from the terminal:
-
-```bash
-curl -L -o "$TEMP/SCTD.zip" \
-  https://github.com/MingqiangNing/SCTD/raw/master/SCTD.zip
-```
-
-> **Ignore `SCTD2.0.rar`.** It looks like a second dataset but it is only 134
-> bytes — a placeholder pointer, not real data. Downloading it gets you nothing.
-
-### Where to put it
-
-Extract so the images end up inside this exact folder:
-
-```
-E:\New folder\ai\data\raw\research\SCTD\
-```
-
-### Check it worked
-
-```bash
-.venv/Scripts/python ai/scripts/inventory.py --verbose
-```
-
-**What good looks like:** a block headed `== SCTD` showing an image count,
-pixel sizes, and `annotation_type: VOC XML boxes`.
-
-**Expect a count warning.** The paper claims 596 images but the published class
-breakdown adds up to 357. The tool will tell you which is actually true — that
-is exactly what it is for. Whatever number it prints is the real one. Tell me
-what it says.
+**Cancelled:** the Zenodo seafloor-sediments record. It is one 52.3 GB split
+archive, all parts required, no way to take a slice — and AI4Shipwrecks already
+solved the hard-negative problem.
 
 ---
 
-# STEP 2 — Email for the KLSG seafloor images  ⏱️ 5 min  🔴 send today
+# What to download now, in priority order
 
-**Send this before you do anything else that takes time.** Researchers reply in
-days, not minutes. If you wait until you are blocked, you have lost a week.
+## 1. GhostVision — derelict crab pots ⏱️ 5 min 🔴 do this first
 
-### Why you have to email
+**899 MB.** The highest problem-statement relevance of anything found: real
+side-scan sonar of **derelict fishing gear** on the seabed, with detection
+annotations and a permissive licence.
 
-Your build plan depends on **578 plain-seabed images** for "hard negatives" —
-pictures of ordinary seafloor with nothing on them, which teach the model not to
-cry wolf at every rock.
+**Link:** <https://zenodo.org/records/20056679>
 
-Those images are real, but **they are not published anywhere**. I checked:
-
-| Where you would look | What is actually there |
-|---|---|
-| `huoguanying/SeabedObjects-Ship-and-Airplane-dataset` | 4 zips: ships and planes only. **No seafloor.** |
-| `HHUCzCz/-SeabedObjects-KLSG--II` — *advertises the 578* | **One 45 KB sample photo. That is the whole repository.** |
-
-Three open issues on that second repo ask for the full dataset. None have been
-answered. So email is the only route, and it may not work.
-
-**Do not let this block you.** Step 5 is the backup and it is fine.
-
-### Who to email
-
-`huoguanying@hhu.edu.cn` and `huoguanying@163.com` — send to **both**.
-
-### Text you can paste
-
-> **Subject:** Request for access to the complete SeabedObjects-KLSG dataset
->
-> Dear Dr Huo,
->
-> I am an undergraduate student working on an underwater marine-debris detection
-> project for the Smart India Hackathon, using side-scan sonar imagery.
->
-> I have downloaded the publicly released ship and airplane images from your
-> GitHub repository, and they have been very useful. I am writing to ask whether
-> the complete SeabedObjects-KLSG dataset is available for academic use —
-> particularly the **578 seafloor images**, which I would like to use as
-> negative examples so that the model learns to distinguish natural seabed from
-> man-made objects.
->
-> The work is academic and non-commercial, and I will cite your dataset and
-> paper in full in any report I produce.
->
-> Thank you for making this data available to the research community.
->
-> Kind regards,
-> [your name]
-> [your college]
-
-### While you wait
-
-Take the ship and airplane images anyway — they are useful positives:
-
-**Link:** <https://github.com/huoguanying/SeabedObjects-Ship-and-Airplane-dataset>
-
-Download `plane-real.zip` (6 MB) and `ship-real-1.zip`, `ship-real-2.zip`,
-`ship-real-3.zip` (~44 MB together). Extract all four into:
-
-```
-E:\New folder\ai\data\raw\research\KLSG\
-```
-
----
-
-# STEP 3 — Kaggle mirror of KLSG  ⏱️ 5 min  🟡 might save you the wait
-
-Someone re-uploaded KLSG to Kaggle. **It may include the seafloor images the
-GitHub repos are missing.** I could not check — Kaggle needs a login — so you
-have to look.
-
-**Link:** <https://www.kaggle.com/datasets/enochkwatehdongbo/seabedobjects-klsg-dataset>
-
-### Just download it — the preview often will not load
-
-Kaggle's file browser frequently fails to render for anonymous or new accounts.
-**Do not let that stop you.** Download blind:
-
-- **Cost if it is the wrong thing:** ten minutes and a few hundred MB.
-- **Payoff if it is the right thing:** the email in Step 2 stops mattering, and
-  your hard-negative problem is solved today.
-
-That trade is not close.
-
-Weak but real evidence it is the full set: this mirror is titled
-`SeabedObjects-KLSG_Dataset`, not "Ship-and-Airplane" like the partial GitHub
-repo, and its description lists the seafloor sub-types (rock, mud, sand, sand
-waves, sand ridges, clay) — detail that only appears in the full dataset.
-
-1. Sign in to Kaggle (free) and hit **Download**.
-2. Extract to `E:\New folder\ai\data\raw\research\KLSG-KAGGLE\`
-3. Check what you actually got:
-
-```bash
-.venv/Scripts/python ai/scripts/inventory.py --verbose
-```
-
-Look at the **`classes`** line in the `== KLSG-KAGGLE` block. It counts images
-per folder, so it tells you immediately whether a seafloor class is present.
-
-- **`seafloor:578`** or similar → you are done, and Step 5 becomes optional.
-- **only ship / plane** → it is the subset you already have. Delete it and rely
-  on Step 2 or Step 5.
-
-Tell me the `classes` line either way — it decides whether Step 5 is optional
-or essential.
-
----
-
-# STEP 4 — AI4Shipwrecks  ⏱️ 15 min  🟢 worth having
-
-286 high-quality side-scan images of 28 shipwrecks, with **exact outlines drawn
-around each wreck** (not just boxes). The most precise labels available to you.
-
-**Link:** <https://umfieldrobotics.github.io/ai4shipwrecks/>
-
-Follow the download link on that page to the University of Michigan Deep Blue
-Data repository. No permission needed; it is an open research dataset.
+Download **`GhostVision_DatasetAndModels.zip`** (898.8 MB). No account needed.
 
 Extract to:
 
 ```
-E:\New folder\ai\data\raw\research\AI4SHIPWRECKS\
+E:\New folder\ai\data\raw\research\GHOSTVISION\
 ```
 
-**One caveat to remember for your report:** this was recorded in Lake Huron —
-**freshwater**. The lake bed does not look quite like Indian coastal seabed. It
-is good data, but it is not the same environment, and saying so openly is
-better than being asked about it.
+Licence CC-BY-SA 4.0 — **share-alike**, so cite it and note the licence in your
+report. It is the only share-alike dataset in the stack.
+
+> **The boundary that matters.** A derelict crab pot is fishing *gear*. It is
+> **not a net**. It gets its own class and reports as `debris`. Relabelling it
+> `ghost_net` would be inventing ground truth, which is the one thing both build
+> plans forbid outright. Detecting real derelict gear and saying so plainly is a
+> stronger claim than a fabricated net label.
+
+## 2. SubPipe — the volume ⏱️ 25 min 🟡
+
+**Download `SubPipeMini2.zip` — 4.9 GB. Not `SubPipeMini.zip`.**
+
+**Link:** <https://zenodo.org/records/12666132>
+
+| File | Size | Contents |
+|---|---|---|
+| `SubPipe.zip` | 28.0 GB → ~80 GB unzipped | everything; far more than needed |
+| `SubPipeMini.zip` | 6.1 GB | **camera imagery**, not sonar — wrong data |
+| **`SubPipeMini2.zip`** | **4.9 GB → ~16 GB** | **side-scan sonar + YOLO detection boxes** ✅ |
+
+The sources document says "start with a smaller archive", which is right, but the
+smaller archive to start with is **Mini2**. Mini is optical camera data for
+segmentation and is no use to a sonar detector.
+
+Extract to:
+
+```
+E:\New folder\ai\data\raw\research\SUBPIPE\
+```
+
+Licence CC BY 4.0. Pipelines are artificial seabed objects, so they map to
+`debris` — never to `ghost_net`.
+
+## 3. Marine-PULSE — cheap and useful ⏱️ 2 min 🟢
+
+**Only 64 MB.** Worth taking purely for what it costs.
+
+**Link:** <https://zenodo.org/records/7922705>
+
+Download **`Marine_PULSE.zip`** (64.0 MB). 627 images:
+
+- 323 pipeline or cable
+- 134 underwater residual mound
+- **88 seabed surface** ← more natural-seabed variety, from different instruments
+- 82 engineering platform
+
+Extract to:
+
+```
+E:\New folder\ai\data\raw\research\MARINE-PULSE\
+```
+
+Recorded across **five different sonars** (EdgeTech 4200FS, Benthos SIS-1624,
+EdgeTech 4200MP, Klein 2000, Klein 3000). That instrument diversity is worth
+more than the image count — a model that has only seen one sonar's texture is
+brittle, and this is the cheapest way to test that.
+
+Expect **classification labels, not boxes.** Useful as class variety and hard
+negatives, not as a detection source. `inventory.py` will confirm which on disk.
 
 ---
 
-# STEP 5 — Backup seafloor images  ⏱️ 10 min  🟡 your insurance
+# Optional, only if the first three land easily
 
-If the KLSG seafloor images never arrive, **this replaces them**, and it is a
-public direct download with nothing to ask anyone for.
+| Dataset | Link | Why |
+|---|---|---|
+| AquaScan-1K | <https://zenodo.org/records/17628597> | general SSS robustness |
+| Healy submarine volcano | <https://zenodo.org/records/19000370> | natural geological seabed |
 
-### ❌ Do not download the Zenodo set — mine negatives instead
-
-<https://zenodo.org/records/10209445> looked like the fallback. It is not usable:
-
-| File | Size |
-|---|---|
-| `sss_ssl_dataset_N713_384.z01` | 21.5 GB |
-| `sss_ssl_dataset_N713_384.z02` | 21.5 GB |
-| `sss_ssl_dataset_N713_384.zip` | 9.3 GB |
-
-Those are **one split archive totalling 52.3 GB**, not three choices. The `.zip`
-is the final segment holding the central directory; alone it extracts nothing.
-There is no way to take a small slice.
-
-**The better source is the data you already have.** SONARDETECT ships 581 frames
-with boxes on every object, and most of the pixel area in those frames is plain
-seabed. Tiles that overlap no box are hard negatives — from the same sensors,
-the same survey, the same processing as the positives.
-
-That is strictly better than Zenodo, not merely cheaper. A different survey's
-seabed can be separated from yours on texture or gain alone, which would inflate
-the artificial-vs-natural score without the model learning anything about
-objects. Negatives cut from the same frames as the positives cannot be told
-apart by anything except the object itself.
-
-This is plan §22, *Hard-Negative Mining*, and it needs no download.
-
-### Optional: the Zenodo set as a supplement, if you want the variety
-
-Worth starting as an overnight background download — **not** as a blocker, and
-not as a replacement for mining.
-
-What it is: 434,164 **unlabelled** 384×384 tiles cut from side-scan waterfalls,
-coastal **Catalunya, Spain**, CC BY 4.0. Right modality, clean licence.
-
-Two caveats that cap its value:
-
-- **Its stated purpose is self-supervised pretraining, which is out of reach.**
-  Pretraining a backbone on 434k images needs days on multi-GPU hardware; the
-  budget here is 4 GB of laptop VRAM inside three weeks.
-- **It contains "artificial reefs"** among the seabed types, and it is
-  unlabelled. Bulk-importing it as the `natural` class would teach the model
-  that man-made structures are natural seabed — on precisely the axis the
-  headline metric measures. Any sampler must screen for this rather than
-  trusting the whole set.
-
-What it genuinely buys: seabed **variety**. Negatives mined from 581 frames are
-thin, and a `natural` class built only from them may not generalise. This is 713
-survey lines of real, varied seabed.
-
-If you do pull it:
-
-1. Put all three parts in the same folder.
-2. Install 7-Zip and open **`sss_ssl_dataset_N713_384.zip`** — not the `.z01`.
-   7-Zip pulls the other segments in automatically.
-3. Extract somewhere with ~52 GB spare beyond the download itself.
-4. Tell me the path and I will write a sampler that pulls a few thousand tiles
-   with an artificial-structure screening pass.
-
-Constraints, both enforced by the miner:
-
-- **SONARDETECT only.** KLSG images carry no boxes, so there is no way to know
-  where the ship is and any crop might contain one.
-- **`fish` frames excluded**, along with everything else flagged in
-  `ai/data/provenance/quality_audit/` — echosounder imagery is the wrong
-  instrument and must not become "typical seabed".
+Do not download these before the three above are inventoried and training.
 
 ---
 
-# STEP 6 — Send Member 2 the handoff  ⏱️ 2 min  🔴 highest value per minute
+# After every download
 
-**Do this today.** Member 2 is currently blocked on nothing at all, and does not
-know it.
+```bash
+.venv/Scripts/python ai/scripts/inventory.py --verbose
+```
 
-Send them **`docs/HANDOFF.md`** from this repo. It contains everything they need
-to build the entire website — the data format, example files, and the rules for
-displaying results — **without waiting for the AI to exist**.
+Check the block for the dataset you just added:
 
-Say this to them:
+- **`classes`** — the folder or label breakdown actually present
+- **`annotation_type`** — boxes, masks, or classification-only
+- **a `MISMATCH` warning** is the tool working, not failing. It means the claim
+  and the disk disagree, and it is the line that caught leftover test data
+  masquerading as a real dataset.
 
-> "Build against the three example files in `ai/fixtures/`. The real AI produces
-> the exact same format, so nothing on your side changes when the model is
-> ready. Read `docs/HANDOFF.md` first — especially the five fields that matter."
+**Send me that output** and I will write the importer for whatever format it
+turns out to be.
 
-Every hour they spend waiting is wasted, and there is no reason to wait.
+---
+
+# Folder names matter
+
+The inventory tool matches the folder name against the dataset registry. Use
+these exactly, or it reports `provenance unrecorded` and cannot check the data
+against what was promised:
+
+```
+ai\data\raw\research\GHOSTVISION\
+ai\data\raw\research\SUBPIPE\
+ai\data\raw\research\MARINE-PULSE\
+```
 
 ---
 
 # Do NOT download these
 
-You will find them while searching. They look perfect. They are not.
+**MDT** and **UATD** contain real underwater rubbish — tyres, cans, chains — and
+look perfect for a marine-debris problem. They are **forward-looking sonar**, not
+side-scan, and MDT was recorded in a water tank. Acoustic shadow, the main clue
+that something stands proud of the seabed, does not form the same way. Training
+on them and reporting the score as side-scan performance would not survive a
+knowledgeable question.
 
-**MDT marine debris** and **UATD** contain real underwater rubbish — tyres,
-cans, bottles, chains. Tempting, because that is literally your problem.
-
-**But they are the wrong kind of sonar.** They use *forward-looking* sonar,
-which points ahead like a torch. Yours is *side-scan*, which sweeps sideways
-across the seabed. Shadows — the main clue that something is sticking up off the
-bottom — form completely differently. MDT was also recorded in a **water tank**,
-not the sea.
-
-Training on those and reporting the score as side-scan performance would be
-dishonest, and a judge who knows sonar would spot it.
+The **`fish` class inside SONARDETECT** is already excluded for the same reason:
+those frames are fish-finder screenshots, and several have the annotator's red
+circle burned into the pixels.
 
 ---
 
-# When you are done
+# Troubleshooting
 
-```bash
-.venv/Scripts/python ai/scripts/inventory.py --verbose
-```
-
-This writes `ai/data/provenance/data_inventory.csv` — the Phase 0 deliverable
-your plan asks for. It records what you actually have: real image counts, real
-pixel sizes, label formats, and whether any GPS data came with it.
-
-**Send me that output and I will start on the training pipeline.**
-
----
-
-# If something goes wrong
-
-| Problem | What to do |
+| Problem | Fix |
 |---|---|
-| `inventory.py` says `ai/data/raw/ is empty` | Images are nested too deep or the folder name is wrong. Check the folder is spelled exactly as in the step. |
-| Says `not in dataset_candidates.csv` | Folder name does not match. Rename it to the exact name in the step. |
-| Reports a `MISMATCH` in counts | **Not an error — that is the tool doing its job.** It means the published claim disagrees with reality. Tell me the numbers. |
-| `.rar` will not open | Use 7-Zip (free). But you should not need it — skip `SCTD2.0.rar`, it is empty. |
-| Kaggle wants a phone number | Skip Step 3. Steps 2 and 5 cover it. |
-| No reply from the KLSG email after 4 days | Assume no, and go with Step 5. Do not keep waiting. |
-
----
-
-# Priority, if you are short on time
-
-Only three of these actually matter:
-
-1. **Step 6** — unblocks your teammate. Two minutes.
-2. **Step 2 email** — the clock starts when you send it, not when you need it.
-3. **Step 1 SCTD** — the dataset you will actually train on first.
-
-Steps 3, 4 and 5 can wait until tomorrow.
+| `inventory.py` says `ai/data/raw/ is empty` | Images nested too deep, or the folder name is wrong |
+| `not in dataset_candidates.csv` | Folder name mismatch — rename to the exact name above |
+| `MISMATCH … probably NOT the real dataset` | Download incomplete, or test data left in the folder |
+| Zenodo download stalls | Zenodo is slow at peak; resume works, or use the DOI mirror |
+| A `.zip` will not open | Use 7-Zip. Split archives need every part present |
