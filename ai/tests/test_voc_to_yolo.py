@@ -35,8 +35,8 @@ SCRIPT = AI_ROOT / "scripts" / "voc_to_yolo.py"
 def test_training_class_ids_are_stable():
     """Order is the YOLO class id and therefore a wire format. Reshuffling it
     silently relabels every previously converted dataset."""
-    assert TRAINING_CLASSES == ("wreck", "plane", "debris")
-    assert CLASS_TO_ID == {"wreck": 0, "plane": 1, "debris": 2}
+    assert TRAINING_CLASSES == ("wreck", "plane", "debris", "ghost_pot")
+    assert CLASS_TO_ID == {"wreck": 0, "plane": 1, "debris": 2, "ghost_pot": 3}
 
 
 @pytest.mark.parametrize(
@@ -262,7 +262,7 @@ def test_unmapped_class_is_reported_loudly(convert, capsys):
 def test_data_yaml_matches_the_taxonomy(convert):
     code, out, _ = convert(box("ship", 10, 10, 90, 90))
     yaml = (out / "data.yaml").read_text()
-    assert "nc: 3" in yaml
+    assert "nc: 4" in yaml
     for i, name in enumerate(TRAINING_CLASSES):
         assert f"  {i}: {name}" in yaml
 

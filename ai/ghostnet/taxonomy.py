@@ -41,6 +41,10 @@ TRAINING_CLASSES: tuple[str, ...] = (
                 #      wreckage, unidentified artificial returns. The closest
                 #      thing to actual marine debris in any side-scan data we
                 #      have found, and therefore the class nearest the PS.
+    "ghost_pot",  # 3 -- derelict crab pots. REAL derelict fishing gear in real
+                #      side-scan sonar, from GhostVision. The closest thing to
+                #      the problem statement that ground truth actually exists
+                #      for, and it is NOT a net -- see the mapping below.
 )
 
 # `natural` is NOT a training class, and that is deliberate.
@@ -93,6 +97,15 @@ SOURCE_ALIASES: dict[str, str] = {
     "pipe": "debris",
     "engineering platform": "debris",
     "platform": "debris",
+    # GhostVision. Derelict crab pots: genuine ghost fishing gear, manually
+    # annotated on real side-scan sonar. Kept as its own class rather than
+    # folded into debris, because "we detect derelict fishing gear" is a far
+    # stronger and still truthful claim than "we detect debris".
+    "crab pot": "ghost_pot",
+    "crabpot": "ghost_pot",
+    "ghost pot": "ghost_pot",
+    "ghostpot": "ghost_pot",
+    "pot": "ghost_pot",
     "litter": "debris",
     "trash": "debris",
 }
@@ -147,6 +160,20 @@ TRAINING_TO_CONTRACT: dict[str, str] = {
     "wreck": "debris",
     "plane": "debris",
     "debris": "debris",
+    # A crab pot is fishing GEAR. It is not a NET.
+    #
+    # Mapping ghost_pot -> ghost_net would be the single most tempting lie
+    # available to this project: it would make the headline metric look like it
+    # measures the problem statement's exact words. It would also be inventing
+    # ground truth, which both build plans forbid outright, and it would not
+    # survive one informed question at judging.
+    #
+    # So it reports as `debris`, and infer.py carries "detector class:
+    # ghost_pot" through in evidence_summary.notes, where a reviewer sees the
+    # real finding without the contract claiming something it cannot support.
+    # If the contract ever gains a `ghost_gear` value, this is the line to
+    # change -- and that is a major version bump for Member 2.
+    "ghost_pot": "debris",
     "natural": "natural",
     "ghost_net": "ghost_net",  # ready for when synthetic data exists
 }
@@ -156,7 +183,8 @@ TRAINING_TO_CONTRACT: dict[str, str] = {
 # empirical question, and this makes it a one-flag experiment rather than a
 # re-conversion.
 COLLAPSE_MAPS: dict[str, dict[str, str]] = {
-    "artificial": {"wreck": "artificial", "plane": "artificial", "debris": "artificial"},
+    "artificial": {"wreck": "artificial", "plane": "artificial",
+                   "debris": "artificial", "ghost_pot": "artificial"},
 }
 
 

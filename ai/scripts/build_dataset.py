@@ -61,6 +61,8 @@ SPLIT_POLICY = {
     "AI4SHIPWRECKS": {"mode": "fixed", "map": {"train": "train", "test": "test"}, "val_from": "train"},
     "SCTD": {"mode": "random"},
     "SONARDETECT": {"mode": "fixed", "map": {"train": "train", "valid": "val", "test": "test"}},
+    "GHOSTVISION": {"mode": "fixed", "map": {"train": "train", "valid": "val", "test": "test"}},
+    "MARINE-PULSE": {"mode": "fixed", "map": {"train": "train", "test": "test"}},
 }
 DEFAULT_POLICY = {"mode": "random"}
 
@@ -102,10 +104,26 @@ def group_key(dataset: str, img: Path) -> str:
 
 
 def classes_in(label: Path) -> set[int]:
+    """The distinct classes present. Used for stratifying the split."""
     out = set()
     for line in label.read_text(encoding="utf-8").split("\n"):
         if line.strip():
             out.add(int(line.split()[0]))
+    return out
+
+
+def boxes_in(label: Path) -> Counter:
+    """How many boxes of each class.
+
+    NOT the same as classes_in, and the difference matters: one frame holding
+    eight crab pots is one frame and eight boxes. Reporting frames while
+    calling them boxes understates the training signal, which is exactly the
+    mistake this function exists to stop.
+    """
+    out: Counter = Counter()
+    for line in label.read_text(encoding="utf-8").split("\n"):
+        if line.strip():
+            out[int(line.split()[0])] += 1
     return out
 
 
@@ -248,16 +266,18 @@ def main() -> int:
                 plan.append((target, d, img, lbl))
 
     # ---- report and write -------------------------------------------------
-    stats = {s: Counter() for s in ("train", "val", "test")}
+    stats = {s: Counter() for s in ("train", "val", "test")}    # boxes
+    frames = {s: Counter() for s in ("train", "val", "test")}   # frames containing
     tiles = Counter()
     backgrounds = Counter()
     for split, ds, img, lbl in plan:
         tiles[split] += 1
-        cls = classes_in(lbl)
-        if not cls:
+        counts = boxes_in(lbl)
+        if not counts:
             backgrounds[split] += 1
-        for c in cls:
-            stats[split][c] += 1
+        for c, n in counts.items():
+            stats[split][c] += n
+            frames[split][c] += 1
 
     print(f"\nsources: {', '.join(sources)}")
     print(f"output : {out_root if not args.dry_run else '(dry run)'}\n")
@@ -265,11 +285,14 @@ def main() -> int:
         extra = f", {dropped_dupes[ds]} exact duplicates dropped" if dropped_dupes[ds] else ""
         print(f"  {ds:16s} {per_source[ds]:5d} images{extra}")
 
-    print(f"\n  {'split':6s} {'images':>7s} {'background':>11s}  " +
-          "  ".join(f"{n:>8s}" for n in TRAINING_CLASSES))
+    print("\n  BOXES per class (one frame may hold several)")
+    print(f"  {'split':6s} {'images':>7s} {'background':>11s}  " +
+          "  ".join(f"{n:>9s}" for n in TRAINING_CLASSES))
     for s in ("train", "val", "test"):
-        row = "  ".join(f"{stats[s][i]:8d}" for i in range(len(TRAINING_CLASSES)))
+        row = "  ".join(f"{stats[s][i]:9d}" for i in range(len(TRAINING_CLASSES)))
         print(f"  {s:6s} {tiles[s]:7d} {backgrounds[s]:11d}  {row}")
+    row = "  ".join(f"{frames['train'][i]:9d}" for i in range(len(TRAINING_CLASSES)))
+    print(f"  {'':6s} {'':7s} {'train frames':>11s}  {row}")
 
     problems = []
     for i, name in enumerate(TRAINING_CLASSES):
@@ -300,7 +323,14 @@ def main() -> int:
     if args.dry_run:
         return 0
 
+    # Clear the target splits first. Adding a source changes the stratified
+    # assignment, so a file that was in train last build may belong in val
+    # this one -- and the stale copy would still be sitting in train. That is
+    # the same image on both sides of the split: leakage, introduced by the
+    # very script whose job is to prevent it, and invisible afterwards.
     for s in ("train", "val", "test"):
+        if (out_root / s).exists():
+            shutil.rmtree(out_root / s, ignore_errors=True)
         (out_root / s / "images").mkdir(parents=True, exist_ok=True)
         (out_root / s / "labels").mkdir(parents=True, exist_ok=True)
     for split, ds, img, lbl in plan:
@@ -331,6 +361,7 @@ def main() -> int:
         "split_sizes": dict(tiles),
         "background_per_split": dict(backgrounds),
         "boxes_per_class_per_split": {s: {TRAINING_CLASSES[c]: n for c, n in stats[s].items()} for s in stats},
+        "frames_per_class_per_split": {s: {TRAINING_CLASSES[c]: n for c, n in frames[s].items()} for s in frames},
         "declared_classes": active,
         "ratios": args.ratios,
         "seed": args.seed,
