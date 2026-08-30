@@ -15,6 +15,17 @@ __pycache__/
 ai/data/raw/*
 ai/data/interim/*
 ai/data/processed/*
+ai/data/hard_negatives/*
+ai/data/metadata/raw/*
+ai/data/metadata/normalized/*
+ai/data/annotations/raw/*
+ai/data/annotations/normalized/*
+
+# ai/data/provenance/ is NOT ignored, on purpose. dataset_candidates.csv and
+# data_inventory.csv are small text records of where data came from, what
+# licence it carries and what is actually on disk. They are the audit trail the
+# plan's provenance requirement asks for -- losing them costs more than the few
+# kilobytes they take.
 *.xtf
 *.jsf
 *.sdf
