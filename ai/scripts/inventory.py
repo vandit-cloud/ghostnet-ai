@@ -37,6 +37,19 @@ OUT_CSV = PROVENANCE / "data_inventory.csv"
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".pgm"}
 SONAR_LOG_EXTS = {".xtf", ".jsf", ".sdf", ".s7k", ".segy"}
 
+def show(path: Path) -> str:
+    """Repo-relative when possible, absolute otherwise.
+
+    RAW_ROOT and OUT_CSV are overridable for testing and may legitimately point
+    outside the repo. Assuming otherwise crashed the final report line after all
+    the scanning work was already done.
+    """
+    try:
+        return str(path.relative_to(AI_ROOT.parent))
+    except ValueError:
+        return str(path)
+
+
 # The exact field list from plan section 5.
 FIELDS = [
     "dataset_id",
@@ -189,8 +202,17 @@ def scan(dataset_dir: Path, candidates: dict[str, dict[str, str]]) -> dict[str, 
     notes = []
     claimed = cand.get("image_count", "").strip()
     if claimed.isdigit() and images:
-        if abs(int(claimed) - len(images)) > max(5, int(claimed) * 0.02):
-            notes.append(f"MISMATCH: {claimed} images claimed, {len(images)} found on disk")
+        shortfall = int(claimed) - len(images)
+        if abs(shortfall) > max(5, int(claimed) * 0.02):
+            note = f"MISMATCH: {claimed} images claimed, {len(images)} found on disk"
+            # A handful missing is a partial download. Losing most of the set
+            # means this is not the dataset it claims to be -- a truncated
+            # archive, the wrong subset, or leftover test data. Say so plainly:
+            # a quiet count warning is easy to skim past, and training on the
+            # wrong data costs far more than re-reading one line.
+            if shortfall > 0 and len(images) < int(claimed) * 0.5:
+                note += " -- LESS THAN HALF. This is probably NOT the real dataset."
+            notes.append(note)
     if logs:
         notes.append(f"{len(logs)} raw sonar log(s) present")
     if ann_count:
@@ -247,14 +269,18 @@ def main() -> int:
     if not rows:
         print("ai/data/raw/ is empty -- nothing acquired yet.")
         print("Candidate datasets and how to get them: ai/data/provenance/dataset_candidates.csv")
-        print("Wrote an empty " + str(OUT_CSV.relative_to(AI_ROOT.parent)) + " (header only).")
+        print("Wrote an empty " + show(OUT_CSV) + " (header only).")
         return 0
 
-    print("inventoried " + str(len(rows)) + " dataset(s) -> " + str(OUT_CSV.relative_to(AI_ROOT.parent)))
+    print("inventoried " + str(len(rows)) + " dataset(s) -> " + show(OUT_CSV))
     mismatches = [r for r in rows if "MISMATCH" in r["notes"]]
     unlicensed = [r for r in rows if r["license"].startswith("UNKNOWN")]
     for r in mismatches:
-        print("  ! " + r["dataset_id"] + ": " + r["notes"].split(";")[0])
+        note = r["notes"].split(";")[0]
+        print("  ! " + r["dataset_id"] + ": " + note)
+        if "NOT the real dataset" in note:
+            print("      -> check the download completed, and that no test or sample")
+            print("         data is sitting in this folder. Do not train on it.")
     for r in unlicensed:
         print("  ! " + r["dataset_id"] + ": licence unverified -- resolve before training on it")
     return 0
