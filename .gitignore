@@ -43,6 +43,18 @@ ai/models/trained/*
 
 # --- runtime ---------------------------------------------------------------
 ai/experiments/*
+# ...but keep the RESULTS. Weights and plots are large and regenerable; these
+# are small JSON records of what a run actually scored and what it was trained
+# on. Losing them means a metric nobody can trace back to a dataset or commit.
+# Re-enter the run directories, re-exclude everything inside them, then
+# whitelist the few small files. Un-ignoring the directory alone lets every
+# plot and sample batch back in -- 8.7 MB on the first run.
+!ai/experiments/*/
+ai/experiments/*/*
+!ai/experiments/*/test_metrics.json
+!ai/experiments/*/background_metrics.json
+!ai/experiments/*/provenance.json
+!ai/experiments/*/results.csv
 runs/
 *.log
 .env
