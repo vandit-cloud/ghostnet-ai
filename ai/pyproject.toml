@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ghostnet-ai"
+version = "0.1.0"
+description = "Side-scan sonar marine-debris detection for SIH26057. Member 1's AI half."
+requires-python = ">=3.11"
+readme = "README.md"
+
+# Deliberately loose, and deliberately NOT pinned to +cu126.
+#
+# ai/requirements.txt pins the exact CUDA build for Member 1's RTX 3050. This
+# file is what Member 2 installs, and their machine may have no GPU at all --
+# pinning a CUDA-local version here would either fail to resolve or drag a
+# 2.6 GB CUDA wheel onto a laptop that cannot use it. The package runs on CPU
+# by design (config.resolve_device falls back), so the loose pins are correct
+# for the consumer and the strict ones stay where they belong: the dev env.
+dependencies = [
+    "torch>=2.6",
+    "torchvision>=0.21",
+    "ultralytics>=8.3",
+    "opencv-python-headless>=4.10",
+    "numpy>=1.26",
+    "pyproj>=3.6",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "jsonschema>=4.21"]
+
+[tool.setuptools]
+packages = ["ghostnet"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,75 @@
+{
+  "survey_id": "SURVEY-001",
+  "frame_id": "PING-18452",
+  "detections": [
+    {
+      "detection_id": "D-00027AB1",
+      "raw_score": 0.91,
+      "calibrated_confidence": 0.83,
+      "uncertainty": "low",
+      "bbox": [
+        320,
+        180,
+        190,
+        120
+      ],
+      "mask": null,
+      "latitude": 20.123456,
+      "longitude": 70.123456,
+      "position_error_m": 4.5,
+      "localization": "frame-level",
+      "dimensions": {
+        "width": 3.2,
+        "length": 8.4,
+        "status": "estimated"
+      },
+      "review_status": "pending",
+      "model_version": "v0-stub",
+      "evidence_summary": {
+        "artificial_verification": "positive",
+        "shadow_context": "supportive",
+        "notes": ""
+      },
+      "class": "ghost_net"
+    },
+    {
+      "detection_id": "D-00027AB2",
+      "raw_score": 0.64,
+      "calibrated_confidence": 0.55,
+      "uncertainty": "medium",
+      "bbox": [
+        40,
+        500,
+        260,
+        140
+      ],
+      "mask": null,
+      "latitude": 20.123901,
+      "longitude": 70.12288,
+      "position_error_m": 6.1,
+      "localization": "frame-level",
+      "dimensions": {
+        "width": 11.0,
+        "length": 6.2,
+        "status": "estimated"
+      },
+      "review_status": "pending",
+      "model_version": "v0-stub",
+      "evidence_summary": {
+        "artificial_verification": "negative",
+        "shadow_context": "not_evaluated",
+        "notes": ""
+      },
+      "class": "natural"
+    }
+  ],
+  "provenance": {
+    "model_id": "ghostnet-yolo11s",
+    "model_version": "v0-stub",
+    "dataset_version": "none",
+    "preprocessing_version": "v0",
+    "calibration_version": "none"
+  },
+  "warnings": [],
+  "contract_version": "1.0.0"
+}

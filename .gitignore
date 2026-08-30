@@ -1,0 +1,47 @@
+# --- environments ----------------------------------------------------------
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# --- data: never in git ----------------------------------------------------
+# Raw sonar is large and often licence-restricted. Acquisition is scripted in
+# ai/scripts/ and documented in docs/DATA.md so a clone can rebuild it.
+# Ignore contents, keep the directory itself so a fresh clone has the tree.
+ai/data/raw/*
+ai/data/interim/*
+ai/data/processed/*
+*.xtf
+*.jsf
+*.sdf
+
+# --- model weights ---------------------------------------------------------
+# Pretrained weights are re-downloadable (ai/scripts/fetch_weights.py).
+# Trained weights are build artefacts; ship the good one as a GitHub Release
+# asset rather than bloating every clone's history.
+*.pt
+*.pth
+*.onnx
+*.engine
+ai/models/pretrained/*
+ai/models/trained/*
+
+# --- runtime ---------------------------------------------------------------
+ai/experiments/*
+runs/
+*.log
+.env
+.env.local
+
+# --- os / editor -----------------------------------------------------------
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ...but always keep the directory markers.
+!**/.gitkeep

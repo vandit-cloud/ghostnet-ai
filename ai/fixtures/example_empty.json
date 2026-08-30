@@ -1,0 +1,13 @@
+{
+  "survey_id": "SURVEY-002",
+  "frame_id": "frame_0008",
+  "detections": [],
+  "provenance": {
+    "model_id": "ghostnet-yolo11s",
+    "model_version": "v0-stub"
+  },
+  "warnings": [
+    "no trained weights available; returning empty detections."
+  ],
+  "contract_version": "1.0.0"
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ghostnet-ai/contracts/ai-error.schema.json",
+  "title": "GhostNet-AI error",
+  "type": "object",
+  "properties": {
+    "error": {
+      "type": "string",
+      "enum": [
+        "bad_request",
+        "unreadable_image",
+        "internal_error",
+        "out_of_memory"
+      ]
+    },
+    "message": {
+      "type": "string",
+      "description": "Human-readable and safe to log. Never contains a filesystem path."
+    },
+    "survey_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "frame_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "contract_version": {
+      "type": "string",
+      "const": "1.0.0"
+    }
+  },
+  "required": [
+    "error",
+    "message",
+    "contract_version"
+  ],
+  "additionalProperties": false,
+  "x-notes": [
+    "Degraded conditions are NOT errors. No weights, no GPU and no navigation metadata all return a valid ai-output payload with `warnings` set. Member 2 should render warnings, not treat them as failures."
+  ]
+}
