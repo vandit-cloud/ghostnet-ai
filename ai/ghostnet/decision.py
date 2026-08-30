@@ -28,19 +28,51 @@ _TEMPERATURE: float = 1.0
 _CALIBRATION_LOADED = False
 
 
+_CALIBRATION_WEIGHTS: str | None = None
+
+
 def load_calibration(settings: Settings = SETTINGS) -> float:
     """Read the fitted temperature from models/calibrator/temperature.json."""
-    global _TEMPERATURE, _CALIBRATION_LOADED
+    global _TEMPERATURE, _CALIBRATION_LOADED, _CALIBRATION_WEIGHTS
     if _CALIBRATION_LOADED:
         return _TEMPERATURE
     path = Path(settings.models_dir) / "calibrator" / "temperature.json"
     if path.exists():
         try:
-            _TEMPERATURE = float(json.loads(path.read_text())["temperature"])
+            blob = json.loads(path.read_text())
+            _TEMPERATURE = float(blob["temperature"])
+            _CALIBRATION_WEIGHTS = blob.get("weights")
         except Exception:
             _TEMPERATURE = 1.0
+            _CALIBRATION_WEIGHTS = None
     _CALIBRATION_LOADED = True
     return _TEMPERATURE
+
+
+def calibration_mismatch(settings: Settings = SETTINGS) -> str | None:
+    """Warn when the calibrator was fitted for a DIFFERENT set of weights.
+
+    A temperature is a property of one trained model. Retrain, and the old
+    file still loads and still looks fine -- it just silently applies the wrong
+    correction, which is worse than no calibration at all because the numbers
+    look authoritative. Nothing else in the pipeline would notice, so the check
+    lives here and the caller surfaces it as a warning.
+    """
+    load_calibration(settings)
+    if _CALIBRATION_WEIGHTS is None or settings.weights_path is None:
+        return None
+    fitted, active = Path(_CALIBRATION_WEIGHTS), Path(settings.weights_path)
+    try:
+        same = fitted.resolve() == active.resolve()
+    except OSError:
+        same = str(fitted) == str(active)
+    if same:
+        return None
+    return (
+        "calibration was fitted for " + fitted.name + " but the active weights are "
+        + active.name + "; confidences may be miscalibrated. Re-run "
+        "ai/scripts/fit_calibration.py against the current model."
+    )
 
 
 def calibrate(raw_score: float, settings: Settings = SETTINGS) -> float:

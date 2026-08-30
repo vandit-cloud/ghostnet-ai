@@ -23,7 +23,7 @@ from typing import Any
 
 from .config import SETTINGS, Settings
 from .contract import Detection, Dimensions, EvidenceSummary, FrameResult
-from .decision import apply_decision_policy, escalate_uncertainty
+from .decision import apply_decision_policy, calibration_mismatch, escalate_uncertainty
 from .geo import SonarGeometry, geotag_pixel, pixel_to_ground_offset, position_error_m
 
 # One model, loaded once, guarded by a lock.
@@ -129,6 +129,10 @@ def detect(
             quantize=settings.quantize(),
             verbose=False,
         )
+
+    stale = calibration_mismatch(settings)
+    if stale:
+        result.warnings.append(stale)
 
     geom = _geometry_from_meta(meta)
     have_fix = meta.get("latitude") is not None and meta.get("longitude") is not None

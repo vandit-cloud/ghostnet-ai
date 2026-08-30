@@ -1,0 +1,11 @@
+{
+  "temperature": 0.9423,
+  "fitted_on": "val",
+  "weights": "ai\\experiments\\baseline-yolo11s\\weights\\best.pt",
+  "n_predictions": 585,
+  "n_correct": 152,
+  "iou_threshold": 0.5,
+  "conf_threshold": 0.05,
+  "ece_before": 0.047253,
+  "ece_after": 0.040653
+}

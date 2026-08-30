@@ -139,3 +139,44 @@ def test_a_corrupt_calibration_file_falls_back_to_uncalibrated(cal, tmp_path, mo
     (tmp_path / "calibrator" / "temperature.json").write_text("{ not json")
     assert decision.load_calibration(settings) == 1.0
     assert decision.assess_uncertainty(0.99, settings) == "medium"
+
+
+# --- the calibrator must belong to the model using it ----------------------
+
+def test_calibration_fitted_for_other_weights_is_flagged(cal, tmp_path, monkeypatch):
+    """A temperature is a property of one trained model. After a retrain the old
+    file still loads and still looks fine, silently applying the wrong
+    correction -- worse than no calibration, because the numbers look
+    authoritative."""
+    monkeypatch.setattr(decision, "_CALIBRATION_LOADED", False)
+    monkeypatch.setattr(decision, "_TEMPERATURE", 1.0)
+    monkeypatch.setattr(decision, "_CALIBRATION_WEIGHTS", None)
+    (tmp_path / "calibrator").mkdir()
+    (tmp_path / "calibrator" / "temperature.json").write_text(
+        json.dumps({"temperature": 1.3, "weights": str(tmp_path / "run_a" / "best.pt")})
+    )
+    settings = Settings(models_dir=tmp_path, weights_path=tmp_path / "run_b" / "best.pt")
+    warning = decision.calibration_mismatch(settings)
+    assert warning is not None and "may be miscalibrated" in warning
+
+
+def test_matching_weights_produce_no_warning(cal, tmp_path, monkeypatch):
+    monkeypatch.setattr(decision, "_CALIBRATION_LOADED", False)
+    monkeypatch.setattr(decision, "_TEMPERATURE", 1.0)
+    monkeypatch.setattr(decision, "_CALIBRATION_WEIGHTS", None)
+    weights = tmp_path / "run_a" / "best.pt"
+    (tmp_path / "calibrator").mkdir()
+    (tmp_path / "calibrator" / "temperature.json").write_text(
+        json.dumps({"temperature": 1.3, "weights": str(weights)})
+    )
+    settings = Settings(models_dir=tmp_path, weights_path=weights)
+    assert decision.calibration_mismatch(settings) is None
+
+
+def test_no_calibrator_is_not_a_mismatch(cal, tmp_path, monkeypatch):
+    """Uncalibrated is a valid, honest state -- not an error to warn about."""
+    monkeypatch.setattr(decision, "_CALIBRATION_LOADED", False)
+    monkeypatch.setattr(decision, "_TEMPERATURE", 1.0)
+    monkeypatch.setattr(decision, "_CALIBRATION_WEIGHTS", None)
+    settings = Settings(models_dir=tmp_path, weights_path=tmp_path / "run.pt")
+    assert decision.calibration_mismatch(settings) is None
