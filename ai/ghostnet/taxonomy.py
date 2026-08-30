@@ -37,7 +37,11 @@ from __future__ import annotations
 TRAINING_CLASSES: tuple[str, ...] = (
     "wreck",    # 0 -- ships, shipwrecks, large man-made hulls
     "plane",    # 1 -- submerged aircraft
-    "natural",  # 2 -- plain seabed, rock, ripple. The hard negatives.
+    "debris",   # 2 -- miscellaneous man-made seabed objects: cables, small
+                #      wreckage, unidentified artificial returns. The closest
+                #      thing to actual marine debris in any side-scan data we
+                #      have found, and therefore the class nearest the PS.
+    "natural",  # 3 -- plain seabed, rock, ripple. The hard negatives.
 )
 
 CLASS_TO_ID: dict[str, int] = {name: i for i, name in enumerate(TRAINING_CLASSES)}
@@ -57,6 +61,14 @@ SOURCE_ALIASES: dict[str, str] = {
     "aircraft": "plane",
     "plane": "plane",
     "airplane": "plane",
+    # sonar_detect (Roboflow). "other" is a grab-bag of unidentified artificial
+    # seabed returns -- cables, small wreckage, angular objects. Inspected by
+    # sampling crops: they read as man-made, so `debris` is the honest mapping.
+    # It still needs the section 11 annotation audit before it is trusted.
+    "other": "debris",
+    "debris": "debris",
+    "litter": "debris",
+    "trash": "debris",
     # KLSG / sediment sets (folder-name classes)
     "seafloor": "natural",
     "seabed": "natural",
@@ -78,6 +90,8 @@ EXCLUDED_SOURCES: dict[str, str] = {
     "drowning victim": "see 'victim'",
     "diver": "a live diver is not seabed debris",
     "mine": "ordnance; out of scope, and KLSG withholds the mine images from public release anyway",
+    "fish": "WRONG MODALITY. The 208 'fish' boxes in sonar_detect are fish-finder / echosounder screenshots -- the classic arch a downward-looking single-beam sounder draws as a boat passes over a target. That is not side-scan seabed imagery, and several frames have the annotator's red circle burned into the pixels. Training on them teaches the detector to find drawn circles and sounder arches. Same principle that excludes MDT and UATD (docs/DATA.md).",
+    "shoal": "see 'fish'",
 }
 
 # ---------------------------------------------------------------------------
@@ -92,15 +106,22 @@ EXCLUDED_SOURCES: dict[str, str] = {
 TRAINING_TO_CONTRACT: dict[str, str] = {
     "wreck": "debris",
     "plane": "debris",
+    "debris": "debris",
     "natural": "natural",
     "ghost_net": "ghost_net",  # ready for when synthetic data exists
 }
 
-# A collapsed taxonomy for the binary framing. Not the default: with ~357
-# images, whether finer classes help or merely split the data is an empirical
-# question, and this makes it a one-flag experiment rather than a re-conversion.
+# A collapsed taxonomy for the binary framing. Not the default: with a few
+# hundred images, whether finer classes help or merely split the data is an
+# empirical question, and this makes it a one-flag experiment rather than a
+# re-conversion.
 COLLAPSE_MAPS: dict[str, dict[str, str]] = {
-    "artificial": {"wreck": "artificial", "plane": "artificial", "natural": "natural"},
+    "artificial": {
+        "wreck": "artificial",
+        "plane": "artificial",
+        "debris": "artificial",
+        "natural": "natural",
+    },
 }
 
 

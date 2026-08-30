@@ -35,8 +35,8 @@ SCRIPT = AI_ROOT / "scripts" / "voc_to_yolo.py"
 def test_training_class_ids_are_stable():
     """Order is the YOLO class id and therefore a wire format. Reshuffling it
     silently relabels every previously converted dataset."""
-    assert TRAINING_CLASSES == ("wreck", "plane", "natural")
-    assert CLASS_TO_ID == {"wreck": 0, "plane": 1, "natural": 2}
+    assert TRAINING_CLASSES == ("wreck", "plane", "debris", "natural")
+    assert CLASS_TO_ID == {"wreck": 0, "plane": 1, "debris": 2, "natural": 3}
 
 
 @pytest.mark.parametrize(
@@ -46,6 +46,22 @@ def test_training_class_ids_are_stable():
 )
 def test_source_names_map_to_training_classes(source, expected):
     assert source_to_training(source)[0] == expected
+
+
+def test_fish_is_excluded_as_a_modality_mismatch():
+    """The sonar_detect 'fish' class is fish-finder / echosounder imagery, not
+    side-scan seabed, and several frames carry the annotator's red circle burned
+    into the pixels. Same principle that excludes MDT and UATD."""
+    cls, reason = source_to_training("fish")
+    assert cls is None
+    assert "WRONG MODALITY" in reason
+
+
+def test_other_maps_to_debris():
+    """'other' is unidentified artificial seabed returns -- the closest thing to
+    real marine debris in any side-scan data located so far."""
+    assert source_to_training("other")[0] == "debris"
+    assert training_to_contract("debris") == "debris"
 
 
 def test_excluded_and_unmapped_are_distinguishable():
@@ -236,7 +252,7 @@ def test_unmapped_class_is_reported_loudly(convert, capsys):
 def test_data_yaml_matches_the_taxonomy(convert):
     code, out, _ = convert(box("ship", 10, 10, 90, 90))
     yaml = (out / "data.yaml").read_text()
-    assert "nc: 3" in yaml
+    assert "nc: 4" in yaml
     for i, name in enumerate(TRAINING_CLASSES):
         assert f"  {i}: {name}" in yaml
 
