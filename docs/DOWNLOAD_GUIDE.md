@@ -230,6 +230,38 @@ apart by anything except the object itself.
 
 This is plan §22, *Hard-Negative Mining*, and it needs no download.
 
+### Optional: the Zenodo set as a supplement, if you want the variety
+
+Worth starting as an overnight background download — **not** as a blocker, and
+not as a replacement for mining.
+
+What it is: 434,164 **unlabelled** 384×384 tiles cut from side-scan waterfalls,
+coastal **Catalunya, Spain**, CC BY 4.0. Right modality, clean licence.
+
+Two caveats that cap its value:
+
+- **Its stated purpose is self-supervised pretraining, which is out of reach.**
+  Pretraining a backbone on 434k images needs days on multi-GPU hardware; the
+  budget here is 4 GB of laptop VRAM inside three weeks.
+- **It contains "artificial reefs"** among the seabed types, and it is
+  unlabelled. Bulk-importing it as the `natural` class would teach the model
+  that man-made structures are natural seabed — on precisely the axis the
+  headline metric measures. Any sampler must screen for this rather than
+  trusting the whole set.
+
+What it genuinely buys: seabed **variety**. Negatives mined from 581 frames are
+thin, and a `natural` class built only from them may not generalise. This is 713
+survey lines of real, varied seabed.
+
+If you do pull it:
+
+1. Put all three parts in the same folder.
+2. Install 7-Zip and open **`sss_ssl_dataset_N713_384.zip`** — not the `.z01`.
+   7-Zip pulls the other segments in automatically.
+3. Extract somewhere with ~52 GB spare beyond the download itself.
+4. Tell me the path and I will write a sampler that pulls a few thousand tiles
+   with an artificial-structure screening pass.
+
 Constraints, both enforced by the miner:
 
 - **SONARDETECT only.** KLSG images carry no boxes, so there is no way to know
