@@ -225,6 +225,16 @@ def detect(
                 evidence_summary=EvidenceSummary(
                     artificial_verification="positive" if cls_out != "natural" else "negative",
                     shadow_context="not_evaluated",
+                    # The contract vocabulary is four values wide, so a wreck and
+                    # an aircraft both report as 'debris'. The finer class the
+                    # detector actually produced is preserved here rather than
+                    # lost -- free text, so no schema change, and the reviewer
+                    # sees what the model really said.
+                    notes=(
+                        "detector class: " + item["cls"]
+                        if item["cls"].strip().lower() != cls_out
+                        else ""
+                    ),
                 ),
             )
         )

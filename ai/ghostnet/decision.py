@@ -20,6 +20,7 @@ from pathlib import Path
 
 from .config import SETTINGS, Settings
 from .contract import CLASS_VALUES
+from .taxonomy import TRAINING_TO_CONTRACT, source_to_training, training_to_contract
 
 # Fitted on the validation set by scripts/fit_calibration.py once a model
 # exists. T == 1.0 means "uncalibrated", i.e. raw scores pass through.
@@ -56,20 +57,37 @@ def calibrate(raw_score: float, settings: Settings = SETTINGS) -> float:
     return 1.0 / (1.0 + math.exp(-logit / t))
 
 
+# Net-like names never appear in a training set today -- no public side-scan
+# data contains ghost nets -- but they will once synthetic examples exist, and
+# a stray alias costs nothing meanwhile.
+_NET_ALIASES = frozenset({"ghostnet", "net", "nets", "fishing_net", "fishingnet", "netting"})
+
+
 def normalise_class(model_class: str) -> str:
-    """Map a training-time class name onto the closed contract vocabulary."""
+    """Map a detector class name onto the closed contract vocabulary.
+
+    Resolution order, most specific first:
+      1. already a contract value        -> itself
+      2. a net-like alias                -> ghost_net
+      3. a TRAINING class (taxonomy.py)  -> its contract class
+      4. a raw SOURCE name from a dataset -> training class -> contract class
+      5. anything else                   -> unknown
+
+    Step 4 matters because a model trained straight from a dataset's own labels
+    can emit 'ship' rather than 'wreck'. Falling through to 'unknown' there
+    would quietly demote a confident wreck detection.
+    """
     name = model_class.strip().lower().replace("-", "_").replace(" ", "_")
-    aliases = {
-        "ghostnet": "ghost_net",
-        "net": "ghost_net",
-        "fishing_net": "ghost_net",
-        "seafloor": "natural",
-        "seabed": "natural",
-        "rock": "natural",
-        "background": "natural",
-    }
-    name = aliases.get(name, name)
-    return name if name in CLASS_VALUES else "unknown"
+    if name in CLASS_VALUES:
+        return name
+    if name in _NET_ALIASES:
+        return "ghost_net"
+    if name in TRAINING_TO_CONTRACT:
+        return training_to_contract(name)
+    training_class, _reason = source_to_training(model_class)
+    if training_class is not None:
+        return training_to_contract(training_class)
+    return "unknown"
 
 
 # ---------------------------------------------------------------------------
