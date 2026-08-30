@@ -40,6 +40,13 @@ EXPERIMENTS = AI_ROOT / "experiments"
 PRETRAINED = AI_ROOT / "models" / "pretrained"
 
 
+def show(path: Path) -> str:
+    try:
+        return str(path.relative_to(AI_ROOT.parent))
+    except ValueError:
+        return str(path)
+
+
 def git_commit() -> str:
     try:
         return subprocess.run(
@@ -79,15 +86,29 @@ def main() -> int:
         print("! CUDA not available; training on CPU will take many hours.")
         print("  If this machine has an RTX 3050, the torch install is broken -- see ai/requirements.txt.")
 
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
     weights = args.model if args.model.endswith(".pt") else str(PRETRAINED / f"{args.model}.pt")
+    name = args.name or f"{Path(weights).stem}-{stamp}"
+    EXPERIMENTS.mkdir(parents=True, exist_ok=True)
+
+    if args.resume:
+        # Ultralytics resumes from the CHECKPOINT, not from the pretrained
+        # weights: the optimiser state, the epoch counter and the LR schedule
+        # all live inside last.pt. Passing resume=True to a model built from
+        # yolo11s.pt silently restarts at epoch 1 and overwrites the run --
+        # which is exactly what happened the first time this was used.
+        checkpoint = EXPERIMENTS / name / "weights" / "last.pt"
+        if not checkpoint.exists():
+            print(f"--resume needs a checkpoint at {show(checkpoint)}, which does not exist.")
+            print("Drop --resume to start a fresh run, or pass --name for the run you meant.")
+            return 1
+        weights = str(checkpoint)
+        print(f"  resuming from {show(checkpoint)}")
+
     if not Path(weights).exists():
         print(f"weights not found: {weights}")
         print("Run ai/scripts/fetch_weights.py, or pass --model with a path.")
         return 1
-
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
-    name = args.name or f"{Path(weights).stem}-{stamp}"
-    EXPERIMENTS.mkdir(parents=True, exist_ok=True)
 
     build_report = data_path.parent / "build_report.json"
     provenance = {
