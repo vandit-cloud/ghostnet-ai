@@ -1,0 +1,56 @@
+{
+  "weights": "E:\\New folder\\ai\\experiments\\gv-yolo11s\\weights\\best.pt",
+  "split": "test",
+  "background_tiles": 2620,
+  "curve": [
+    {
+      "threshold": 0.1,
+      "frames_flagged": 1266,
+      "rate": 0.483206106870229,
+      "total_boxes": 6387
+    },
+    {
+      "threshold": 0.2,
+      "frames_flagged": 898,
+      "rate": 0.3427480916030534,
+      "total_boxes": 5739
+    },
+    {
+      "threshold": 0.25,
+      "frames_flagged": 757,
+      "rate": 0.28893129770992365,
+      "total_boxes": 5302
+    },
+    {
+      "threshold": 0.3,
+      "frames_flagged": 633,
+      "rate": 0.2416030534351145,
+      "total_boxes": 4795
+    },
+    {
+      "threshold": 0.4,
+      "frames_flagged": 362,
+      "rate": 0.13816793893129772,
+      "total_boxes": 3252
+    },
+    {
+      "threshold": 0.5,
+      "frames_flagged": 148,
+      "rate": 0.05648854961832061,
+      "total_boxes": 1323
+    },
+    {
+      "threshold": 0.6,
+      "frames_flagged": 57,
+      "rate": 0.021755725190839695,
+      "total_boxes": 485
+    },
+    {
+      "threshold": 0.7,
+      "frames_flagged": 19,
+      "rate": 0.007251908396946565,
+      "total_boxes": 103
+    }
+  ],
+  "note": "False-positive rate on tiles whose labels are empty, i.e. real side-scan seabed verified to contain no object. This is how the artificial-vs-natural requirement is scored: there is no natural class, because nobody draws boxes around rocks."
+}

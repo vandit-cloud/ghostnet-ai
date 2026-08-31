@@ -1,7 +1,7 @@
 {
-  "created_utc": "2026-08-30T18:43:27.188641+00:00",
-  "git_commit": "13f55af",
-  "weights_init": "E:\\New folder\\ai\\models\\pretrained\\yolo11s.pt",
+  "created_utc": "2026-08-31T14:51:38.424653+00:00",
+  "git_commit": "7922190",
+  "weights_init": "E:\\New folder\\ai\\experiments\\gv-yolo11s\\weights\\last.pt",
   "args": {
     "model": "yolo11s",
     "data": "E:\\New folder\\ai\\data\\processed\\data.yaml",
@@ -13,7 +13,7 @@
     "workers": 0,
     "seed": 0,
     "device": null,
-    "resume": false,
+    "resume": true,
     "dry_run": false
   },
   "device": "0",

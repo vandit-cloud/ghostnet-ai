@@ -55,6 +55,10 @@ ai/experiments/*/*
 !ai/experiments/*/background_metrics.json
 !ai/experiments/*/provenance.json
 !ai/experiments/*/results.csv
+# results.raw.csv is the pre-deduplication original, kept when two resumed
+# trainers each wrote a row for the same epoch. It is the evidence that the
+# edit to results.csv was a dedup and not a quiet correction of a metric.
+!ai/experiments/*/results.raw.csv
 runs/
 *.log
 .env
