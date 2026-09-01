@@ -5,6 +5,7 @@ login, no internet, no Claude credits.
 
 Current model: **`gv2-yolo11s`**, trained 2026-09-01.
 Quick reference for all other commands: `docs/COMMANDS.md`.
+How to interpret what comes back: **`docs/READING_RESULTS.md`**.
 
 ---
 
