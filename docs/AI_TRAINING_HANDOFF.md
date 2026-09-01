@@ -28,6 +28,39 @@ Five sources merged into one dataset, 14,116 images:
 | MARINE-PULSE | 88 | empty seabed only |
 | SONARDETECT | 70 | mixed objects |
 
+### What each source actually is, and what it contributes
+
+| Source | Images | Empty | With objects | Boxes |
+|---|---|---|---|---|
+| AI4Shipwrecks | 6,976 | 6,062 (87%) | 914 | wreck 2,241 |
+| GhostVision | 6,655 | 1,547 | 5,108 | ghost_pot 9,214 |
+| SCTD | 327 | 22 | 305 | wreck 253, plane 57 |
+| Marine-PULSE | 88 | 88 (all) | 0 | none |
+| SonarDetect | 70 | 0 | 70 | debris 173 |
+
+**GhostVision** is the only real dataset here: side-scan sonar of derelict crab
+pots from a Delaware Bay survey, supplying 9,214 of the project's 11,885 boxes
+-- three out of every four. The model is as good as GhostVision and no better.
+
+**AI4Shipwrecks** is mostly empty water by design. It ships full waterfalls,
+tiled here into 640 px squares, and a wreck occupies a tiny fraction of a survey
+line. Its real contribution is negatives; the 2,241 wreck boxes are a side
+effect. It is also the source of Trap 6.
+
+**SCTD** is 327 hand-boxed academic images and the ONLY source of aircraft
+anywhere: all 57 `plane` boxes. That is why `plane` recall is 0.000.
+
+**Marine-PULSE** was imported deliberately with zero objects -- 88 hard
+negatives. A detector trained only on images containing targets learns to always
+find one.
+
+**SonarDetect** is 70 images carrying an entire class: all 173 `debris` boxes.
+
+**The whole class table falls out of this.** 9,214 boxes from a dedicated survey
+gives a working class; 173 boxes from one small set gives a starved one; 57 gives
+a class that detects nothing. There is one real dataset, one negative supply, and
+three fragments.
+
 Split (never change the test split — it is what makes results comparable):
 
 | Split | Images | Empty seabed |
