@@ -158,6 +158,8 @@ That is not a bug -- it is the documented behaviour Member 2 builds against.
 
 ## 8. Test the trained model by hand
 
+Full step-by-step walkthrough, including image requirements and troubleshooting: **`docs/TESTING_GUIDE.md`**. Quick reference below.
+
 Both of these go through `ghostnet.detect()`, the same function the application
 imports. Loading the `.pt` with ultralytics directly would skip calibration, the
 review policy and contract validation -- you would be testing a code path
