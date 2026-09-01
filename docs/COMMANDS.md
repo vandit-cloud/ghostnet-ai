@@ -136,7 +136,7 @@ Use `--batch 8`, not the default 32 -- 4 GB will not hold 32 at 640.
 
 | Command | What it does |
 |---|---|
-| `& $PY ai\scripts\make_demo.py --weights ai\experiments\<run>\weights\best.pt` | Real model output on real test tiles -> `demo_data.json`. Picks hits, misses, clean seabed and false alarms, so the demo is honest. |
+| `& $PY ai\scripts\make_demo.py --weights ai\experiments\<run>\weights\best.pt` | Real model output on real test tiles -> `demo_data.json`. Picks hits, misses, clean seabed and false alarms, so the demo is honest. Full workflow in section 8. |
 | `& $PY ai\scripts\export_schemas.py` | Regenerate `contracts/*.schema.json` from `ai/ghostnet/contract.py` |
 | `& $PY ai\scripts\export_schemas.py --check` | Fail if the schemas are stale. Runs in the test suite. |
 | `& $PY ai\scripts\make_fixtures.py` | Rewrite `ai/fixtures/*.json`, the example payloads Member 2 builds against |
@@ -155,6 +155,64 @@ $env:GHOSTNET_WEIGHTS = "E:\New folder\ai\experiments\<run>\weights\best.pt"
 That is not a bug -- it is the documented behaviour Member 2 builds against.
 
 ---
+
+## 8. Test the trained model by hand
+
+Both of these go through `ghostnet.detect()`, the same function the application
+imports. Loading the `.pt` with ultralytics directly would skip calibration, the
+review policy and contract validation -- you would be testing a code path
+nothing actually runs.
+
+**Run it on your own images:**
+
+```powershell
+& $PY ai\scripts\try_model.py --images "C:\path\to\folder"
+& $PY ai\scripts\try_model.py --images pic.png --conf 0.10
+& $PY ai\scripts\try_model.py --images folder --weights ai\experiments\<run>\weights\best.pt
+```
+
+Takes a single image or a folder (recursive). Writes an annotated JPG plus the
+full JSON payload per image into `ai/experiments/tryout/`.
+
+- **Amber box** = reported to a reviewer. **Blue box** = found, but held below
+  the review floor. Seeing what the floor hides is the point.
+- Confidence drawn is CALIBRATED, never `raw_score`. Both are in the JSON.
+- With no `--weights` and no `$GHOSTNET_WEIGHTS`, it picks the newest run's
+  `best.pt` and says so.
+- `--json-only` skips the images; `--conf` changes only the floor it draws at.
+
+**Build the visual test bench** (a self-contained page with a live threshold
+slider, real tiles, and the measured false-alarm curve):
+
+```powershell
+& $PY ai\scripts\make_demo.py --weights ai\experiments\<run>\weights\best.pt --conf 0.10 --hits 8 --misses 5 --clean 5 --false-alarms 5
+& $PY ai\scripts\build_testbench.py --run <run>
+```
+
+Writes `ai/experiments/<run>/testbench.html`. Open it in a browser. Neither it
+nor `demo_data.json` is committed -- they are ~2.3 MB each and regenerate from
+the weights.
+
+The slider exists because the review floor is the one setting you cannot pick
+from a metrics table: raising it removes false alarms and real detections
+together. The page reports the nearest threshold ACTUALLY measured on the 2,620
+empty tiles rather than interpolating a number nobody observed.
+
+**Known-good samples for a smoke test** (gv2-yolo11s, verified 2026-09-01):
+
+| frame | expected |
+|---|---|
+| `AI4SHIPWRECKS__Artificial_Reef_06__x0_y960.png` | 1 detection, top 0.490 |
+| `AI4SHIPWRECKS__Artificial_Reef_06__x480_y960.png` | 2 detections, top 0.517 |
+| `AI4SHIPWRECKS__Barge_No_1_03__x1088_y1440.png` | 2 detections, top 0.227 |
+| `AI4SHIPWRECKS__Artificial_Reef_01__x0_y0.png` | 0 detections (empty seabed) |
+
+All live in `ai\data\processed\test\images\`. Test both directions: a model that
+finds everything and a model that finds nothing each pass half of these.
+
+**`localization: "none"` and a geometry warning on every payload is correct.**
+These tiles carry no navigation metadata, so the pipeline reports the detection
+WITHOUT a position rather than inventing one.
 
 ## Pausing and resuming a run
 
