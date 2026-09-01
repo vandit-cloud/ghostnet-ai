@@ -156,6 +156,53 @@ That is not a bug -- it is the documented behaviour Member 2 builds against.
 
 ---
 
+## Pausing and resuming a run
+
+Ultralytics writes `last.pt` at the END of every epoch, so a pause costs you at
+most the epoch in progress -- up to ~11 minutes. If you can, wait for a new row
+to appear in `results.csv`, then stop immediately after it.
+
+**Stop it.** One command, because it kills the script AND the trainer together:
+
+```powershell
+$s = Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" |
+     Where-Object { $_.CommandLine -like "*train_all.ps1*" }
+taskkill /F /T /PID $s.ProcessId
+```
+
+`/T` kills the whole tree. It matters twice over: `.venv\Scripts\python.exe` is
+a shim that spawns a separate real python child, and killing the shim alone
+leaves that child running and holding the CUDA context.
+
+**Kill the script FIRST, never the trainer alone.** `train_all.ps1` cannot tell a
+deliberate kill from a crash: it sees a non-zero exit with progress made, and
+its failure policy relaunches the trainer. Taking down the script first removes
+the thing that would restart it.
+
+**Confirm nothing survived** before you use the GPU for anything else:
+
+```powershell
+Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
+  Where-Object { $_.CommandLine -like "*train.py*" }
+```
+
+Empty output means the GPU is yours. If a process is still listed, kill it with
+`taskkill /F /T /PID <its id>`.
+
+**Resume where you left off:**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File ./ai/scripts/train_all.ps1 -Name gv2-yolo11s -Epochs 40 -Resume
+```
+
+`-Resume` continues from `last.pt`, which carries the optimiser state, the epoch
+counter and the LR schedule -- so epoch 23 picks up as epoch 23, not as a fresh
+run at a restarted learning rate. Keep `-Epochs` the same as the original run;
+it is the TOTAL, not a number to add.
+
+Pausing is cheap but not free: each stop loses a partial epoch, so five pauses
+costs roughly an hour. A run left alone finishes sooner than one you babysit.
+
 ## When something goes wrong
 
 **Is a trainer actually running?**

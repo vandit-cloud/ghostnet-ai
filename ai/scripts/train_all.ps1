@@ -128,12 +128,16 @@ if ($SkipTrain) {
         return $a
     }
 
+    # -Encoding ascii on the Tee below is load-bearing. Windows PowerShell 5.1
+    # defaults Tee-Object to UTF-16LE, which makes the log unreadable to grep
+    # ("binary file matches") and to any plain-text parser. Cost a detour when
+    # the per-class metrics could not be extracted from a finished run.
     $useResume = [bool]$Resume
     $attempt = 1
     while ($true) {
         Write-Step "TRAIN attempt $attempt  batch=$Batch resume=$useResume"
         & $Py @(Build-TrainArgs $Batch $useResume) 2>&1 |
-            Tee-Object -FilePath (Join-Path $Root "ai\experiments\$Name.log") -Append
+            Tee-Object -FilePath (Join-Path $Root "ai\experiments\$Name.log") -Append -Encoding ascii
         $rc = $LASTEXITCODE
         if ($rc -eq 0) { Write-Step "TRAIN OK rc=0 epochs=$(Get-EpochCount)"; break }
 
