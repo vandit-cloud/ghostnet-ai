@@ -20,16 +20,18 @@ The page is GENERATED. Do not hand-edit the HTML -- edit this and re-run.
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import sys
 from pathlib import Path
+
+import cv2
+import numpy as np
 
 AI_ROOT = Path(__file__).resolve().parent.parent
 EXPERIMENTS = AI_ROOT / "experiments"
 
 TEMPLATE = r"""<title>GhostNet Test Bench</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
   /* Light palette on bare :root -- the un-stamped "system" state inherits it. */
@@ -543,10 +545,37 @@ TEMPLATE = r"""<title>GhostNet Test Bench</title>
 """
 
 
+def shrink(uri: str, max_side: int, quality: int) -> str:
+    """Re-encode an embedded image smaller.
+
+    make_demo writes 512px tiles, which is faithful but puts ~2.4 MB of base64
+    into the page -- enough that the viewer fails to load it. The cards render
+    at ~232px, so anything past ~384 is invisible detail paid for in bytes.
+    Downscaling here keeps demo_data.json as the untouched record and treats
+    size as what it is: a rendering concern.
+    """
+    head, _, b64 = uri.partition(",")
+    buf = np.frombuffer(base64.b64decode(b64), dtype=np.uint8)
+    img = cv2.imdecode(buf, cv2.IMREAD_COLOR)
+    if img is None:
+        return uri
+    h, w = img.shape[:2]
+    if max(h, w) > max_side:
+        f = max_side / max(h, w)
+        img = cv2.resize(img, (int(w * f), int(h * f)), interpolation=cv2.INTER_AREA)
+    ok, out = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, quality])
+    if not ok:
+        return uri
+    return "data:image/jpeg;base64," + base64.b64encode(out).decode("ascii")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Build the test bench page for a run.")
     ap.add_argument("--run", required=True, help="experiment name, e.g. gv2-yolo11s")
     ap.add_argument("--out", default=None)
+    ap.add_argument("--max-side", type=int, default=320,
+                    help="downscale embedded tiles to this; cards render at ~232px")
+    ap.add_argument("--quality", type=int, default=68, help="JPEG quality for embedded tiles")
     args = ap.parse_args()
 
     run_dir = EXPERIMENTS / args.run
@@ -558,6 +587,13 @@ def main() -> int:
 
     data = json.loads(demo.read_text(encoding="utf-8"))
     out = Path(args.out) if args.out else run_dir / "testbench.html"
+
+    before = sum(len(c["image"]) for c in data["cases"])
+    for c in data["cases"]:
+        c["image"] = shrink(c["image"], args.max_side, args.quality)
+    after = sum(len(c["image"]) for c in data["cases"])
+    print(f"  tiles {before / 1e6:.2f} MB -> {after / 1e6:.2f} MB "
+          f"at {args.max_side}px q{args.quality}")
 
     # Guard the closing-tag sequence: a "</script>" inside JSON string data would
     # end the block early. Escaping the slash keeps it valid JSON and inert HTML.
