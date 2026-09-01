@@ -82,7 +82,26 @@ def main() -> int:
                     help="review floor to DRAW at. Boxes below it are still shown, dimmed. "
                          "Defaults to the configured review_floor_artificial.")
     ap.add_argument("--json-only", action="store_true", help="skip the annotated images")
+    # Without this, every detection comes back with localization "none" -- not
+    # because geotagging is unfinished, but because a bare image carries no
+    # navigation data and the pipeline refuses to invent a position.
+    ap.add_argument("--meta", default=None,
+                    help="JSON file of survey metadata, so coordinates can be computed. "
+                         "See ai/fixtures/survey_meta.example.json")
     args = ap.parse_args()
+
+    survey_meta: dict = {}
+    if args.meta:
+        meta_path = Path(args.meta).expanduser()
+        if not meta_path.exists():
+            print(f"no metadata file at {meta_path}")
+            return 1
+        survey_meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        needed = ("latitude", "longitude", "heading_deg", "altitude_m",
+                  "nadir_col", "range_resolution_m")
+        missing = [k for k in needed if survey_meta.get(k) is None]
+        if missing:
+            print(f"  ! metadata is missing {', '.join(missing)} -- coordinates will stay null")
 
     target = Path(args.images).expanduser()
     if not target.exists():
@@ -121,7 +140,8 @@ def main() -> int:
 
     summary = []
     for path in images:
-        payload = detect(str(path), {"survey_id": "TRYOUT", "frame_id": path.stem})
+        meta = {**survey_meta, "survey_id": "TRYOUT", "frame_id": path.stem}
+        payload = detect(str(path), meta)
         dets = payload.get("detections") or []
         reported = [d for d in dets if d["calibrated_confidence"] >= floor]
 
@@ -136,6 +156,10 @@ def main() -> int:
         summary.append((path.name, len(reported), len(dets) - len(reported), top,
                         payload.get("warnings") or []))
         print(f"  {path.name:<44} reported={len(reported)}  below_floor={len(dets) - len(reported)}  top={top:.3f}")
+        for d in reported:
+            if d["latitude"] is not None:
+                print(f"        -> {d['latitude']:.6f}, {d['longitude']:.6f}"
+                      f"  +/- {d['position_error_m']} m  ({d['localization']})")
 
     n_with = sum(1 for _, r, _, _, _ in summary if r)
     print(f"\n  {n_with} of {len(summary)} images had at least one detection at or above {floor}")

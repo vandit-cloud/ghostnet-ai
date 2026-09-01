@@ -197,6 +197,45 @@ it works.
 
 ---
 
+## Images that actually contain something
+
+The test split is mostly empty, so pick deliberately. Counts of tiles with a
+non-empty label:
+
+| class | tiles | verdict |
+|---|---|---|
+| `wreck` | 440 | works, imprecisely |
+| `ghost_pot` | 334 | **best class — use these** |
+| `plane` | 9 | model cannot detect these |
+| `debris` | 7 | too few to judge |
+
+**Densest ghost_pot tiles** (in `ai\data\processed\test\images\`, `.jpg`):
+
+```
+GHOSTVISION__Rec14_wcp_ss_star_00012_png_jpg.rf.ede2f90df016d1654fcc11242f4384ec.jpg
+GHOSTVISION__Rec14_wcp_ss_star_00012_png_jpg.rf.272914559ad8edb77e900d209cee2c8e.jpg
+GHOSTVISION__Rec14_wcp_ss_star_00012_png_jpg.rf.00e1f1d5a607a4ba8c948daf1623186b.jpg
+GHOSTVISION__baycove_07_16_png_jpg.rf.a0248faa15ab56af1a1d1935580b1d21.jpg
+GHOSTVISION__Rec9_wcp_ss_star_00022_png_jpg.rf.d9348431ee1d0856f48e7b840da128e3.jpg
+```
+
+**Densest wreck tiles** (`.png`):
+
+```
+AI4SHIPWRECKS__Lucinda_van_Valkenburg_06__x960_y480.png
+AI4SHIPWRECKS__Lucinda_van_Valkenburg_16__x1088_y1440.png
+AI4SHIPWRECKS__Lucinda_van_Valkenburg_06__x1088_y480.png
+AI4SHIPWRECKS__Lucinda_van_Valkenburg_07__x960_y960.png
+AI4SHIPWRECKS__Lucinda_van_Valkenburg_07__x1088_y960.png
+```
+
+Verified 2026-09-01: the first GhostVision tile gives **11 detections**
+(top 0.309), the first wreck tile gives **3** (top 0.304).
+
+Note GhostVision files end `.jpg` and AI4Shipwrecks files end `.png`.
+
+---
+
 ## The visual test bench
 
 A page with 23 pre-run examples and a live threshold slider:
@@ -215,6 +254,67 @@ To rebuild it after a new training run:
 & $PY ai\scripts\make_demo.py --weights ai\experiments\<run>\weights\best.pt --conf 0.10 --hits 8 --misses 5 --clean 5 --false-alarms 5
 & $PY ai\scripts\build_testbench.py --run <run>
 ```
+
+---
+
+## Testing the coordinates (geotagging)
+
+Coordinates stay `null` on a bare image because there is no navigation data —
+not because the feature is unfinished. Supply metadata and they appear.
+
+```powershell
+& $PY ai\scripts\try_model.py --images "E:\sonar-test" --meta ai\fixtures\survey_meta.example.json
+```
+
+Verified output, 2026-09-01:
+
+```
+  AI4SHIPWRECKS__Lucinda_van_Valkenburg_06__x960_y480.png  reported=3  top=0.304
+        -> 18.921849, 72.834717  +/- 3.2 m  (frame-level)
+        -> 18.921785, 72.834778  +/- 3.26 m (frame-level)
+```
+
+### The six fields it needs
+
+Copy `ai\fixtures\survey_meta.example.json` and edit it. All six must be
+present or every position stays `null`.
+
+| field | what it is |
+|---|---|
+| `latitude`, `longitude` | GPS fix for the tow point on this frame |
+| `heading_deg` | vessel heading, 0-360, so across-track becomes a direction |
+| `altitude_m` | towfish height above the seabed |
+| `nadir_col` | pixel column directly beneath the towfish |
+| `range_resolution_m` | metres per pixel across-track |
+
+Optional: `layback_m` (cable payout behind the GPS antenna, default 0) and
+`along_track_res_m`.
+
+### The one that will surprise you
+
+**`altitude_m` divided by `range_resolution_m` is the water-column half-width in
+pixels.** Inside that band there is no seabed to be on, so any detection there
+gets its position withheld — correctly.
+
+With `altitude_m: 12` and `range_resolution_m: 0.05` that is **240 pixels**, and
+on a 640-pixel tile almost everything is withheld:
+
+```
+  - detection at column 196 lies in the water column; position withheld
+```
+
+That is the slant-range correction working, not a bug. The example file uses
+`altitude_m: 3.0` with `nadir_col: 0`, giving a 60-pixel water column, which
+leaves most of the tile positionable.
+
+### Reading the result
+
+`position_error_m: 3.2` is the real output. The system returns a **circle** of
+that radius — combining GPS scatter, heading error through the across-track
+lever arm, altitude uncertainty and layback — never a bare pin. Draw the circle.
+
+The numbers in the example file are plausible, not measured. Replace them with
+real survey values before quoting any position to anyone.
 
 ---
 

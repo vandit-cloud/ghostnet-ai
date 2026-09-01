@@ -1,0 +1,14 @@
+{
+  "_comment": "Survey metadata for one frame. Pass with: try_model.py --meta this-file.json. All six real fields must be present or coordinates stay null. Values below are a plausible shallow-water starboard channel, NOT measured -- replace them with real ones before quoting any position. Note altitude_m / range_resolution_m sets the water-column half-width in pixels (3.0/0.05 = 60 px here); detections inside it get no position, by design.",
+
+  "latitude": 18.9220,
+  "longitude": 72.8347,
+
+  "heading_deg": 47.5,
+  "altitude_m": 3.0,
+  "nadir_col": 0,
+  "range_resolution_m": 0.05,
+
+  "layback_m": 10.0,
+  "along_track_res_m": 0.05
+}
