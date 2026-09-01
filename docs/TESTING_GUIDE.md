@@ -199,6 +199,25 @@ it works.
 
 ## Images that actually contain something
 
+**Use this, do not browse the folder.** The test split is 77% empty seabed, so
+files picked by hand are almost always blank and the model correctly reports
+nothing:
+
+```powershell
+& $PY ai\scripts\pick_samples.py --class ghost_pot --n 10 --out "E:\sonar-test" --clean
+& $PY ai\scripts	ry_model.py --images "E:\sonar-test"
+```
+
+Copies the densest tiles first. `--list` shows what is available without copying;
+`--class` takes `ghost_pot`, `wreck`, `plane`, `debris` or `any`.
+
+Verified 2026-09-01: 10 ghost_pot tiles gave detections on **6 of 6** tested,
+4 to 11 per tile against 6 to 10 labelled objects.
+
+Available (test split): ghost_pot 334, wreck 440, plane 9, debris 7, any 790.
+
+
+
 The test split is mostly empty, so pick deliberately. Counts of tiles with a
 non-empty label:
 
