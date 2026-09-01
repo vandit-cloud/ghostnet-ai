@@ -152,6 +152,60 @@ navigation metadata. Legal and expected. See Part 1.
 
 ---
 
+## Part 3b — A known dataset defect: "background" does not mean "empty"
+
+Found 2026-09-01 by looking at a tile the model reported nothing on.
+
+**AI4Shipwrecks annotates one target wreck per site. Survey lines that do not
+pass over that target get a COMPLETELY BLANK mask — even when the sonar clearly
+imaged other man-made structures on that line.**
+
+Measured across the source data:
+
+- **100 of 261 waterfalls (38%) have an entirely blank mask.** All of
+  `Artificial_Reef_01` through `_05` are blank; `Artificial_Reef_06` is
+  annotated.
+- Of the tiles our pipeline calls "background":
+
+| split | empty-label AI4S tiles | from a line with NO annotation at all |
+|---|---|---|
+| train | 2,964 | 1,360 (46%) |
+| val | 573 | 372 (65%) |
+| test | 2,525 | 1,338 (53%) |
+
+**Three consequences, and they matter.**
+
+**1. A missed detection on such a tile is not the model being right.** The tile
+`AI4SHIPWRECKS__Artificial_Reef_02__x0_y1840.png` visibly contains bright
+objects with acoustic shadows. Its label is empty because the whole
+`Artificial_Reef_02` mask is blank, not because the seabed is bare. Do not tell
+anyone "zero detections is correct" on the strength of an empty label file alone
+— check the image.
+
+**2. The model was TRAINED to ignore these.** Those tiles went into training as
+negatives, teaching it that structures of this kind are background. This is
+label noise inherited from the source dataset, not a bug in our pipeline, but
+the model's behaviour follows from it.
+
+**3. The false-alarm rate is an UPPER BOUND, not an exact figure.** "2.9% of
+verified-empty seabed flagged at threshold 0.20" should be stated as *"2.9% of
+tiles carrying no annotation"*. Roughly half of those come from lines that were
+never annotated, so some of the flagged frames may be correct detections of real
+unannotated structures being scored as errors. The true false-alarm rate is at
+or below the quoted number.
+
+**How to say it honestly:** "On 2,620 held-out tiles carrying no annotation, the
+detector flagged 2.9% at threshold 0.20. Roughly half of those tiles come from
+survey lines AI4Shipwrecks left entirely unannotated, so this is an upper bound
+on the false-alarm rate." That sentence is defensible; the shorter version is
+not.
+
+**Before judging any single tile**, look at the picture as well as the label.
+The label answers "did the dataset mark anything here", which is not the same
+question as "is anything here".
+
+---
+
 ## Part 4 — A decision procedure
 
 Work down this list. Stop at the first one that matches.
