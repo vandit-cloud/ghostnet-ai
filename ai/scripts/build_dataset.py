@@ -63,6 +63,10 @@ SPLIT_POLICY = {
     "SONARDETECT": {"mode": "fixed", "map": {"train": "train", "valid": "val", "test": "test"}},
     "GHOSTVISION": {"mode": "fixed", "map": {"train": "train", "valid": "val", "test": "test"}},
     "MARINE-PULSE": {"mode": "fixed", "map": {"train": "train", "test": "test"}},
+    # SubPipe goes ENTIRELY to train. Adding frames to val or test would end
+    # comparability with gv-yolo11s and gv2-yolo11s, whose numbers only mean
+    # something because the test split is identical between them.
+    "SUBPIPE": {"mode": "fixed", "map": {"train": "train"}},
 }
 DEFAULT_POLICY = {"mode": "random"}
 
