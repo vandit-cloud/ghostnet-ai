@@ -331,10 +331,64 @@ Part 3. Any warnings appear above it in an amber panel.
 
 ---
 
+## Part 6b — Coordinates: it works, it just needs metadata
+
+Geotagging is **implemented, not a to-do**. `ai/ghostnet/geo.py` does the real
+work: slant-range to ground-range correction, water-column width, the
+across-track offset perpendicular to heading, layback, and a position error
+radius.
+
+It stays silent because a bare PNG carries no navigation data. Supply the
+metadata and coordinates appear.
+
+**The six fields it needs** (all of them, or you get `localization: "none"`):
+
+| field | meaning |
+|---|---|
+| `latitude`, `longitude` | a GPS fix for the tow point on this frame |
+| `heading_deg` | vessel heading, so across-track can be turned into a direction |
+| `altitude_m` | towfish height above the seabed, for the slant-range correction |
+| `nadir_col` | pixel column directly beneath the towfish |
+| `range_resolution_m` | metres per pixel across-track |
+
+`layback_m` (cable payout behind the GPS antenna) is optional and defaults to 0.
+
+**Demonstrated on a real detection, 2026-09-01:**
+
+```
+A) no metadata
+   lat=None  lon=None  localization=none  position_error_m=None
+   warnings: ['incomplete sonar geometry; detections reported without coordinates']
+
+B) with the six fields
+   lat=18.92180873  lon=72.83449789
+   localization=frame-level  position_error_m=6.48
+   warnings: []
+```
+
+**`position_error_m: 6.48`** is the point. The system does not claim a pin on a
+map — it returns a circle of that radius, combining GPS scatter, heading error
+through the across-track lever arm, altitude uncertainty and layback. Draw the
+circle, never a bare pin.
+
+So the coordinate pipeline is finished. What is missing is metadata from a real
+survey, which is Member 2's side of the handoff (`docs/HANDOFF.md`, section 6).
+
+**Known gap:** `ai/tests/` has tests for calibration, the contract schema, the
+decision policy and the importers, but **no `test_geo.py`**. Geotagging is one
+of the four named problem-statement deliverables and currently has no automated
+coverage. Worth closing before submission.
+
+---
+
 ## Part 7 — Quick answers
 
-**"It found nothing on all my images."** Usually correct. Most seabed is empty.
-Confirm with the four known-good frames.
+**"It found nothing on all my images."** Usually correct, and if you took them
+from the test split, almost certainly correct: 2,620 of its 3,410 tiles are
+empty seabed. Check the tile's label file before blaming the model —
+`Get-Content ai\data\processed	est\labels\<name>.txt`. Empty file means
+nothing is there and zero detections is the right answer. See
+`docs/TESTING_GUIDE.md` for how to list tiles that do contain objects.
 
 **"It found nothing on an image with an obvious object."** Check the class table
 in Part 4 first, then the image requirements in Part 5. Most cases are one of

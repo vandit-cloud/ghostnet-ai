@@ -54,6 +54,38 @@ Anything from about 320 to 1280 px square is fine; past that, crop.
 
 ---
 
+### Picking test tiles that actually contain something
+
+**The test split is 77% empty seabed — 2,620 of 3,410 tiles.** Grab files from
+it at random and you will almost certainly get tiles with nothing in them, and
+`reported=0` on every one is then the *correct* answer, not a failure.
+
+To list tiles that DO contain a labelled object (non-empty label file):
+
+```powershell
+Get-ChildItem ai\data\processed\test\labels\*.txt |
+  Where-Object { $_.Length -gt 0 } |
+  Select-Object -First 10 -ExpandProperty BaseName
+```
+
+Then copy those image files by name:
+
+```powershell
+Get-ChildItem ai\data\processed\test\labels\*.txt |
+  Where-Object { $_.Length -gt 0 } | Select-Object -First 10 |
+  ForEach-Object { Copy-Item "ai\data\processed\test\images\$($_.BaseName).png" "E:\sonar-test" }
+```
+
+To check any single tile before you judge the model on it:
+
+```powershell
+Get-Content ai\data\processed\test\labels\<frame-name>.txt
+```
+
+Empty output means the tile contains nothing, so zero detections is right.
+
+---
+
 ## Step 2 — Run it
 
 ```powershell
