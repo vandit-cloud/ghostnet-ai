@@ -3,7 +3,7 @@
 **For any AI assistant helping with GhostNet-AI training, and for the user.**
 
 Everything here was learned the expensive way. Following it avoids repeating
-mistakes that cost whole days. Last updated 2026-09-01.
+mistakes that cost whole days. Last updated 2026-09-03.
 
 ---
 
@@ -11,110 +11,133 @@ mistakes that cost whole days. Last updated 2026-09-01.
 
 ## What the model is right now
 
-**`gv2-yolo11s`** — YOLO11-S, trained 2026-09-01, 38 epochs (early-stopped from
-40, best weights from epoch 26), 5h 57m.
+**`gv4-yolo11s`** — YOLO11-S, trained 2026-09-02, 40 epochs, 8h 13m.
 
-`ai/experiments/gv2-yolo11s/weights/best.pt`
+`ai/experiments/gv4-yolo11s/weights/best.pt`
+
+**`gv5-yolo11s` is training as of 2026-09-03 00:00** — 60 epochs, first run to
+include the `ghost_net` class and the SubPipe temporal split. When it finishes,
+replace the numbers below and re-run `make_demo.py` + `build_testbench.py`.
+
+### Why gv3 does not exist as a result
+
+gv3 was launched, ran 13 epochs, and was killed. It was a bit-exact replay of
+gv2: SubPipe had been converted into `ai/data/interim/` but `build_dataset.py`
+was never re-run, so `data/processed/` still held the gv2 dataset. Identical
+data plus `seed: 0` gives an identical curve, digit for digit, which is how it
+was caught.
+
+**The lesson, and it is cheap to apply:** after importing anything, rebuild, and
+read `data/processed/build_report.json` before launching. It states the sources
+and the per-class box counts. gv3's own `provenance.json` recorded
+`"debris": 122` at launch — the evidence was written down and nobody read it.
 
 ## What it was trained on
 
-Five sources merged into one dataset, 14,116 images:
+Eight sources merged into one dataset, 18,310 images:
 
 | Source | Images | What it contributes |
 |---|---|---|
 | AI4SHIPWRECKS | 6,976 | shipwrecks + most of the empty seabed |
 | GHOSTVISION | 6,655 | derelict crab pots — the project's actual subject |
+| CHINA-OFFSHORE | 2,072 | **hard** negatives: gullies, riprap, scour, sand waves |
+| SUBPIPE | 2,049 | submarine pipelines — this is what `debris` now is |
 | SCTD | 327 | ships, aircraft, human objects |
-| MARINE-PULSE | 88 | empty seabed only |
+| MARINE-PULSE | 88 | empty seabed only, but across five different sonars |
+| GHOSTNET-HAND | 73 | **fishing nets, hand-annotated here** |
 | SONARDETECT | 70 | mixed objects |
 
-### What each source actually is, and what it contributes
-
-| Source | Images | Empty | With objects | Boxes |
-|---|---|---|---|---|
-| AI4Shipwrecks | 6,976 | 6,062 (87%) | 914 | wreck 2,241 |
-| GhostVision | 6,655 | 1,547 | 5,108 | ghost_pot 9,214 |
-| SCTD | 327 | 22 | 305 | wreck 253, plane 57 |
-| Marine-PULSE | 88 | 88 (all) | 0 | none |
-| SonarDetect | 70 | 0 | 70 | debris 173 |
-
-**GhostVision** is the only real dataset here: side-scan sonar of derelict crab
-pots from a Delaware Bay survey, supplying 9,214 of the project's 11,885 boxes
--- three out of every four. The model is as good as GhostVision and no better.
-
-**AI4Shipwrecks** is mostly empty water by design. It ships full waterfalls,
-tiled here into 640 px squares, and a wreck occupies a tiny fraction of a survey
-line. Its real contribution is negatives; the 2,241 wreck boxes are a side
-effect. It is also the source of Trap 6.
-
-**SCTD** is 327 hand-boxed academic images and the ONLY source of aircraft
-anywhere: all 57 `plane` boxes. That is why `plane` recall is 0.000.
-
-**Marine-PULSE** was imported deliberately with zero objects -- 88 hard
-negatives. A detector trained only on images containing targets learns to always
-find one.
-
-**SonarDetect** is 70 images carrying an entire class: all 173 `debris` boxes.
-
-**The whole class table falls out of this.** 9,214 boxes from a dedicated survey
-gives a working class; 173 boxes from one small set gives a starved one; 57 gives
-a class that detects nothing. There is one real dataset, one negative supply, and
-three fragments.
-
-Split (never change the test split — it is what makes results comparable):
-
-| Split | Images | Empty seabed |
-|---|---|---|
-| train | 9,460 | 4,469 (47%) |
-| val | 1,246 | 630 (51%) |
-| test | 3,410 | 2,620 (77%) |
-
-## The four classes and how much data each has
+## The five classes and how much data each has
 
 **This table explains every strength and weakness the model has.**
 
-| Class | Train boxes | Test boxes | Test mAP50 | Honest verdict |
-|---|---|---|---|---|
-| `ghost_pot` | **7,434** | 567 | **0.297** | Works. Enough data. |
-| `wreck` | 1,478 | 836 | 0.095 | Weak. Some data, noisy labels. |
-| `debris` | **122** | 14 | 0.106 | Starved. Unmeasurable. |
-| `plane` | **39** | 9 | 0.030 | Starved. **Recall 0.000 — detects none.** |
+| Class | Train boxes | Test boxes | Verdict |
+|---|---|---|---|
+| `ghost_pot` | **7,434** | 567 | Works. Enough data. |
+| `debris` | **1,556** | **629** | Was 122/14 and unmeasurable. Now both trained and testable. |
+| `wreck` | 1,373 | 836 | Weak. Some data, noisy labels. |
+| `ghost_net` | **215** | 36 | New in gv5. Thin — always quote the count beside the metric. |
+| `plane` | **39** | 9 | Starved. 62 KLSG images are being annotated to fix this. |
 
 The pattern is exact: 7,434 boxes gives a working class; 39 boxes gives a class
 that does nothing. There is no mystery here, only a data shortage.
 
+### Two caveats that must travel with these numbers
+
+**`debris` test boxes are one survey.** 615 of the 629 come from a held-out
+stretch of the same SubPipe track the training boxes come from — same AUV, same
+sonar, same pipeline, separated by a 156-second gap in the timestamps. It
+measures tracking through unseen seabed, NOT generalisation to debris
+elsewhere. The only independent debris is the 14 sonar_detect boxes. Report
+both; never quote 629 alone.
+
+**`ghost_net` ground truth is ours.** 298 boxes hand-drawn on the 73 fishing-net
+chips China-Offshore ships as classification-only. The convention — one box per
+net panel, bounded by where the beads stop, never spanning empty seabed — is
+documented with worked examples in `ai/data/annotate/ghost_net/_guide/` and
+checked by `ai/scripts/check_annotations.py`. That makes the convention part of
+the result, so keep it reproducible.
+
 ## Overall test numbers (quote these, never validation figures)
 
+gv4, on 4,346 held-out tiles:
+
 ```
-precision 0.451    recall 0.178    mAP50 0.132    mAP50-95 0.052
+precision 0.191    recall 0.362    mAP50 0.247    mAP50-95 0.113
 ```
 
-Do not lead with mAP50 0.132. It is an **unweighted mean over four classes**, so
-`plane` (9 boxes) and `debris` (14 boxes) count as much as `ghost_pot` (567).
-Lead with **ghost_pot mAP50 0.297**.
+Trajectory on the same frozen test split — this is the number to show if anyone
+asks whether the work is going anywhere:
+
+| run | mAP50 | precision | recall |
+|---|---|---|---|
+| gv | 0.160 | 0.140 | 0.285 |
+| gv2 | 0.132 | 0.451 | 0.178 |
+| **gv4** | **0.247** | 0.191 | **0.362** |
+
+Do not lead with mAP50 alone. It is an **unweighted mean over the classes**, so
+`plane` (9 boxes) counts as much as `ghost_pot` (567), and adding a fifth thin
+class mechanically drags it down. Lead with the per-class table and with the
+false-alarm rate below.
+
+Calibration: temperature 2.0167, fitted on val. Expected calibration error
+**0.166 -> 0.063**. When the model says 70%, it approximately means 70%.
 
 ## False alarms on empty seabed
 
+**This is the artificial-vs-natural requirement, and it is the strongest result
+the project has.** gv4, on 2,930 held-out tiles carrying no annotation:
+
 | Threshold | Frames flagged |
 |---|---|
-| 0.10 | 11.5% |
-| **0.20** (current setting) | **2.9%** |
-| 0.50 | 0.3% |
+| 0.10 | 12.0% |
+| **0.20** (current setting) | **5.2%** |
+| 0.30 | 2.5% |
+| 0.50 | 0.4% |
+| 0.70 | 0.0% |
 
-**Say it with the caveat** (see Trap 6): *"On 2,620 held-out tiles carrying no
-annotation, 2.9% were flagged at threshold 0.20. Roughly half come from survey
-lines AI4Shipwrecks left entirely unannotated, so this is an upper bound."*
+gv2 scored 1.30% at 0.30 against gv4's 2.5%, which reads like a regression and
+is not one: gv4's test set adds 310 China-Offshore hard negatives — gully
+fields, riprap, scour patches — that gv2 was never shown. It is a harder exam,
+and comparing the raw percentages across the two is not valid.
+
+**Say it with the caveat** (see Trap 6): *"On 2,930 held-out tiles carrying no
+annotation, 2.5% were flagged at threshold 0.30. Some come from survey lines
+AI4Shipwrecks left entirely unannotated, so this is an upper bound."*
 
 ## Data downloaded but NOT yet used
 
-**KLSG — 447 images sitting in `ai/data/raw/research/KLSG/`, never imported.**
-385 ships + 62 aircraft. **Classification-only: whole-image labels, no boxes.**
-It cannot be used for detection training without drawing boxes first. The 62
-aircraft are the only aircraft data available anywhere, and `plane` is the
-worst class — but 62 images need manual annotation to be usable.
+**KLSG — 447 images in `ai/data/raw/research/KLSG/`.** 385 ships + 62 aircraft.
+Classification-only: whole-image labels, no boxes.
 
-**A partial download:** `ai/data/raw/research/Unconfirmed 126530.crdownload`,
-1.49 GB. Almost certainly an interrupted SubPipeMini2. Delete or resume it.
+The 62 aircraft are the only aircraft data available anywhere and `plane` is the
+worst class at 39 boxes. They are staged for hand-annotation at
+`ai/data/annotate/plane/`, with the SCTD box convention captured in
+`ai/data/annotate/plane/_guide/`: **box the aircraft's acoustic return, exclude
+the cast shadow.** The 385 ships are lower priority — `wreck` already has 1,373
+boxes.
+
+The interrupted `Unconfirmed 126530.crdownload` is gone; SubPipeMini2 landed.
 
 ## Data registered but not downloaded
 
@@ -133,14 +156,28 @@ from artificial anomalies. Against that:
 
 | Requirement | State | What is missing |
 |---|---|---|
-| Detect ghost gear | **Works** — 0.297 on crab pots | Nets, not just pots. No public SSS net data exists. |
-| Artificial vs natural | **Works** — 2.9% false alarms | Cleaner negatives (Trap 6) |
-| Geotagging | **Done** — coordinates + error radius | Real survey metadata from Member 2 |
-| Confidence / noise filtering | **Done** — calibrated, T=1.619 | nothing |
-| Detect general debris | **Weakest** — 122 train boxes | This is where more data helps most |
+| Artificial vs natural | **Strongest result** — 2.5% false alarms at 0.30 | nothing; keep the caveat |
+| Confidence / noise filtering | **Done** — calibrated, ECE 0.063 | nothing |
+| Geotagging | **Done** — coordinates + error radius | real survey metadata; no `test_geo.py` |
+| Detect ghost gear | **Works** — crab pots; nets now trained too | `ghost_net` has 215 boxes, thin |
+| Detect general debris | **Fixed for training** — 1,556 boxes | independent test data (see caveat above) |
+| Detect aircraft | **Broken** — 39 boxes | the 62 KLSG images, being annotated |
 
-**Priority if more training happens: the `debris` class.** It is the closest
-thing to the problem statement's own wording and has almost no data.
+### The gap nobody has started
+
+Five of the fourteen core requirements in the build plan §2 are **unimplemented
+code**, not accuracy problems, and none of them need a GPU:
+
+| # | Requirement | State |
+|---|---|---|
+| 3 | Speckle / noise handling | missing — and §12 warns any filter must be validated against the model, so this one does imply a run |
+| 5 | Acoustic shadow | **stubbed**: `infer.py` hardcodes `shadow_context="not_evaluated"`. The contract field already exists. Cheapest win on this list. |
+| 6 | Sonar/vehicle dropouts | missing. Flagging detections that fall in dropout rows needs no retraining. |
+| 8 | Sonar metadata parsing | partial — a hand-written JSON sidecar. No XTF/JSF reader, and no XTF file to test one against. |
+| 12 | JSON / **CSV** reports | JSON done, CSV missing. Explicitly named in the PS. |
+
+Requirements 3, 5 and 6 are the exact challenges the problem statement names as
+why the task is hard. A judge will look for them by name.
 
 ---
 
@@ -288,42 +325,74 @@ objects. Do not add more negatives without a reason.
 
 ## Best use of the next run, in order
 
-**1. Import SubPipeMini2 and retrain.** It brings 6,335 YOLO boxes to a dataset
-whose `debris` class has 122. It is the single biggest data gain available.
+Items 1 and 2 below are **done** — gv5 is the run that carries them. Kept here
+because the reasoning still applies to the next one.
 
-**Watch for:** pipelines are long linear structures, unlike compact crab pots,
-and 6,335 boxes would swamp `debris` (122). Consider giving pipelines **their
-own class** rather than merging into `debris`, so `debris` does not silently
-become "pipeline detector". Map to `debris` in the contract, **never**
-`ghost_net`.
+**1. ~~Import SubPipeMini2~~ — done.** `debris` went 122 -> 1,556 training boxes.
 
-**2. Annotate KLSG's 62 aircraft**, if `plane` matters. Manual box-drawing on 62
-images. Probably not worth it — `plane` is not what the problem statement asks
-for.
+The warning it came with proved half right: pipelines did swamp `debris`, but
+they were not given their own class, because a live pipeline and a piece of
+wreckage are both "artificial object on the seabed" within a closed four-value
+contract. Watch for `debris` quietly becoming a pipeline detector — if the 14
+independent sonar_detect boxes score far worse than the 615 SubPipe ones, that
+is what has happened.
 
-**3. Do not add more empty seabed.** See Trap 10.
+**2. ~~Annotate the fishing nets~~ — done.** 298 boxes on 73 chips, class
+`ghost_net` at id 4. Note this reverses the old "no public dataset has nets"
+finding, which was wrong.
+
+**3. Annotate KLSG's 62 aircraft.** Staged at `ai/data/annotate/plane/`.
+Re-assessed as WORTH doing, against the earlier note here: `plane` at 39 boxes
+is the one class that detects nothing at all, and a per-class table with a
+0.000 in it invites exactly one question. 62 images is two hours.
+
+**4. Do not add more empty seabed.** See Trap 10. The China import took
+negatives from 7,719 to 9,791 and that is enough — those were added for
+DIFFICULTY (gullies, riprap) rather than volume, which is the only reason to
+add negatives now.
 
 ## Things NOT worth doing
 
-- Longer training on the current data. It early-stopped at epoch 38 with the
-  best weights from 26 — it had stopped improving, so more epochs add nothing.
 - Bigger models. 4 GB VRAM, and data is the limit, not capacity.
 - Restratifying the split. It breaks comparability and does not fix the cause.
+- Chasing datasets from the OpenSonarDatasets index. It was mined on 2026-09-03:
+  BenthiCat has the right classes (cables, buoys, anchors, shipwrecks) but its
+  Dataverse DOI is unpublished and it is CC BY-NC-SA; SWDD's 7,904 images are
+  really 216 originals plus augmentation and video frames of one harbour wall;
+  Seafloor Sediments is a 52 GB unsliceable archive of natural classes only.
+  Recorded so nobody re-walks it.
+
+**Longer training is no longer on this list.** It was, when gv2 early-stopped at
+38 with best weights from 26. gv4 did not early-stop: its best epoch was its
+LAST, epoch 40, with mAP50 still climbing. Check `results.csv` before assuming
+convergence — the shape of the tail is the whole answer.
 
 ## Honest claims — what may and may not be said
 
 **May be said:**
-- "Detects derelict crab pots in side-scan sonar, mAP50 0.297 on 567 held-out
-  boxes the model never saw."
-- "Flags 2.9% of unannotated seabed tiles at threshold 0.20 — an upper bound."
+- "Detects derelict crab pots in side-scan sonar" — quote the per-class mAP50
+  with its held-out box count beside it.
+- "Flags 2.5% of unannotated seabed tiles at threshold 0.30 — an upper bound."
 - "Reports position with an error radius, or no position at all when navigation
   data is missing."
+- "Calibrated confidence: expected calibration error 0.063 after temperature
+  scaling, down from 0.166."
+- From gv5 on: "Detects derelict fishing net, on ground truth we annotated
+  ourselves from a public classification dataset" — **always with the count**,
+  298 boxes over 73 images, and a pointer to the convention in
+  `ai/data/annotate/ghost_net/_guide/`.
 
 **May NOT be said:**
-- "Detects ghost nets." It was trained on crab **pots**. No public side-scan
-  dataset contains nets. A pot is fishing gear; it is not a net.
-- "Detects aircraft or general debris." Recall 0.000 and 122 training boxes.
-- "2.9% false-alarm rate on verified-empty seabed." See Trap 6.
+- "Detects ghost nets" **without the count**. 215 training boxes is thin, the
+  chips are one region of one survey, and the boxes are ours rather than an
+  independent authority's. The claim is real; the qualifier is not optional.
+- "Detects aircraft." 39 training boxes, recall 0.000, unchanged until the KLSG
+  annotation lands.
+- "2.5% false-alarm rate on verified-empty seabed." See Trap 6 — unannotated is
+  not the same as verified empty.
+- "Detects debris, validated on 629 held-out boxes." 615 of those are the same
+  SubPipe survey. Say "one held-out survey track" or quote the 14 independent
+  boxes.
 - Any figure from the validation split.
 
 **The scope boundary, stated plainly:** held-out test tiles come from the same
@@ -348,9 +417,18 @@ type, expect a large drop. Say so before being asked; it is worth marks.
 
 ## Known gaps, not yet closed
 
+- **Five PS requirements are unimplemented code** — shadow context, dropouts,
+  speckle, XTF parsing, CSV export. See "The gap nobody has started" in Part 1.
+  None need a GPU; four of the five can be done while a model trains.
 - **No `test_geo.py`.** Geotagging is one of four named deliverables and has no
   automated test coverage.
 - `SETTINGS.model_version` still reads `"v0-stub"` in payload provenance rather
   than the actual run name.
 - `review_floor_artificial` is 0.20 and has never been chosen against a measured
   recall-vs-threshold curve. It happens to be reasonable; it was not derived.
+  `testbench.html` now has the slider that would let it be derived.
+- **`debris` has no independent test data worth the name** — 14 boxes. Every
+  other debris number is one SubPipe survey.
+- **`check_annotations.py` thresholds are calibrated for nets in survey tiles**
+  (35% per box, 75% union). For the plane chips they must be relaxed with
+  `--max-cover 0.95 --max-union 0.95`, or almost everything false-alarms.

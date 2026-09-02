@@ -1,0 +1,109 @@
+{
+  "created_utc": "2026-09-02T07:04:32.113988+00:00",
+  "git_commit": "f457fd7",
+  "weights_init": "E:\\New folder\\ai\\models\\pretrained\\yolo11s.pt",
+  "args": {
+    "model": "yolo11s",
+    "data": "E:\\New folder\\ai\\data\\processed\\data.yaml",
+    "name": "gv4-yolo11s",
+    "epochs": 40,
+    "imgsz": 640,
+    "batch": 4,
+    "patience": 12,
+    "workers": 0,
+    "seed": 0,
+    "device": null,
+    "resume": false,
+    "dry_run": false
+  },
+  "device": "0",
+  "torch": "2.13.0+cu126",
+  "cuda_available": true,
+  "gpu": "NVIDIA GeForce RTX 3050 Laptop GPU",
+  "dataset_build": {
+    "sources": [
+      "AI4SHIPWRECKS",
+      "CHINA-OFFSHORE",
+      "GHOSTVISION",
+      "MARINE-PULSE",
+      "SCTD",
+      "SONARDETECT",
+      "SUBPIPE"
+    ],
+    "images_per_source": {
+      "AI4SHIPWRECKS": 6976,
+      "CHINA-OFFSHORE": 2072,
+      "GHOSTVISION": 6655,
+      "MARINE-PULSE": 88,
+      "SCTD": 327,
+      "SONARDETECT": 70,
+      "SUBPIPE": 2049
+    },
+    "exact_duplicates_dropped": {
+      "SCTD": 30
+    },
+    "split_sizes": {
+      "train": 13010,
+      "test": 3720,
+      "val": 1507
+    },
+    "background_per_split": {
+      "train": 6029,
+      "test": 2930,
+      "val": 832
+    },
+    "boxes_per_class_per_split": {
+      "train": {
+        "plane": 39,
+        "wreck": 1318,
+        "ghost_pot": 7434,
+        "debris": 2171
+      },
+      "val": {
+        "plane": 9,
+        "wreck": 339,
+        "ghost_pot": 1213,
+        "debris": 37
+      },
+      "test": {
+        "plane": 9,
+        "wreck": 837,
+        "ghost_pot": 567,
+        "debris": 14
+      }
+    },
+    "frames_per_class_per_split": {
+      "train": {
+        "plane": 39,
+        "wreck": 572,
+        "ghost_pot": 4274,
+        "debris": 2096
+      },
+      "val": {
+        "plane": 9,
+        "wreck": 150,
+        "ghost_pot": 500,
+        "debris": 16
+      },
+      "test": {
+        "plane": 9,
+        "wreck": 440,
+        "ghost_pot": 334,
+        "debris": 7
+      }
+    },
+    "declared_classes": [
+      "wreck",
+      "plane",
+      "debris",
+      "ghost_pot"
+    ],
+    "ratios": [
+      0.7,
+      0.15,
+      0.15
+    ],
+    "seed": 0,
+    "warnings": []
+  }
+}
