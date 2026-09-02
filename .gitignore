@@ -30,6 +30,20 @@ ai/data/annotations/normalized/*
 *.jsf
 *.sdf
 
+# ai/data/annotate/ holds hand-drawn ground truth: the ONLY labels in this
+# project that were produced here rather than inherited, and the only ones no
+# download can replace. The labels are committed. The image copies beside them
+# are not -- they are re-fetchable from China-Offshore-SSS-AI and KLSG, and
+# they are 29 MB.
+#
+# _guide/ IS committed: it is the worked examples that define the annotation
+# convention, and taxonomy.py points a reader at it to explain what a
+# ghost_net box means. A convention nobody can see is a convention nobody can
+# reproduce. Recompressed to 1.4 MB for that reason.
+ai/data/annotate/*/images/
+# Transient overlays from check_annotations.py --render. Regenerated on demand.
+ai/data/annotate/*/review_*.png
+
 # --- model weights ---------------------------------------------------------
 # Pretrained weights are re-downloadable (ai/scripts/fetch_weights.py).
 # Trained weights are build artefacts; ship the good one as a GitHub Release
