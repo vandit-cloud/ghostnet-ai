@@ -23,8 +23,19 @@ from collections import defaultdict
 from pathlib import Path
 
 AI_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(AI_ROOT))
+
+from ghostnet.taxonomy import TRAINING_CLASSES  # noqa: E402
+
 PROCESSED = AI_ROOT / "data" / "processed"
-CLASSES = {0: "wreck", 1: "plane", 2: "debris", 3: "ghost_pot"}
+
+# Derived from the taxonomy, never written out by hand. The hand-written copy
+# that used to live here said {0: wreck, 1: plane, 2: debris, 3: ghost_pot},
+# and the day ghost_net was appended at 4 this script started dying with
+# KeyError: 4 on any split containing one -- which is every split, now. A
+# duplicated list of class names is a list that will eventually disagree with
+# the one that matters.
+CLASSES = dict(enumerate(TRAINING_CLASSES))
 
 
 def scan(split: str) -> dict[str, list[tuple[int, Path]]]:
@@ -70,11 +81,19 @@ def main() -> int:
     print(f"\n  {args.split} split, tiles containing a labelled object:")
     for name in [*CLASSES.values(), "any"]:
         n = len(by.get(name, []))
+        # Hinted from the count actually present, not from a hardcoded list of
+        # which classes are weak. The hardcoded version named debris as too
+        # thin to judge, which was true at 14 tiles and wrong at 622 -- and it
+        # kept saying so, because a note about the data that does not read the
+        # data goes stale the moment the data improves.
         note = ""
-        if name == "ghost_pot":
-            note = "  <- strongest class, use these"
-        elif name in ("plane", "debris"):
-            note = "  <- too few to judge the model on"
+        if name != "any":
+            if n == 0:
+                note = "  <- nothing to sample"
+            elif n < 30:
+                note = "  <- too few to judge the model on"
+            elif n == max((len(by.get(c, [])) for c in CLASSES.values()), default=0):
+                note = "  <- most examples, use these for a smoke test"
         print(f"    {name:10} {n:5}{note}")
 
     if args.list:
