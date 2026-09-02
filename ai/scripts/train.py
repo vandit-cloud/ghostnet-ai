@@ -190,8 +190,40 @@ def main() -> int:
             "precision": float(getattr(metrics.box, "mp", float("nan"))),
             "recall": float(getattr(metrics.box, "mr", float("nan"))),
         }
+        # PER-CLASS, recorded here and not left to be recomputed later.
+        #
+        # It cannot reliably be recomputed later, which is why this exists.
+        # Recomputing needs the exact dataset the run was scored against, and
+        # ai/data/processed/ is rebuilt IN PLACE whenever a source is added --
+        # so the moment the next import lands, that split is gone. gv4's
+        # per-class numbers were lost exactly this way: by the time anyone
+        # asked, processed/ held a five-class dataset with 629 debris test
+        # boxes instead of the four-class one with 14 that gv4 was scored on.
+        #
+        # The overall mean hides the thing worth knowing anyway. mAP50 is an
+        # unweighted mean over classes, so a starved class with nine boxes
+        # moves it as much as one with 567 -- and a headline that DROPS after
+        # a class is added may only mean the new class is thin.
+        try:
+            names = getattr(metrics, "names", {}) or {}
+            box = metrics.box
+            summary["per_class"] = {
+                str(names.get(int(c), int(c))): {
+                    "precision": float(box.p[i]),
+                    "recall": float(box.r[i]),
+                    "map50": float(box.ap50[i]),
+                    "map50_95": float(box.ap[i]),
+                }
+                for i, c in enumerate(box.ap_class_index)
+            }
+        except Exception as exc:  # never lose the overall numbers over this
+            summary["per_class"] = {}
+            summary["per_class_error"] = repr(exc)
+
         (out_dir / "test_metrics.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
-        print("\n  TEST  " + "  ".join(f"{k}={v:.4f}" for k, v in summary.items()))
+        print("\n  TEST  " + "  ".join(f"{k}={v:.4f}" for k, v in summary.items() if isinstance(v, float)))
+        for cls, cm in summary.get("per_class", {}).items():
+            print(f"        {cls:12s} mAP50={cm['map50']:.4f}  P={cm['precision']:.4f}  R={cm['recall']:.4f}")
         print("\n  These are TEST numbers on a split the model never saw and was not")
         print("  early-stopped against. Quote these, never the validation figures.")
 
