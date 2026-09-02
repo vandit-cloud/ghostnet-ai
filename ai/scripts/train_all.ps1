@@ -128,21 +128,34 @@ if ($SkipTrain) {
         return $a
     }
 
-    # -Encoding ascii on the Tee below is load-bearing. Windows PowerShell 5.1
-    # defaults Tee-Object to UTF-16LE, which makes the log unreadable to grep
+    # Hand-rolled tee, on purpose. Tee-Object has no -Encoding on Windows
+    # PowerShell 5.1 (that parameter arrived in PowerShell 6), and plain
+    # Tee-Object there writes UTF-16LE, which makes the log unreadable to grep
     # ("binary file matches") and to any plain-text parser. Cost a detour when
     # the per-class metrics could not be extracted from a finished run.
+    # StreamWriter with AutoFlush gives ASCII on disk plus a log you can tail
+    # from another window while the run is still going.
+    $TrainLog = Join-Path $Root "ai\experiments\$Name.log"
     $useResume = [bool]$Resume
     $attempt = 1
     while ($true) {
         Write-Step "TRAIN attempt $attempt  batch=$Batch resume=$useResume"
-        & $Py @(Build-TrainArgs $Batch $useResume) 2>&1 |
-            Tee-Object -FilePath (Join-Path $Root "ai\experiments\$Name.log") -Append -Encoding ascii
-        $rc = $LASTEXITCODE
+        $sw = New-Object System.IO.StreamWriter($TrainLog, $true, [System.Text.Encoding]::ASCII)
+        $sw.AutoFlush = $true
+        try {
+            & $Py @(Build-TrainArgs $Batch $useResume) 2>&1 | ForEach-Object {
+                $line = $_.ToString()
+                Write-Host $line
+                $sw.WriteLine($line)
+            }
+            $rc = $LASTEXITCODE
+        } finally {
+            $sw.Dispose()
+        }
         if ($rc -eq 0) { Write-Step "TRAIN OK rc=0 epochs=$(Get-EpochCount)"; break }
 
         $done = Get-EpochCount
-        $tail = Get-Content (Join-Path $Root "ai\experiments\$Name.log") -Tail 50 | Out-String
+        $tail = Get-Content $TrainLog -Tail 50 | Out-String
         $verdict = Resolve-TrainFailure -ExitCode $rc -EpochsDone $done -EpochsBefore $before `
                                         -Attempt $attempt -TailOfLog $tail
         Write-Step "TRAIN FAILED rc=$rc at epoch $done (was $before) -- policy says '$verdict'"
