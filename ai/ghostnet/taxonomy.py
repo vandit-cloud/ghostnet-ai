@@ -25,15 +25,28 @@ from __future__ import annotations
 # 2. Training classes. Index == YOLO class id. Order is a wire format.
 # ---------------------------------------------------------------------------
 #
-# `ghost_net` is deliberately ABSENT, despite being the headline object.
+# `ghost_net` was absent through gv4 and is present from gv5. The reason for
+# both is the same: a class only exists here when real ground truth does.
 #
-# No public side-scan dataset contains ghost nets -- confirmed by the Oct-2025
-# sonar dataset survey, and the reason the project metric is artificial-vs-
-# natural (see docs/DATA.md). A class with zero training examples cannot be
-# learned, and it puts a NaN in every per-class metrics table for the whole
-# project. When synthetic ghost nets exist (plan J2, copy-paste), add it here
-# and re-run the converter: labels are generated, so renumbering costs one
-# command.
+# The Oct-2025 sonar dataset survey concluded that no public side-scan dataset
+# contained ghost nets, and that conclusion drove the whole artificial-vs-
+# natural framing (see docs/DATA.md). It was wrong. China-Offshore-SSS-AI
+# ships 73 chips of fishing net (its 'yuwang' class) filed under a name it calls
+# `hard_negative`, because that survey is looking for pipelines and a net is
+# what it wants to ignore. For this project the net is the headline object.
+#
+# The chips are classification-only, so the boxes are OURS: hand-drawn, one
+# per net panel, screened by ai/scripts/check_annotations.py. That makes this
+# the one class in the table whose ground truth this project produced rather
+# than inherited, and the annotation convention is therefore part of the
+# result -- documented in ai/data/annotate/ghost_net/_guide/.
+#
+# 73 images is thin, and the per-class number must be reported with the count
+# beside it. It is still real ground truth on real side-scan sonar, which
+# synthetic copy-paste (plan J2) would not have been.
+#
+# Order is a wire format. `ghost_net` is APPENDED at 4 so ids 0-3 keep their
+# meaning and nothing already converted needs rebuilding.
 TRAINING_CLASSES: tuple[str, ...] = (
     "wreck",    # 0 -- ships, shipwrecks, large man-made hulls
     "plane",    # 1 -- submerged aircraft
@@ -45,6 +58,8 @@ TRAINING_CLASSES: tuple[str, ...] = (
                 #      side-scan sonar, from GhostVision. The closest thing to
                 #      the problem statement that ground truth actually exists
                 #      for, and it is NOT a net -- see the mapping below.
+    "ghost_net",  # 4 -- derelict fishing NET. The problem statement's actual
+                #      object, from China-Offshore-SSS-AI, hand-annotated.
 )
 
 # `natural` is NOT a training class, and that is deliberate.
@@ -53,7 +68,9 @@ TRAINING_CLASSES: tuple[str, ...] = (
 # hard negative -- an image, or a tile, with no object on it -- and YOLO
 # already expresses that as an empty label file. A `natural` class would
 # therefore carry zero instances, exactly the NaN-in-every-metrics-table
-# problem that keeps `ghost_net` out of the list above.
+# problem that kept `ghost_net` out of the list until real boxes existed for
+# it. Nobody is going to hand-draw boxes around rocks, so `natural` stays out
+# for good.
 #
 # The artificial-vs-natural separation is still measured, and measured more
 # honestly than a class score would: it is the FALSE-POSITIVE RATE on the
@@ -106,6 +123,15 @@ SOURCE_ALIASES: dict[str, str] = {
     "ghost pot": "ghost_pot",
     "ghostpot": "ghost_pot",
     "pot": "ghost_pot",
+    # Nets. No public dataset ships net BOXES yet -- ours are hand-drawn and
+    # arrive already numbered -- but a future one might, and it should not be
+    # silently quarantined when it does.
+    "ghost net": "ghost_net",
+    "ghostnet": "ghost_net",
+    "fishing net": "ghost_net",
+    "net": "ghost_net",
+    "derelict net": "ghost_net",
+    "gillnet": "ghost_net",
     "litter": "debris",
     "trash": "debris",
 }
@@ -128,6 +154,26 @@ BACKGROUND_SOURCES: dict[str, str] = {
     "terrain": "see 'seafloor'",
     "background": "see 'seafloor'",
     "nothing": "see 'seafloor'",
+    # China-Offshore-SSS-AI. Natural seabed morphology, and the reason this
+    # dataset is worth importing at all: these are ADVERSARIAL negatives, not
+    # plain seabed. A gully field is a mass of curvilinear linear features --
+    # exactly what a cable/net detector fires on -- and a scour patch is a
+    # dark irregular blob of the kind a wreck shadow is made of. Every
+    # negative before these came from open AI4Shipwrecks seabed, which asks
+    # the model nothing.
+    "trench gully": "natural erosional gullies; 782 chips of dense curvilinear clutter, the hardest linear-feature negatives in the project",
+    "scour mark": "natural scour patches; dark irregular blobs that read like wreck shadow",
+    "sand wave": "natural bedforms; regular ripple trains",
+    # Riprap is PLACED rock armour, so man-made -- but it is seabed
+    # modification, not a discrete object, and there is nothing in it to draw
+    # a box around. "No artificial object to report here" is a true statement
+    # about a rock field, which is exactly what an empty label says.
+    #
+    # It sits here rather than in EXCLUDED_SOURCES for a reason worth knowing:
+    # import_classification.py DROPS excluded classes outright. It is only the
+    # detection importers that honour KEEP_AS_BACKGROUND and keep an excluded
+    # frame as a negative. For a folder-per-class source, excluded means gone.
+    "riprap": "placed rock armour; 355 chips of bright speckle cluster, the best false-positive bait in the project for a debris detector",
 }
 
 # ---------------------------------------------------------------------------
@@ -175,7 +221,7 @@ TRAINING_TO_CONTRACT: dict[str, str] = {
     # change -- and that is a major version bump for Member 2.
     "ghost_pot": "debris",
     "natural": "natural",
-    "ghost_net": "ghost_net",  # ready for when synthetic data exists
+    "ghost_net": "ghost_net",  # real, hand-annotated, live from gv5
 }
 
 # A collapsed taxonomy for the binary framing. Not the default: with a few
@@ -223,6 +269,25 @@ def source_to_training(name: str) -> tuple[str | None, str]:
             return SOURCE_ALIASES[candidate], "mapped"
     return None, "unmapped"
 
+
+# ---------------------------------------------------------------------------
+# DO NOT map China-Offshore's "hard_negative" folder.
+# ---------------------------------------------------------------------------
+# That folder is the source's own name for its 73 FISHING NET chips. It is
+# called a hard negative because that dataset surveys pipelines, and a net is
+# what it wants to ignore. For this project the net is the headline object.
+#
+# There is no safe entry to add here. Both EXCLUDED_SOURCES and
+# BACKGROUND_SOURCES end in KEEP_AS_BACKGROUND, which writes an empty label --
+# asserting there is nothing in a frame that contains the exact thing the whole
+# project is trying to find. That is the single most damaging label this
+# codebase could produce, and import_classification.py has no way to express
+# "this is a positive but I have no box for it" other than skipping.
+#
+# So the name stays unmapped, which quarantines the chips and reports them
+# loudly on every classification import. The boxes reach the dataset by the
+# other road: hand-drawn under ai/data/annotate/ghost_net/, imported by
+# import_yolo.py as class `ghost_net`, which is where they belong.
 
 #: Reasons whose images stay usable as negatives. Anything else is a bug in the
 #: alias table and must quarantine its image rather than assert it is empty.

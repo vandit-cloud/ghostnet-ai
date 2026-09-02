@@ -26,6 +26,16 @@ The two ways this leaks
 Both are handled the same way: nothing is split by FILE, everything is split by
 GROUP, and a group is the smallest set of files that must stay together.
 
+3. FRAMES FROM ONE CONTINUOUS SURVEY. SubPipe is 66 minutes of one AUV
+   following one pipeline. Grouping by frame is not enough: consecutive frames
+   are one second and a couple of metres apart, so a random group split puts
+   the same stretch of pipe on both sides. "mode: temporal" cuts the survey at
+   a real gap in its timestamps instead, so the test portion is seabed the
+   model has genuinely never seen. Note what this does and does not buy: the
+   held-out track is still the same survey, the same sonar and the same pipe,
+   so it measures tracking, not generalisation to debris elsewhere. Report it
+   next to the independent boxes, never instead of them.
+
 Where a dataset ships its own benchmark split (AI4Shipwrecks), that split is
 respected so our numbers stay comparable to the published ones. Validation is
 carved out of its train portion, never out of its test portion.
@@ -37,6 +47,7 @@ import argparse
 import hashlib
 import json
 import random
+import re
 import shutil
 import sys
 from collections import Counter, defaultdict
@@ -63,10 +74,22 @@ SPLIT_POLICY = {
     "SONARDETECT": {"mode": "fixed", "map": {"train": "train", "valid": "val", "test": "test"}},
     "GHOSTVISION": {"mode": "fixed", "map": {"train": "train", "valid": "val", "test": "test"}},
     "MARINE-PULSE": {"mode": "fixed", "map": {"train": "train", "test": "test"}},
-    # SubPipe goes ENTIRELY to train. Adding frames to val or test would end
-    # comparability with gv-yolo11s and gv2-yolo11s, whose numbers only mean
-    # something because the test split is identical between them.
-    "SUBPIPE": {"mode": "fixed", "map": {"train": "train"}},
+    # SubPipe was ENTIRELY train through gv4, to keep the test split identical
+    # to gv-yolo11s and gv2-yolo11s. That protected comparability at the cost
+    # of making debris unmeasurable: 2,171 training boxes against 14 in test,
+    # so the debris column of every metrics table was noise.
+    #
+    # From gv5 it is cut in time instead. The survey has a 156-second gap at
+    # 70% through -- roughly 150 m of seabed at survey speed -- and that gap is
+    # the split point. Everything before it trains, everything after it tests.
+    # No SubPipe frames go to val: val only drives early stopping and
+    # calibration, and the other sources already cover it.
+    #
+    # This DOES break strict comparability with gv2/gv4 on debris. That is the
+    # trade, taken deliberately: a comparable meaningless number is worth less
+    # than an incomparable meaningful one, and the wreck/plane/ghost_pot
+    # columns are unaffected.
+    "SUBPIPE": {"mode": "temporal", "cuts": [(0.70, "train"), (1.00, "test")]},
 }
 DEFAULT_POLICY = {"mode": "random"}
 
@@ -105,6 +128,39 @@ def group_key(dataset: str, img: Path) -> str:
     """
     stem = img.stem
     return f"{dataset}:{stem.split('__')[0]}" if "__" in stem else f"{dataset}:{stem}"
+
+
+#: Any run of digits with an optional decimal point, long enough to be a unix
+#: timestamp. SubPipe names frames "SSS_HF_images_1693569378.780__x0_y0", and
+#: both the HF and LF channels of one survey share the same clock, so sorting
+#: on this interleaves the two channels correctly.
+TIME_RE = re.compile(r"(\d{9,}(?:\.\d+)?)")
+
+
+def time_key(img: Path) -> float | None:
+    """The acquisition time encoded in a filename, or None if there isn't one."""
+    m = TIME_RE.search(img.stem)
+    return float(m.group(1)) if m else None
+
+
+def temporal_split(items: list, cuts: list[tuple[float, str]]) -> list[tuple[str, tuple]]:
+    """Assign (ds, img, lbl) triples to splits by acquisition time.
+
+    Sorted by timestamp, then cut at the given fractions -- so a split boundary
+    is a moment in the survey, and everything after it is seabed the earlier
+    portion never covered. Falls back to filename order for any frame with no
+    timestamp, which keeps the function total rather than silently dropping
+    frames; the caller reports how many that was.
+    """
+    ordered = sorted(items, key=lambda t: (time_key(t[1]) is None, time_key(t[1]) or 0.0, t[1].stem))
+    n = len(ordered)
+    out, start = [], 0
+    for frac, split in cuts:
+        end = n if frac >= 1.0 else int(round(n * frac))
+        for it in ordered[start:end]:
+            out.append((split, it))
+        start = end
+    return out
 
 
 def classes_in(label: Path) -> set[int]:
@@ -210,6 +266,7 @@ def main() -> int:
     by_hash: dict[str, tuple[str, Path]] = {}
     groups: dict[str, list] = defaultdict(list)
     fixed: dict[str, list] = defaultdict(list)
+    temporal: dict[str, list] = defaultdict(list)
     dropped_dupes = Counter()
     per_source = Counter()
 
@@ -230,7 +287,9 @@ def main() -> int:
             by_hash[digest] = (ds, img)
             per_source[ds] += 1
 
-            if policy["mode"] == "fixed":
+            if policy["mode"] == "temporal":
+                temporal[ds].append((ds, img, lbl))
+            elif policy["mode"] == "fixed":
                 target = policy.get("map", {}).get(split)
                 if target is None:
                     continue
@@ -246,6 +305,14 @@ def main() -> int:
         for key, items in groups.items():
             for ds, img, lbl in items:
                 plan.append((assignment[key], ds, img, lbl))
+
+    for ds, items in temporal.items():
+        policy = SPLIT_POLICY.get(ds.upper(), DEFAULT_POLICY)
+        undated = sum(1 for _d, img, _l in items if time_key(img) is None)
+        if undated:
+            print(f"  ! {ds}: {undated} frame(s) carry no timestamp -- placed by filename order")
+        for split, (d, img, lbl) in temporal_split(items, policy["cuts"]):
+            plan.append((split, d, img, lbl))
 
     for combined, items in fixed.items():
         ds, target = combined.split("|")

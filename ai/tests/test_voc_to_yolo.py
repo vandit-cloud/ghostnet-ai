@@ -34,9 +34,19 @@ SCRIPT = AI_ROOT / "scripts" / "voc_to_yolo.py"
 
 def test_training_class_ids_are_stable():
     """Order is the YOLO class id and therefore a wire format. Reshuffling it
-    silently relabels every previously converted dataset."""
-    assert TRAINING_CLASSES == ("wreck", "plane", "debris", "ghost_pot")
-    assert CLASS_TO_ID == {"wreck": 0, "plane": 1, "debris": 2, "ghost_pot": 3}
+    silently relabels every previously converted dataset.
+
+    Asserted as a PREFIX rather than as equality, which is the real invariant:
+    appending a class is safe and has happened once already (ghost_net at 4,
+    when hand-drawn boxes for it finally existed), but changing the meaning of
+    an existing id is not. An equality assertion cannot tell those apart -- it
+    fails on both, so the safe change is indistinguishable from the dangerous
+    one and the test gets 'fixed' by pasting in whatever the code now says.
+    """
+    assert TRAINING_CLASSES[:4] == ("wreck", "plane", "debris", "ghost_pot")
+    for name, expected in (("wreck", 0), ("plane", 1), ("debris", 2), ("ghost_pot", 3)):
+        assert CLASS_TO_ID[name] == expected
+    assert len(set(TRAINING_CLASSES)) == len(TRAINING_CLASSES), "duplicate class name"
 
 
 @pytest.mark.parametrize(
@@ -262,7 +272,7 @@ def test_unmapped_class_is_reported_loudly(convert, capsys):
 def test_data_yaml_matches_the_taxonomy(convert):
     code, out, _ = convert(box("ship", 10, 10, 90, 90))
     yaml = (out / "data.yaml").read_text()
-    assert "nc: 4" in yaml
+    assert f"nc: {len(TRAINING_CLASSES)}" in yaml
     for i, name in enumerate(TRAINING_CLASSES):
         assert f"  {i}: {name}" in yaml
 

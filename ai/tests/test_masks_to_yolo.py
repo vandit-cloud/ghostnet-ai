@@ -18,6 +18,8 @@ import pytest
 AI_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(AI_ROOT))
 
+from ghostnet.taxonomy import TRAINING_CLASSES  # noqa: E402
+
 cv2 = pytest.importorskip("cv2")
 
 SCRIPT = AI_ROOT / "scripts" / "masks_to_yolo.py"
@@ -219,6 +221,6 @@ def test_data_yaml_and_report_are_written(run):
     mask[100:300, 100:300] = 1
     code, out = run({"f": (img, mask)})
     yaml = (out / "data.yaml").read_text()
-    assert "nc: 4" in yaml and "0: wreck" in yaml
+    assert f"nc: {len(TRAINING_CLASSES)}" in yaml and "0: wreck" in yaml
     assert "leakage" in yaml, "the split warning must travel with the dataset"
     assert (out / "tiling_report.json").exists()
