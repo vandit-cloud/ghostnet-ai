@@ -23,6 +23,7 @@ from typing import Any
 
 from .config import SETTINGS, Settings
 from .contract import Detection, Dimensions, EvidenceSummary, FrameResult
+from .dropout import OVERLAP_ESCALATE, dropout_context, dropout_overlap, frame_dropout_note
 from .shadow import shadow_context
 from .decision import apply_decision_policy, calibration_mismatch, escalate_uncertainty
 from .geo import SonarGeometry, geotag_pixel, pixel_to_ground_offset, position_error_m
@@ -168,6 +169,11 @@ def detect(
     except Exception:
         gray = None
 
+    if gray is not None:
+        note = frame_dropout_note(gray)
+        if note:
+            result.warnings.append(note)
+
     model = load_model(settings)
     if model is None:
         result.warnings.append(
@@ -223,6 +229,16 @@ def detect(
             suppressed += 1
             continue  # below the policy floor; never shown to a reviewer
         cls_out, calibrated, uncertainty = decision
+
+        # A detection standing on dead pings is suspect for the same reason a
+        # detection in the water column is: the pixels underneath it are not
+        # seabed return. That case already widens the band a few lines below,
+        # and this is the same judgement applied to the same kind of evidence.
+        drop_note = "not_evaluated: frame could not be read"
+        if gray is not None:
+            drop_note = dropout_context(gray, item["bbox"])
+            if dropout_overlap(gray, item["bbox"]) >= OVERLAP_ESCALATE:
+                uncertainty = escalate_uncertainty(uncertainty)
 
         lat = lon = err = None
         localization = "none"
@@ -296,7 +312,7 @@ def detect(
                     # detector actually produced is preserved here rather than
                     # lost -- free text, so no schema change, and the reviewer
                     # sees what the model really said.
-                    notes=(
+                    notes=(drop_note + " | " if not drop_note.startswith("clear") else "") + (
                         "detector class: " + item["cls"]
                         if item["cls"].strip().lower() != cls_out
                         else ""

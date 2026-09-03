@@ -172,12 +172,30 @@ code**, not accuracy problems, and none of them need a GPU:
 |---|---|---|
 | 3 | Speckle / noise handling | missing — and §12 warns any filter must be validated against the model, so this one does imply a run |
 | 5 | Acoustic shadow | **DONE** — `ghostnet/shadow.py`. Paired away-flank vs near-flank test, direction taken from nadir. Reports evidence for a reviewer; never suppresses a detection. |
-| 6 | Sonar/vehicle dropouts | missing. Flagging detections that fall in dropout rows needs no retraining. |
+| 6 | Sonar/vehicle dropouts | **DONE** — `ghostnet/dropout.py`. Frame warning plus a per-detection note; a detection >25% on dead rows has its uncertainty widened, matching the water-column precedent. |
 | 8 | Sonar metadata parsing | partial — a hand-written JSON sidecar. No XTF/JSF reader, and no XTF file to test one against. |
 | 12 | JSON / **CSV** reports | **DONE** — `ghostnet/report.py`, `write_csv(frames, path)`. `try_model.py` writes `report.csv` for every run. |
 
-Requirements 3 and 6 are the remaining challenges the problem statement names
-as why the task is hard. A judge will look for them by name.
+Requirement 3 (speckle) is the last of the named challenges still open, and it
+is the one that needs a training run rather than an afternoon: §12 of the build
+plan says any filter must be validated against the model, not assumed.
+
+### What the dropout work found
+
+The corpus contains almost NO dropouts: 2 frames in 500 carry any degenerate
+row, and both are padding rather than lost pings -- 19 rows at the bottom edge
+of an AI4Shipwrecks tile, 256 interior rows of a SubPipe tile that runs past
+the end of its swath. Both pure black, mean 0.0.
+
+That is not evidence dropouts are rare in the wild. These are curated tiles
+whose authors already removed bad pings and cropped around annotated objects.
+What the corpus DOES establish is the false-positive rate: the test fired twice
+in 500 frames and was right both times.
+
+Padding is reported as a dropout deliberately. The operational question is not
+"did the sonar drop a ping" but "is this detection standing on real data", and
+for that they are the same fact. Edge padding and an interior hole are still
+distinguished in the wording, because an operator reads them differently.
 
 ### What the shadow work found, worth not re-learning
 
