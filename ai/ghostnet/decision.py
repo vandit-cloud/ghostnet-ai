@@ -78,13 +78,28 @@ def load_calibration(settings: Settings = SETTINGS) -> float:
     return _TEMPERATURE
 
 
+#: Digest cache, keyed by (path, size, mtime). Weights are tens of MB and this
+#: runs inside detect(), i.e. once per frame: hashing them every call cost 34 ms
+#: per frame measured, which is 34 seconds across a thousand-frame survey spent
+#: re-answering a question whose inputs cannot have changed mid-run. The mtime
+#: and size in the key mean a file swapped underneath a long-running process is
+#: still noticed.
+_DIGESTS: dict[tuple[str, int, float], str] = {}
+
+
 def _digest(path: Path) -> str:
     """Hash of a weights file, read in chunks -- these run to tens of MB."""
+    stat = path.stat()
+    key = (str(path), stat.st_size, stat.st_mtime)
+    cached = _DIGESTS.get(key)
+    if cached is not None:
+        return cached
     h = hashlib.sha256()
     with open(path, "rb") as fh:
         for chunk in iter(lambda: fh.read(1 << 20), b""):
             h.update(chunk)
-    return h.hexdigest()
+    _DIGESTS[key] = h.hexdigest()
+    return _DIGESTS[key]
 
 
 def calibration_mismatch(settings: Settings = SETTINGS) -> str | None:

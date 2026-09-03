@@ -11,13 +11,18 @@ mistakes that cost whole days. Last updated 2026-09-03.
 
 ## What the model is right now
 
-**`gv4-yolo11s`** — YOLO11-S, trained 2026-09-02, 40 epochs, 8h 13m.
+**`gv5-yolo11s`** — YOLO11-S, 60 epochs requested, patience 12. The first run to
+include the `ghost_net` class and the SubPipe temporal split, and **the model
+the project ships**: promoted to `ai/models/trained/ghostnet.pt`, which is what
+`ghostnet.detect()` loads by default.
 
-`ai/experiments/gv4-yolo11s/weights/best.pt`
+`ai/experiments/gv5-yolo11s/weights/best.pt` → promoted copy at
+`ai/models/trained/ghostnet.pt` (+ `ghostnet.json`, the sidecar naming the run;
+both are gitignored, so they must travel together to Member 2).
 
-**`gv5-yolo11s` is training as of 2026-09-03 00:00** — 60 epochs, first run to
-include the `ghost_net` class and the SubPipe temporal split. When it finishes,
-replace the numbers below and re-run `make_demo.py` + `build_testbench.py`.
+gv4 was the previous best and is superseded. Its numbers are kept in the
+trajectory table below and nowhere else — quoting them understates the shipped
+model by a wide margin.
 
 ### Why gv3 does not exist as a result
 
@@ -80,10 +85,10 @@ the result, so keep it reproducible.
 
 ## Overall test numbers (quote these, never validation figures)
 
-gv4, on 4,346 held-out tiles:
+gv5, on 4,346 held-out tiles:
 
 ```
-precision 0.191    recall 0.362    mAP50 0.247    mAP50-95 0.113
+precision 0.580    recall 0.361    mAP50 0.352    mAP50-95 0.200
 ```
 
 Trajectory on the same frozen test split — this is the number to show if anyone
@@ -91,17 +96,28 @@ asks whether the work is going anywhere:
 
 | run | mAP50 | precision | recall |
 |---|---|---|---|
+| run | mAP50 | precision | recall |
+|---|---|---|---|
 | gv | 0.160 | 0.140 | 0.285 |
 | gv2 | 0.132 | 0.451 | 0.178 |
-| **gv4** | **0.247** | 0.191 | **0.362** |
+| gv4 | 0.247 | 0.191 | 0.362 |
+| **gv5** | **0.352** | **0.580** | 0.361 |
+
+gv5 is a 5-class model and the three before it are 4-class, so the aggregate
+comparison is not quite like-for-like — but it moved the right way on both axes
+that were in tension, holding recall while precision went 0.191 → 0.580.
 
 Do not lead with mAP50 alone. It is an **unweighted mean over the classes**, so
 `plane` (9 boxes) counts as much as `ghost_pot` (567), and adding a fifth thin
 class mechanically drags it down. Lead with the per-class table and with the
 false-alarm rate below.
 
-Calibration: temperature 2.0167, fitted on val. Expected calibration error
-**0.166 -> 0.063**. When the model says 70%, it approximately means 70%.
+Calibration: temperature **2.7220**, fitted on val over 1,604 predictions.
+Expected calibration error **0.218 -> 0.089**. When the model says 70%, it
+approximately means 70%. Note the ECE is worse than gv4's 0.063 — the
+five-class model is harder to calibrate — and it is reported anyway, because
+picking the flattering half of a two-number change is how a calibration claim
+stops being one.
 
 ## False alarms on empty seabed
 
@@ -121,19 +137,34 @@ sweeps RAW detector scores; the calibrated column is what a reviewer sees:
 | 0.50 | 0.500 | 0.75% |
 | 0.70 | 0.577 | 0.31% |
 
-**None of those rows is the deployed operating point.** The review floor is
-calibrated 0.20, which is a raw score of 0.0225 -- below this whole table. At
-the floor actually shipped the rate is **16.48%**.
+**The deployed operating point is the raw 0.10 row: 7.82%.** Two thresholds are
+in play, and only the tighter one binds. `detect()` calls predict with
+`conf=raw_conf_threshold`, which is **0.10**, so a box below raw 0.10 is never
+produced at all -- and raw 0.10 is calibrated 0.308, already above the
+calibrated 0.20 review floor. Reaching calibrated 0.20 would take a raw score
+of 0.0225, which the detector is never asked for.
+
+So **`review_floor_artificial` is currently inert**: it cannot suppress an
+artificial detection, and the effective operating point is set by
+`raw_conf_threshold` instead. Anyone tuning the floor below ~0.31 will watch
+nothing happen and go hunting for the reason. A sweep taken with a lower
+detector floor -- which is what `derive_review_floor.py` does, at 0.02 --
+measures 16.48% at calibrated 0.20. That figure is correct for that
+configuration and is not the one that ships.
+
+Cross-checked from both directions: the raw sweep gives 7.82% at raw 0.10, and
+the calibrated sweep gives 8.29% at calibrated 0.30, which brackets 0.308.
 
 Comparison across runs is also not valid on this table: gv2 scored 1.30% at raw
 0.30 against gv5's 2.15%, which reads like a regression and is not one. The
 test set gained 310 China-Offshore hard negatives -- gully fields, riprap,
 scour -- that gv2 was never shown. It is a harder exam.
 
-**Say it with both caveats** (Trap 6, and the scale): *"At the deployed review
-floor, 16.5% of held-out frames carrying no annotation show a reviewer at least
-one box. Some of those frames come from survey lines AI4Shipwrecks left
-entirely unannotated, so even that is an upper bound."*
+**Say it with both caveats** (Trap 6, and the scale): *"At the deployed
+operating point -- detector floor raw 0.10, calibrated 0.308 -- 7.8% of
+held-out frames carrying no annotation show a reviewer at least one box. Some
+of those frames come from survey lines AI4Shipwrecks left entirely unannotated,
+so even that is an upper bound."*
 
 
 ## Data downloaded but NOT yet used
@@ -167,7 +198,7 @@ from artificial anomalies. Against that:
 
 | Requirement | State | What is missing |
 |---|---|---|
-| Artificial vs natural | **Works** — 16.5% of empty frames flagged at the deployed floor | quote the operating point, not a raw-threshold row |
+| Artificial vs natural | **Works** — 7.8% of unannotated frames flagged at the deployed operating point | quote the operating point, not a raw-threshold row and not a sweep taken below the detector floor |
 | Confidence / noise filtering | **Done** — calibrated, ECE 0.063 | nothing |
 | Geotagging | **Done** — coordinates + error radius | real survey metadata; no `test_geo.py` |
 | Detect ghost gear | **Works** — crab pots; nets now trained too | `ghost_net` has 215 boxes, thin |
@@ -231,6 +262,34 @@ Measured flank darkening by class, which matches the physics and is the reason
 ---
 
 # PART 2 — THE RULES
+
+## If the machine restarts mid-training
+
+Tested, not assumed: a run killed at epoch 23 and relaunched with `--resume`
+continued to 30 with a continuous results.csv.
+
+```
+powershell -ExecutionPolicy Bypass -File .i\scripts	rain_all.ps1 -Name <same-name> -Resume
+```
+
+**The danger is the opposite of the obvious one.** Resuming is safe. What
+destroys work is retyping the ORIGINAL launch command after a reboot, without
+`-Resume`: ultralytics reopens the directory (`exist_ok=True`), starts at epoch
+1 and overwrites last.pt with a fresh network. Hours of GPU vanish with no
+error and no prompt, and the first sign is a results.csv beginning again at 1.
+
+`train.py` now refuses that, prints how many epochs are already trained, and
+names the three ways out (`--resume`, a different `--name`, or `--force`).
+Two tests cover it, including one asserting the checkpoint bytes are untouched.
+
+The pipeline self-heals from this too: attempt 1 without resume now exits 1,
+`Resolve-TrainFailure` returns "retry", and the relaunch passes `--resume`. So
+`train_all.ps1 -Name <same-name>` after a reboot recovers on its own -- but
+pass `-Resume` anyway rather than relying on a fallback.
+
+What survives a restart regardless: the promoted model, the calibrator, every
+committed file. What does not: an uncommitted working tree, and any run whose
+name you then reuse without `-Resume`.
 
 ## Absolute rules — breaking these ruins the run
 
@@ -421,13 +480,15 @@ convergence — the shape of the tail is the whole answer.
 **May be said:**
 - "Detects derelict crab pots in side-scan sonar" — quote the per-class mAP50
   with its held-out box count beside it.
-- "At the deployed review floor, 16.5% of unannotated seabed frames put at
-  least one box in front of a reviewer -- an upper bound." Never quote a
-  lower figure without saying which scale its threshold is on.
+- "At the deployed operating point, 7.8% of unannotated seabed frames put at
+  least one box in front of a reviewer -- an upper bound." Never quote any
+  figure without saying which scale its threshold is on, and never quote a
+  sweep taken below the detector's own floor of raw 0.10.
 - "Reports position with an error radius, or no position at all when navigation
   data is missing."
-- "Calibrated confidence: expected calibration error 0.063 after temperature
-  scaling, down from 0.166."
+- "Calibrated confidence: expected calibration error 0.089 after temperature
+  scaling, down from 0.218." Those are gv5's, on 1,604 val predictions. The
+  0.063 figure belongs to gv4 and must not be carried forward.
 - From gv5 on: "Detects derelict fishing net, on ground truth we annotated
   ourselves from a public classification dataset" — **always with the count**,
   298 boxes over 73 images, and a pointer to the convention in
@@ -464,7 +525,7 @@ type, expect a large drop. Say so before being asked; it is worth marks.
 | Reading results / the UI | `docs/READING_RESULTS.md` |
 | Dataset sourcing and licences | `docs/DATA.md`, `docs/DOWNLOAD_GUIDE.md` |
 | Contract for Member 2 | `docs/HANDOFF.md` |
-| Current model | `ai/experiments/gv2-yolo11s/weights/best.pt` |
+| Current model | `ai/models/trained/ghostnet.pt` (promoted gv5) + `ghostnet.json` |
 | Per-run record | `ai/experiments/<run>/provenance.json` |
 | Claims registry | `ai/data/provenance/dataset_candidates.csv` |
 
@@ -482,9 +543,18 @@ type, expect a large drop. Say so before being asked; it is worth marks.
   from `models/trained/ghostnet.json` for the promoted model, else from the
   experiment directory. `"v0-stub"` survives only for the genuinely
   weightless case, which is a real state worth labelling.
-- `review_floor_artificial` is 0.20 and has never been chosen against a measured
-  recall-vs-threshold curve. It happens to be reasonable; it was not derived.
-  `testbench.html` now has the slider that would let it be derived.
+- ~~`review_floor_artificial` was never derived~~ **derived, and then found to be
+  inert.** `derive_review_floor.py` measured recall against false alarms on
+  calibrated confidence and confirmed 0.20: recall is flat from 0.05 to 0.20, so
+  the floor costs 1.1% of recall. But the detector is only asked for boxes above
+  raw 0.10, which is calibrated 0.308 — so the floor sits below everything that
+  can reach it and never fires. **The real operating point is
+  `raw_conf_threshold`, not the review floor.** Two consequences: the deployed
+  false-alarm rate is 7.82%, not the 16.48% a sweep at detector floor 0.02
+  reports; and tuning the floor anywhere below ~0.31 is a no-op. Making it bind
+  means lowering `raw_conf_threshold` toward 0.0225, which buys recall
+  (0.534 → 0.670) at roughly double the false alarms. Unresolved on purpose —
+  it is a policy call, not a bug.
 - **`debris` has no independent test data worth the name** — 14 boxes. Every
   other debris number is one SubPipe survey.
 - **`check_annotations.py` thresholds are calibrated for nets in survey tiles**

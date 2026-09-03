@@ -87,6 +87,11 @@ class Channel:
     slant_range_m: float
     num_samples: int
     samples: bytes | None = None
+    #: Carried per channel so a reader of `samples` never has to assume a
+    #: width. The file this was built against uses 2 bytes, and hardcoding
+    #: that would decode an 8-bit file as garbage that still renders as a
+    #: plausible-looking sonar image -- wrong, but not obviously wrong.
+    bytes_per_sample: int = 2
 
 
 @dataclass
@@ -196,6 +201,7 @@ def _parse_ping(record: bytes, bytes_per_sample: int, with_samples: bool) -> Pin
         channels.append(Channel(
             number=number, slant_range_m=slant, num_samples=n_samples,
             samples=record[data_at:data_end] if with_samples else None,
+            bytes_per_sample=bytes_per_sample,
         ))
         seconds_per_ping = spp or seconds_per_ping
         off = data_end
@@ -284,7 +290,10 @@ def waterfall(pings: list[Ping], normalise: bool = True):
         for chan in ping.channels:
             if chan.samples is None:
                 continue
-            data = np.frombuffer(chan.samples, dtype="<u2").astype(np.float32)
+            dtype = {1: "<u1", 2: "<u2", 4: "<u4"}.get(chan.bytes_per_sample)
+            if dtype is None:
+                continue
+            data = np.frombuffer(chan.samples, dtype=dtype).astype(np.float32)
             # Even channel numbers are port, odd starboard, in every EdgeTech
             # file seen here. Falling back on order rather than trusting a
             # name string that this file stores with leading control bytes.

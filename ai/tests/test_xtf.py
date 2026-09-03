@@ -190,3 +190,14 @@ def test_reader_stops_cleanly_on_lost_sync(tmp_path):
     p = tmp_path / "truncated.xtf"
     p.write_bytes(file_header() + rec + b"\xff" * 40)
     assert len(list(iter_pings(p))) == 1
+
+
+def test_sample_width_is_carried_on_every_channel(tmp_path):
+    """waterfall() decodes `samples` and must not assume 16-bit. Hardcoding it
+    would render an 8-bit file as garbage that still looks like a sonar image
+    -- wrong, but not obviously wrong."""
+    p = write_xtf(tmp_path, [sonar_record(lat=-46.3, lon=-73.7, heading=0.0, altitude=12.0)])
+    header = read_file_header(p)
+    ping = next(iter(iter_pings(p, header, with_samples=True)))
+    assert all(c.bytes_per_sample == header.bytes_per_sample for c in ping.channels)
+    assert all(len(c.samples) == c.num_samples * c.bytes_per_sample for c in ping.channels)

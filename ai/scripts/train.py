@@ -79,6 +79,8 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--device", default=None)
     ap.add_argument("--resume", action="store_true")
+    ap.add_argument("--force", action="store_true",
+                    help="overwrite an existing run of this name instead of refusing")
     ap.add_argument("--dry-run", action="store_true", help="print the config and check the data, train nothing")
     args = ap.parse_args()
 
@@ -99,6 +101,38 @@ def main() -> int:
     weights = args.model if args.model.endswith(".pt") else str(PRETRAINED / f"{args.model}.pt")
     name = args.name or f"{Path(weights).stem}-{stamp}"
     EXPERIMENTS.mkdir(parents=True, exist_ok=True)
+
+    # Refuse to overwrite a run that has already trained, unless told to.
+    #
+    # This is the reboot case, and it fails in the direction nobody expects.
+    # Resuming is safe and tested: kill a run at epoch 23, relaunch with
+    # --resume, and it continues to 30 with a continuous results.csv. What
+    # destroys work is relaunching the SAME NAME WITHOUT --resume after a
+    # restart, which ultralytics happily does (exist_ok=True) -- it reopens the
+    # directory, starts at epoch 1, and overwrites last.pt with a fresh
+    # network. Ten hours of GPU vanish with no error and no prompt, and the
+    # first sign is a results.csv that begins again from 1.
+    #
+    # A machine that has just rebooted is exactly when someone retypes the
+    # launch command from memory, so the guard belongs here rather than in the
+    # PowerShell wrapper that they may not be using.
+    existing = EXPERIMENTS / name / "weights" / "last.pt"
+    if existing.exists() and not args.resume and not args.force:
+        done = 0
+        results = EXPERIMENTS / name / "results.csv"
+        if results.exists():
+            done = max(0, sum(1 for _ in results.open(encoding="utf-8")) - 1)
+        print()
+        print(f"  '{name}' already has a checkpoint at {show(existing)}"
+              + (f" ({done} epochs trained)" if done else ""))
+        print()
+        print("  Starting it again WITHOUT --resume would overwrite that checkpoint")
+        print("  and restart from epoch 1. Pick one:")
+        print()
+        print(f"    --resume            continue from epoch {done + 1}")
+        print("    --name <other>      train a separate run")
+        print("    --force             discard the existing run and start over")
+        return 1
 
     if args.resume:
         # Ultralytics resumes from the CHECKPOINT, not from the pretrained

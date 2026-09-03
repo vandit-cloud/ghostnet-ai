@@ -78,3 +78,45 @@ def test_dry_run_trains_nothing(mod, tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["train.py", "--data", str(data), "--dry-run"])
     assert mod.main() == 0
     assert "dry run: nothing trained" in capsys.readouterr().out
+
+
+def test_relaunching_an_existing_run_without_resume_is_refused(mod, tmp_path, monkeypatch, capsys):
+    """The reboot case, and it fails in the direction nobody expects.
+
+    Resuming is safe. What destroys work is retyping the ORIGINAL launch
+    command after a restart: ultralytics reopens the directory (exist_ok=True),
+    starts at epoch 1 and overwrites last.pt with a fresh network. Ten hours of
+    GPU vanish with no error and no prompt.
+    """
+    data = make_dataset(tmp_path)
+    exp = tmp_path / "experiments"
+    ckpt = exp / "gv5" / "weights" / "last.pt"
+    ckpt.parent.mkdir(parents=True, exist_ok=True)
+    ckpt.write_bytes(b"ten hours of training")
+    (exp / "gv5" / "results.csv").write_text("epoch\n1\n2\n3\n", encoding="utf-8")
+
+    monkeypatch.setattr(mod, "EXPERIMENTS", exp)
+    monkeypatch.setattr(sys, "argv", ["train.py", "--data", str(data), "--name", "gv5"])
+    assert mod.main() == 1
+
+    out = capsys.readouterr().out
+    assert "already has a checkpoint" in out
+    assert "3 epochs trained" in out
+    assert "continue from epoch 4" in out
+    assert ckpt.read_bytes() == b"ten hours of training", "the checkpoint was touched"
+
+
+def test_force_allows_the_overwrite_when_it_is_deliberate(mod, tmp_path, monkeypatch, capsys):
+    """The guard must be escapable, or the next person deletes the directory by
+    hand and loses the results.csv alongside it."""
+    data = make_dataset(tmp_path)
+    exp = tmp_path / "experiments"
+    ckpt = exp / "gv5" / "weights" / "last.pt"
+    ckpt.parent.mkdir(parents=True, exist_ok=True)
+    ckpt.write_bytes(b"discard me")
+
+    monkeypatch.setattr(mod, "EXPERIMENTS", exp)
+    monkeypatch.setattr(sys, "argv",
+                        ["train.py", "--data", str(data), "--name", "gv5", "--force", "--dry-run"])
+    assert mod.main() == 0
+    assert "already has a checkpoint" not in capsys.readouterr().out
