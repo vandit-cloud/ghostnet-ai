@@ -107,7 +107,11 @@ class Settings:
     #: claiming a version.
     model_version: str = "v0-stub"
     dataset_version: str = "none"
-    preprocessing_version: str = "v0"
+    #: Named filter from ghostnet.preprocess, applied before inference.
+    #: "none" is deliberate and load-bearing: despeckling a model trained on
+    #: raw frames costs 13% of mAP50. Change it only alongside a model trained
+    #: the same way.
+    preprocessing: str = "none"
     calibration_version: str = "none"
 
     def __post_init__(self) -> None:
@@ -202,7 +206,7 @@ class Settings:
             "model_id": self.model_id,
             "model_version": self.model_version,
             "dataset_version": self.dataset_version,
-            "preprocessing_version": self.preprocessing_version,
+            "preprocessing_version": self.preprocessing,
             "calibration_version": self.calibration_version,
         }
 

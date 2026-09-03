@@ -223,7 +223,7 @@ code**, not accuracy problems, and none of them need a GPU:
 
 | # | Requirement | State |
 |---|---|---|
-| 3 | Speckle / noise handling | missing — and §12 warns any filter must be validated against the model, so this one does imply a run |
+| 3 | Speckle / noise handling | **Filter built and measured** — `ghostnet/preprocess.py`. Default OFF, because applying it to gv5 costs 13% of mAP50 (domain mismatch). Whether a model TRAINED on despeckled data gains is the one open question needing a run. |
 | 5 | Acoustic shadow | **DONE** — `ghostnet/shadow.py`. Paired away-flank vs near-flank test, direction taken from nadir. Reports evidence for a reviewer; never suppresses a detection. |
 | 6 | Sonar/vehicle dropouts | **DONE** — `ghostnet/dropout.py`. Frame warning plus a per-detection note; a detection >25% on dead rows has its uncertainty widened, matching the water-column precedent. |
 | 8 | Sonar metadata parsing | partial — a hand-written JSON sidecar. No XTF/JSF reader, and no XTF file to test one against. |
@@ -232,6 +232,32 @@ code**, not accuracy problems, and none of them need a GPU:
 Requirement 3 (speckle) is the last of the named challenges still open, and it
 is the one that needs a training run rather than an afternoon: §12 of the build
 plan says any filter must be validated against the model, not assumed.
+
+### What the speckle work found -- and the metric that lied
+
+Measured three times; the answer changed twice, and the middle mistake is the
+one worth not repeating.
+
+An outside review said detection "collapses to zero at speckle sigma 0.35".
+That was ONE image. Over 109 frames the model is far more robust, and the
+filter recovers a lot on degraded input (+34% at sigma 0.35, +53% at 0.50).
+On clean data a frame-level count showed no cost at all -- 109/140 either way,
+15% fewer false alarms. That looked like free upside.
+
+It was not. Scored as mAP over the full 4,346-frame test split:
+
+    gv5, raw frames     mAP50 0.3525    mAP50-95 0.1995
+    gv5, despeckled     mAP50 0.3066    mAP50-95 0.1644     -13% / -18%
+
+**The frame-level metric hid the entire regression.** "Does this frame yield
+any detection" still said yes; the boxes were looser and worse localised, which
+mAP50-95 punishes hardest and a yes/no count cannot see. A crude proxy agreed
+with the hypothesis twice before a real metric disagreed with it.
+
+The cause is domain mismatch, not the filter: gv5 learned raw speckled frames.
+So the default is "none", and a model trained on despeckled data is the only
+way to find out whether the robustness gain is real. That is the one remaining
+problem-statement item that needs GPU.
 
 ### What the dropout work found
 
