@@ -23,6 +23,7 @@ from typing import Any
 
 from .config import SETTINGS, Settings
 from .contract import Detection, Dimensions, EvidenceSummary, FrameResult
+from .shadow import shadow_context
 from .decision import apply_decision_policy, calibration_mismatch, escalate_uncertainty
 from .geo import SonarGeometry, geotag_pixel, pixel_to_ground_offset, position_error_m
 
@@ -157,6 +158,16 @@ def detect(
     if modality:
         result.warnings.append(modality)
 
+    # One greyscale read, reused by the shadow evidence below. Done here so a
+    # frame is decoded once rather than per detection.
+    gray = None
+    try:
+        import cv2
+
+        gray = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)
+    except Exception:
+        gray = None
+
     model = load_model(settings)
     if model is None:
         result.warnings.append(
@@ -275,7 +286,11 @@ def detect(
                 model_version=settings.model_version,
                 evidence_summary=EvidenceSummary(
                     artificial_verification="positive" if cls_out != "natural" else "negative",
-                    shadow_context="not_evaluated",
+                    shadow_context=(
+                        shadow_context(gray, item["bbox"], geom, cls_out)
+                        if gray is not None
+                        else "not_evaluated: frame could not be read for shadow analysis"
+                    ),
                     # The contract vocabulary is four values wide, so a wreck and
                     # an aircraft both report as 'debris'. The finer class the
                     # detector actually produced is preserved here rather than
