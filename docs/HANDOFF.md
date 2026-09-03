@@ -235,3 +235,37 @@ around the same `detect()` call, `POST /ai/v1/infer`, multipart upload.
 Pin the major version in your validator and fail loudly on a mismatch. A silent
 schema disagreement discovered during integration week is the single most
 expensive thing that can happen to this project.
+
+### 1.1.0 — `frame_position` (minor, nothing breaks)
+
+A new optional top-level field. Pinned to major 1, your code keeps working and
+can ignore it entirely.
+
+```json
+"frame_position": {
+  "latitude": -46.351818,
+  "longitude": -73.731983,
+  "heading_deg": 348.5,
+  "timestamp": "2005-07-01T05:54:51"
+}
+```
+
+**Where the towfish was, which is not where any detection is.** A detection's
+coordinates say where an object is; this says where the sensor was. You need it
+to draw the survey track — and a track is what turns a scatter of pins into a
+line someone can follow back to the water.
+
+Two things make it worth storing on every frame:
+
+- **It is present even on frames with no detections**, which is most of a real
+  survey. A track built only from detections has gaps wherever the seabed was
+  clean, which reads as missing data rather than as an uneventful stretch.
+- **It carries the frame's own timestamp**, so frames can be ordered in
+  acquisition order rather than by whenever the rows happened to be written.
+
+`null` when the pings covering that frame carried no usable navigation — same
+rule as everywhere else in this contract: no position rather than a made-up one.
+
+Populated automatically for any frame produced by `detect_survey()` or
+`iter_survey_frames()` from a `.xtf`, because the values are in the ping
+headers. `null` for a bare image with no metadata.

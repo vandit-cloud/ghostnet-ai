@@ -15,7 +15,10 @@ import json
 from dataclasses import asdict, dataclass, field
 from typing import Any, Literal
 
-CONTRACT_VERSION = "1.0.0"
+#: 1.1.0 adds the optional `frame_position` block below. Additive and optional,
+#: so by the versioning rules in docs/HANDOFF.md section 7 this is a MINOR bump:
+#: a consumer pinned to major 1 keeps working untouched and simply ignores it.
+CONTRACT_VERSION = "1.1.0"
 
 # Closed vocabularies. Member 2's DB uses these as enum values, so adding a
 # member is a breaking change for them -- never silently emit something else.
@@ -78,6 +81,38 @@ class Detection:
 
 
 @dataclass
+class FramePosition:
+    """Where the towfish was when this frame was recorded. New in 1.1.0.
+
+    Distinct from a DETECTION's position, and needed for different reasons. A
+    detection's coordinates say where an object is; this says where the sensor
+    was, which is what draws the survey track -- and a track is what turns a
+    scatter of pins into a line someone can follow back to the water.
+
+    It also carries the frame's own timestamp, so a consumer can order frames
+    in acquisition order rather than by whenever the rows happened to be
+    written.
+
+    Every field is optional, because a frame assembled from pings that carry no
+    navigation has no position, and inventing one here would be the same
+    dishonesty the detection path already refuses.
+    """
+
+    latitude: float | None = None
+    longitude: float | None = None
+    heading_deg: float | None = None
+    timestamp: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "latitude": self.latitude,
+            "longitude": self.longitude,
+            "heading_deg": self.heading_deg,
+            "timestamp": self.timestamp,
+        }
+
+
+@dataclass
 class FrameResult:
     survey_id: str
     frame_id: str
@@ -85,6 +120,10 @@ class FrameResult:
     provenance: dict[str, str] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
     contract_version: str = CONTRACT_VERSION
+    #: None when the frame's own position is unknown -- which is the normal
+    #: case for a bare image with no metadata, and never the case for a frame
+    #: cut out of an XTF by detect_survey.
+    frame_position: FramePosition | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -94,6 +133,7 @@ class FrameResult:
             "provenance": self.provenance,
             "warnings": self.warnings,
             "contract_version": self.contract_version,
+            "frame_position": self.frame_position.to_dict() if self.frame_position else None,
         }
 
     def to_json(self, indent: int = 2) -> str:
