@@ -37,9 +37,22 @@ _MODEL_LOCK = threading.Lock()
 _PREDICT_LOCK = threading.Lock()
 
 
+#: Set when weights EXIST but will not load. Distinct from there being none,
+#: which is a legitimate state Member 2 builds against.
+_MODEL_ERROR: str | None = None
+
+
 def load_model(settings: Settings = SETTINGS):
-    """Idempotent, thread-safe model load. Returns None when no weights exist."""
-    global _MODEL
+    """Idempotent, thread-safe model load. Returns None when no usable weights
+    exist -- whether that is because there are none, or because the file on
+    disk cannot be loaded.
+
+    A truncated or wrong-format .pt used to raise out of here, which meant out
+    of `warmup()` too: Member 2 calls that from the FastAPI lifespan handler,
+    so a bad weights file took down the whole API at startup rather than
+    degrading to the empty-detections path this package is built around.
+    """
+    global _MODEL, _MODEL_ERROR
     if _MODEL is not None:
         return _MODEL
     with _MODEL_LOCK:
@@ -48,10 +61,21 @@ def load_model(settings: Settings = SETTINGS):
         weights = settings.weights_path
         if weights is None or not Path(weights).exists():
             return None
-        from ultralytics import YOLO
+        try:
+            from ultralytics import YOLO
 
-        model = YOLO(str(weights))
-        model.to(settings.device)
+            model = YOLO(str(weights))
+            model.to(settings.device)
+        except Exception as exc:
+            # Not latched: the path is re-read next call, so replacing a bad
+            # file recovers a running process instead of needing a restart.
+            _MODEL_ERROR = (
+                "weights at " + Path(weights).name + " exist but could not be loaded ("
+                + type(exc).__name__ + "); returning empty detections. The file may be "
+                "truncated, or may not be a YOLO checkpoint."
+            )
+            return None
+        _MODEL_ERROR = None
         _MODEL = model
         return _MODEL
 
@@ -61,22 +85,84 @@ def warmup(settings: Settings = SETTINGS) -> bool:
     return load_model(settings) is not None
 
 
+#: Metadata keys this package reads as numbers. Anything here that is present
+#: but not numeric is a malformed frame, not a missing one.
+NUMERIC_META_KEYS: tuple[str, ...] = (
+    "nadir_col",
+    "range_resolution_m",
+    "altitude_m",
+    "heading_deg",
+    "layback_m",
+    "along_track_res_m",
+    "latitude",
+    "longitude",
+    "nadir_row",
+)
+
+
+def _num(meta: dict[str, Any], key: str, default: float | None = None) -> float | None:
+    """Read one metadata value as a float, or the default if it is not one.
+
+    `float()` on unvalidated input is where this package used to break its
+    central promise. The old guard tested `is not None`, which a hand-filled
+    sidecar, an unfilled form field, a CSV column or a nullable text column all
+    pass with a value like "" or "n/a" -- and then `float("")` raised
+    ValueError straight out of detect(), where HANDOFF tells Member 2 in as
+    many words that no try/except is needed.
+
+    A value that cannot be read is treated exactly like a value that is not
+    there: no geometry, no position, a warning, and the detection still
+    reported. That equivalence is the point -- there is nothing useful a caller
+    could do with the distinction at THIS level, and `malformed_meta_keys`
+    below preserves it for the warning that explains why.
+    """
+    raw = meta.get(key)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return default
+
+
+def malformed_meta_keys(meta: dict[str, Any]) -> list[str]:
+    """Keys that carry a value which is not a number.
+
+    Kept separate from `_num` so the caller can say WHICH field is unusable.
+    "incomplete sonar geometry" sends someone hunting for a missing field; a
+    frame whose heading arrived as the string "north" needs a different fix,
+    and the difference is invisible from the payload otherwise.
+    """
+    bad = []
+    for key in NUMERIC_META_KEYS:
+        raw = meta.get(key)
+        if raw is None:
+            continue
+        try:
+            float(raw)
+        except (TypeError, ValueError):
+            bad.append(key)
+    return bad
+
+
 def _geometry_from_meta(meta: dict[str, Any]) -> SonarGeometry | None:
     """Build sonar geometry from survey metadata, or None if under-specified.
 
     Missing metadata is normal and must not raise -- it just means the
-    detection is reported without a position.
+    detection is reported without a position. Neither must UNREADABLE
+    metadata; see `_num`.
     """
     required = ("nadir_col", "range_resolution_m", "altitude_m", "heading_deg")
-    if not all(meta.get(k) is not None for k in required):
+    values = {k: _num(meta, k) for k in required}
+    if any(v is None for v in values.values()):
         return None
     return SonarGeometry(
-        nadir_col=float(meta["nadir_col"]),
-        range_resolution_m=float(meta["range_resolution_m"]),
-        altitude_m=float(meta["altitude_m"]),
-        heading_deg=float(meta["heading_deg"]),
-        layback_m=float(meta.get("layback_m", 0.0)),
-        along_track_res_m=meta.get("along_track_res_m"),
+        nadir_col=values["nadir_col"],
+        range_resolution_m=values["range_resolution_m"],
+        altitude_m=values["altitude_m"],
+        heading_deg=values["heading_deg"],
+        layback_m=_num(meta, "layback_m", 0.0) or 0.0,
+        along_track_res_m=_num(meta, "along_track_res_m"),
     )
 
 
@@ -176,9 +262,15 @@ def detect(
 
     model = load_model(settings)
     if model is None:
+        # Two different facts, and the wrong one sends someone to the wrong
+        # place: "set GHOSTNET_WEIGHTS" is useless advice when the variable is
+        # already set and the file it points at is broken.
         result.warnings.append(
-            "no trained weights available; returning empty detections. "
-            "Set GHOSTNET_WEIGHTS or Settings.weights_path once a model is trained."
+            _MODEL_ERROR
+            or (
+                "no trained weights available; returning empty detections. "
+                "Set GHOSTNET_WEIGHTS or Settings.weights_path once a model is trained."
+            )
         )
         return result.to_dict()
 
@@ -199,7 +291,19 @@ def detect(
         result.warnings.append(stale)
 
     geom = _geometry_from_meta(meta)
-    have_fix = meta.get("latitude") is not None and meta.get("longitude") is not None
+    fix_lat, fix_lon = _num(meta, "latitude"), _num(meta, "longitude")
+    have_fix = fix_lat is not None and fix_lon is not None
+
+    # Named before the generic geometry warning, because it is the actionable
+    # one: a malformed field is a bug in whatever produced the metadata, while
+    # a missing one is often just how the survey was recorded.
+    malformed = malformed_meta_keys(meta)
+    if malformed:
+        result.warnings.append(
+            "metadata field(s) " + ", ".join(malformed) + " are not numeric and were "
+            "ignored; affected positions are withheld rather than guessed"
+        )
+
     if geom is None:
         result.warnings.append("incomplete sonar geometry; detections reported without coordinates")
     elif not have_fix:
@@ -260,10 +364,10 @@ def detect(
                 placed = geotag_pixel(
                     col,
                     row,
-                    float(meta["latitude"]),
-                    float(meta["longitude"]),
+                    fix_lat,
+                    fix_lon,
                     geom,
-                    nadir_row=meta.get("nadir_row"),
+                    nadir_row=_num(meta, "nadir_row"),
                 )
                 if placed is not None:
                     lat, lon = placed

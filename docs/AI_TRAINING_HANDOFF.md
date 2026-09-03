@@ -105,25 +105,36 @@ Calibration: temperature 2.0167, fitted on val. Expected calibration error
 
 ## False alarms on empty seabed
 
-**This is the artificial-vs-natural requirement, and it is the strongest result
-the project has.** gv4, on 2,930 held-out tiles carrying no annotation:
+**This is the artificial-vs-natural requirement, and the number depends
+entirely on which SCALE the threshold is on. Read the next section before
+quoting any figure here.**
 
-| Threshold | Frames flagged |
-|---|---|
-| 0.10 | 12.0% |
-| **0.20** (current setting) | **5.2%** |
-| 0.30 | 2.5% |
-| 0.50 | 0.4% |
-| 0.70 | 0.0% |
+gv5, on 2,930 held-out tiles carrying no annotation. `evaluate_background.py`
+sweeps RAW detector scores; the calibrated column is what a reviewer sees:
 
-gv2 scored 1.30% at 0.30 against gv4's 2.5%, which reads like a regression and
-is not one: gv4's test set adds 310 China-Offshore hard negatives — gully
-fields, riprap, scour patches — that gv2 was never shown. It is a harder exam,
-and comparing the raw percentages across the two is not valid.
+| raw | = calibrated | frames flagged |
+|---|---|---|
+| 0.10 | 0.308 | 7.82% |
+| 0.20 | 0.375 | 4.06% |
+| 0.25 | 0.400 | 2.94% |
+| 0.30 | 0.423 | 2.15% |
+| 0.50 | 0.500 | 0.75% |
+| 0.70 | 0.577 | 0.31% |
 
-**Say it with the caveat** (see Trap 6): *"On 2,930 held-out tiles carrying no
-annotation, 2.5% were flagged at threshold 0.30. Some come from survey lines
-AI4Shipwrecks left entirely unannotated, so this is an upper bound."*
+**None of those rows is the deployed operating point.** The review floor is
+calibrated 0.20, which is a raw score of 0.0225 -- below this whole table. At
+the floor actually shipped the rate is **16.48%**.
+
+Comparison across runs is also not valid on this table: gv2 scored 1.30% at raw
+0.30 against gv5's 2.15%, which reads like a regression and is not one. The
+test set gained 310 China-Offshore hard negatives -- gully fields, riprap,
+scour -- that gv2 was never shown. It is a harder exam.
+
+**Say it with both caveats** (Trap 6, and the scale): *"At the deployed review
+floor, 16.5% of held-out frames carrying no annotation show a reviewer at least
+one box. Some of those frames come from survey lines AI4Shipwrecks left
+entirely unannotated, so even that is an upper bound."*
+
 
 ## Data downloaded but NOT yet used
 
@@ -156,7 +167,7 @@ from artificial anomalies. Against that:
 
 | Requirement | State | What is missing |
 |---|---|---|
-| Artificial vs natural | **Strongest result** — 2.5% false alarms at 0.30 | nothing; keep the caveat |
+| Artificial vs natural | **Works** — 16.5% of empty frames flagged at the deployed floor | quote the operating point, not a raw-threshold row |
 | Confidence / noise filtering | **Done** — calibrated, ECE 0.063 | nothing |
 | Geotagging | **Done** — coordinates + error radius | real survey metadata; no `test_geo.py` |
 | Detect ghost gear | **Works** — crab pots; nets now trained too | `ghost_net` has 215 boxes, thin |
@@ -410,7 +421,9 @@ convergence — the shape of the tail is the whole answer.
 **May be said:**
 - "Detects derelict crab pots in side-scan sonar" — quote the per-class mAP50
   with its held-out box count beside it.
-- "Flags 2.5% of unannotated seabed tiles at threshold 0.30 — an upper bound."
+- "At the deployed review floor, 16.5% of unannotated seabed frames put at
+  least one box in front of a reviewer -- an upper bound." Never quote a
+  lower figure without saying which scale its threshold is on.
 - "Reports position with an error radius, or no position at all when navigation
   data is missing."
 - "Calibrated confidence: expected calibration error 0.063 after temperature
@@ -426,8 +439,10 @@ convergence — the shape of the tail is the whole answer.
   independent authority's. The claim is real; the qualifier is not optional.
 - "Detects aircraft." 39 training boxes, recall 0.000, unchanged until the KLSG
   annotation lands.
-- "2.5% false-alarm rate on verified-empty seabed." See Trap 6 — unannotated is
-  not the same as verified empty.
+- "2.5% false-alarm rate on verified-empty seabed." TWO things are wrong with
+  that sentence. Unannotated is not verified empty (Trap 6), and 2.5% is
+  measured at a RAW score of 0.30 = calibrated 0.42, roughly twice the floor
+  actually deployed.
 - "Detects debris, validated on 629 held-out boxes." 615 of those are the same
   SubPipe survey. Say "one held-out survey track" or quote the 14 independent
   boxes.

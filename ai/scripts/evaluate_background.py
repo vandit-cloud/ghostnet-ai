@@ -60,6 +60,13 @@ def main() -> int:
         print(f"weights not found: {weights}")
         return 1
 
+    # Only used to translate each raw threshold into the calibrated confidence
+    # a deployed reviewer would actually see. See scale_warning below.
+    from ghostnet.config import Settings
+    from ghostnet.decision import calibrate
+
+    settings = Settings(weights_path=str(weights), device=args.device)
+
     root = Path(args.data_root) / args.split
     images, labels = root / "images", root / "labels"
     if not images.is_dir():
@@ -99,13 +106,19 @@ def main() -> int:
     d = np.asarray(detections)
     rows = []
     print("\n\n  false alarms on empty seabed")
-    print("  threshold   frames flagged        rate    false boxes/frame")
+    print("  raw thr  (calibrated)   frames flagged        rate    false boxes/frame")
     for t in THRESHOLDS:
         flagged = int((s >= t).sum())
         boxes = int(sum(1 for _ in range(0)) or (d[(s >= t)].sum() if flagged else 0))
+        # The threshold here is a RAW detector score. The shipped review floor
+        # is applied to CALIBRATED confidence, so the two are not the same
+        # scale and a rate read off this table does not describe the deployed
+        # operating point. Record the equivalent so nobody has to know that.
         rows.append({"threshold": t, "frames_flagged": flagged,
-                     "rate": flagged / len(s), "total_boxes": int(boxes)})
-        print(f"  {t:9.2f}   {flagged:5d} / {len(s):<5d}   {flagged / len(s) * 100:8.2f}%   {boxes / len(s):8.3f}")
+                     "rate": flagged / len(s), "total_boxes": int(boxes),
+                     "calibrated_equivalent": round(calibrate(t, settings), 4)})
+        print(f"  {t:7.2f}  ({calibrate(t, settings):9.3f})   {flagged:5d} / {len(s):<5d}   "
+              f"{flagged / len(s) * 100:8.2f}%   {boxes / len(s):8.3f}")
 
     out = weights.parent.parent / "background_metrics.json"
     out.write_text(json.dumps({
@@ -117,6 +130,12 @@ def main() -> int:
                  "seabed verified to contain no object. This is how the artificial-vs-natural "
                  "requirement is scored: there is no natural class, because nobody draws boxes "
                  "around rocks."),
+        "scale_warning": ("`threshold` is a RAW detector score. The shipped review floor is "
+                          "applied to CALIBRATED confidence, and the two differ sharply -- the "
+                          "0.20 floor corresponds to a raw score near 0.02. Read the rate at the "
+                          "operating point from ai/scripts/derive_review_floor.py, which sweeps "
+                          "calibrated confidence; quoting a row from here as the deployed "
+                          "false-alarm rate overstates the model."),
     }, indent=2), encoding="utf-8")
     print(f"\nwrote {show(out)}")
     print("\n  Quote this WITH its threshold. The rate at a threshold nobody would")

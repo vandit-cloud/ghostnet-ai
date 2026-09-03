@@ -25,7 +25,7 @@ sys.path.insert(0, str(AI_ROOT))
 
 from ghostnet.geo import (  # noqa: E402
     SonarGeometry, geotag_pixel, ground_range_from_slant,
-    pixel_to_ground_offset, position_error_m,
+    pixel_to_ground_offset, position_error_m, water_column_width_px,
 )
 
 LAT, LON = 18.9220, 72.8347          # off Mumbai, as in the example metadata
@@ -163,3 +163,52 @@ def test_heading_error_term_is_radians():
                              ground_range_m=100.0) ** 2, 0.0)
     )
     assert only_heading == pytest.approx(100.0 * math.radians(2.0), rel=0.05)
+
+
+# --- the unusable band, and the two ways along-track goes missing ----------
+
+def test_water_column_half_width_is_altitude_over_resolution():
+    """The size of the dead band is the one number that decides which columns
+    can be positioned at all, and nothing else tested it."""
+    assert water_column_width_px(geom()) == pytest.approx(60.0)
+    assert water_column_width_px(geom(altitude_m=6.0)) == pytest.approx(120.0)
+
+
+def test_a_zero_resolution_frame_reports_no_water_column_rather_than_dividing_by_zero():
+    """Metadata arrives from a sidecar someone fills in by hand, so a zero is a
+    realistic input. A ZeroDivisionError here would escape detect()."""
+    assert water_column_width_px(geom(range_resolution_m=0.0)) == 0.0
+
+
+def test_ground_range_is_always_shorter_than_the_slant_it_came_from():
+    """The correction can only ever remove distance. A sign slip that added it
+    would still return a plausible number."""
+    for slant in (3.5, 10.0, 250.0):
+        assert ground_range_from_slant(slant, 3.0) < slant
+
+
+def test_along_track_is_skipped_unless_both_the_scale_and_the_reference_exist():
+    """Two independent ways to not know the row offset, and both must fall back
+    to the frame-level position rather than assuming zero and quietly placing
+    every detection in the tile at one latitude."""
+    col = geom().nadir_col + 1000
+    both = geotag_pixel(col, 400, LAT, LON, geom(along_track_res_m=0.05), nadir_row=0)
+    no_reference = geotag_pixel(col, 400, LAT, LON, geom(along_track_res_m=0.05))
+    no_scale = geotag_pixel(col, 400, LAT, LON, geom(along_track_res_m=None), nadir_row=0)
+
+    assert no_reference[0] == pytest.approx(no_scale[0])
+    assert no_reference[1] == pytest.approx(no_scale[1])
+    assert both[0] != pytest.approx(no_reference[0])
+
+
+def test_altitude_uncertainty_dominates_close_in():
+    """The mirror of the heading lever, and the reason the radius is computed
+    per detection: near nadir the slant-to-ground step is almost vertical, so a
+    small altitude error swings the ground range a long way. The term has to
+    grow as range shrinks."""
+    g = geom()
+    close = position_error_m(g, gps_error_m=0.0, heading_error_deg=0.0,
+                             altitude_error_m=0.5, ground_range_m=0.5)
+    far = position_error_m(g, gps_error_m=0.0, heading_error_deg=0.0,
+                           altitude_error_m=0.5, ground_range_m=50.0)
+    assert close > far
