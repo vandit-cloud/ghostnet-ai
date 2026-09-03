@@ -88,8 +88,22 @@ class Settings:
 
     def __post_init__(self) -> None:
         if self.weights_path is None:
+            # GHOSTNET_WEIGHTS wins, then the promoted model, then nothing.
+            #
+            # The default used to be nothing at all, which meant detect()
+            # returned empty detections plus a warning on any machine where
+            # someone had not set an environment variable -- including Member
+            # 2's, where the whole point is that the package works on import.
+            # A trained run is promoted by copying it to models/trained/ and
+            # refitting the calibrator against that path, so this default is
+            # the model the project actually ships rather than whichever
+            # experiment happened to be newest.
             env = os.environ.get("GHOSTNET_WEIGHTS")
-            self.weights_path = Path(env).expanduser().resolve() if env else None
+            if env:
+                self.weights_path = Path(env).expanduser().resolve()
+            else:
+                promoted = AI_ROOT / "models" / "trained" / "ghostnet.pt"
+                self.weights_path = promoted if promoted.exists() else None
         else:
             self.weights_path = Path(self.weights_path)
         if self.device == "cpu":

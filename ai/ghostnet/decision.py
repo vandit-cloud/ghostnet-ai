@@ -14,6 +14,7 @@ Two separable concerns live here on purpose:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -49,6 +50,15 @@ def load_calibration(settings: Settings = SETTINGS) -> float:
     return _TEMPERATURE
 
 
+def _digest(path: Path) -> str:
+    """Hash of a weights file, read in chunks -- these run to tens of MB."""
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def calibration_mismatch(settings: Settings = SETTINGS) -> str | None:
     """Warn when the calibrator was fitted for a DIFFERENT set of weights.
 
@@ -66,6 +76,20 @@ def calibration_mismatch(settings: Settings = SETTINGS) -> str | None:
         same = fitted.resolve() == active.resolve()
     except OSError:
         same = str(fitted) == str(active)
+
+    # Paths first because it is free, then CONTENT, because a model is its
+    # bytes and not its location. Promoting a run copies best.pt to
+    # models/trained/ghostnet.pt, and Member 2 will deploy it somewhere else
+    # again -- identical weights under three paths. Comparing paths alone
+    # would fire a "confidences may be miscalibrated" warning on every single
+    # payload from a correctly calibrated model, and a warning that cries wolf
+    # on the happy path is one nobody reads on the day it matters.
+    if not same and fitted.exists() and active.exists():
+        try:
+            if fitted.stat().st_size == active.stat().st_size:
+                same = _digest(fitted) == _digest(active)
+        except OSError:
+            pass
     if same:
         return None
     return (
