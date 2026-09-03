@@ -365,3 +365,33 @@ Recall against false alarms on **calibrated** confidence. Note the scale trap:
 `evaluate_background.py` sweeps RAW detector scores, and the two are far apart
 (the 0.20 floor is a raw score of 0.0225). Never read a false-alarm rate off
 the raw table and quote it as the deployed one.
+
+## Converters that already ran
+
+One-shot scripts, kept because they document how each source became training
+data and because a rebuild needs them. They are not dead code, they are just
+finished:
+
+| script | produced |
+|---|---|
+| `voc_to_yolo.py` | `interim/SCTD` |
+| `masks_to_yolo.py` | `interim/AI4SHIPWRECKS` |
+| `subpipe_to_yolo.py` | `interim/SUBPIPE` — 2,049 tiles, the whole `debris` class |
+| `import_yolo.py` | `interim/SONARDETECT`, `interim/GHOSTVISION`, `interim/*-HAND` |
+| `import_classification.py` | `interim/MARINE-PULSE`, `interim/CHINA-OFFSHORE` |
+| `stage_annotations.py` | `raw/research/*-HAND` from hand-drawn labels |
+
+## Reclaiming disk
+
+`ai/experiments/` grows by ~45 MB a run, almost all of it weights. Only
+`results.csv`, `test_metrics.json`, `background_metrics.json` and
+`provenance.json` are committed; the rest is rebuildable.
+
+```powershell
+Remove-Item ai\experiments\<old-run>\weights -Recurse   # keeps the evidence
+```
+
+Source archives can also go once extracted and verified — the China zip is
+922 MB and the MGDS tar 161 MB, both sitting beside their extracted copies.
+Check `data/provenance/` first: it records where each came from, so a delete is
+reversible by re-download rather than by luck.

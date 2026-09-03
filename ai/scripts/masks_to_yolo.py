@@ -43,7 +43,6 @@ import argparse
 import json
 import random
 import sys
-from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
