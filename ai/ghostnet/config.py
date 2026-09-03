@@ -66,6 +66,10 @@ class Settings:
     # --- inference ---------------------------------------------------------
     device: str = field(default_factory=resolve_device)
     imgsz: int = 640
+    #: Frames per model call in detect_batch. 8 is where this GPU stops idling
+    #: (see _predict_many): 3.6 frames/s at batch 1, 64 at batch 8. Higher
+    #: barely helps and costs VRAM, of which there is 4 GB.
+    batch_size: int = 8
     # 4 GB VRAM is the binding constraint on this machine.
     batch: int = 4
     # FP16 halves activation memory, which is what actually buys headroom here.

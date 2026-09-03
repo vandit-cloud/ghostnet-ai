@@ -93,9 +93,14 @@ def frame_dropout_note(gray: np.ndarray) -> str | None:
             f"({where}); detections overlapping them are flagged individually")
 
 
-def dropout_overlap(gray: np.ndarray, bbox: list[int]) -> float:
-    """Fraction of a detection's rows that are dropouts. 0.0 when clean."""
-    mask = invalid_row_mask(gray)
+def dropout_overlap(gray: np.ndarray, bbox: list[int], mask: np.ndarray | None = None) -> float:
+    """Fraction of a detection's rows that are dropouts. 0.0 when clean.
+
+    `mask` is accepted because it is a property of the FRAME, not of the box.
+    Recomputing it per detection cost 2.3 ms a time, twice per detection, and
+    a frame with a dozen boxes paid it twenty-four times over.
+    """
+    mask = invalid_row_mask(gray) if mask is None else mask
     if mask.size == 0:
         return 0.0
     _x, y, _w, h = (int(v) for v in bbox)
@@ -105,9 +110,9 @@ def dropout_overlap(gray: np.ndarray, bbox: list[int]) -> float:
     return float(mask[y0:y1].mean())
 
 
-def dropout_context(gray: np.ndarray, bbox: list[int]) -> str:
+def dropout_context(gray: np.ndarray, bbox: list[int], mask: np.ndarray | None = None) -> str:
     """One sentence about the data this detection is standing on."""
-    frac = dropout_overlap(gray, bbox)
+    frac = dropout_overlap(gray, bbox, mask)
     if frac <= 0.0:
         return "clear: every ping under this detection carries a return"
     if frac < OVERLAP_ESCALATE:
