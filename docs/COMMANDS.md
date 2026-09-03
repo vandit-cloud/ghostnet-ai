@@ -310,3 +310,58 @@ Changing image size changes the results; changing batch size mostly does not.
 
 **Pushing to GitHub:** ask first. Agreed protocol, because the repo is shared
 with Member 2 and a push is not undoable the way a local commit is.
+
+---
+
+## Annotating a class by hand
+
+```powershell
+python ai\scripts\stage_annotations.py --list          # how far each class has got
+labelImg "<repo>\ai\data\annotate\<class>\images" `
+         "<repo>\ai\data\annotate\<class>\predefined_classes.txt" `
+         "<repo>\ai\data\annotate\<class>\labels"
+python ai\scripts\check_annotations.py --dir ai\data\annotate\<class>
+```
+
+**Press `Y` in labelImg until the bottom-left button reads YOLO.** PascalVOC
+writes `.xml` the importer cannot read, and worse: labelImg reloads an existing
+`.xml` in preference to a `.txt` and silently flips the format back every time
+you open that image. If a file refuses to save as YOLO, delete its `.xml`.
+
+The checker's thresholds are calibrated for nets in wide survey tiles. For
+tightly cropped chips such as the KLSG aircraft, relax them or almost
+everything false-alarms:
+
+```powershell
+python ai\scripts\check_annotations.py --dir ai\data\annotate\plane --max-cover 0.95 --max-union 0.95
+```
+
+Then stage, import and rebuild — **never while a trainer is running**, because
+`build_dataset.py` rewrites `ai/data/processed/` in place and the trainer is
+reading images out of it:
+
+```powershell
+python ai\scripts\stage_annotations.py --class <class>
+python ai\scripts\import_yolo.py --dataset <CLASS>-HAND
+python ai\scripts\build_dataset.py
+```
+
+## Running a real survey file
+
+```powershell
+python ai\scripts\xtf_to_frames.py --xtf <survey>.xtf --out E:\xtf-run --detect
+```
+
+Frames, a metadata sidecar per frame, geotagged detections and `report.csv`.
+This is the problem statement end to end in one command.
+
+## Choosing the review floor
+
+```powershell
+python ai\scripts\derive_review_floor.py
+```
+
+Recall against false alarms on **calibrated** confidence. Note the scale trap:
+`evaluate_background.py` sweeps RAW detector scores, and the two are far apart
+(the 0.20 floor is a raw score of 0.0225). Never read a false-alarm rate off
+the raw table and quote it as the deployed one.

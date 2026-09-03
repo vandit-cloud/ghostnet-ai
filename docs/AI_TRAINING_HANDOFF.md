@@ -56,13 +56,26 @@ Eight sources merged into one dataset, 18,310 images:
 
 **This table explains every strength and weakness the model has.**
 
-| Class | Train boxes | Test boxes | Verdict |
-|---|---|---|---|
-| `ghost_pot` | **7,434** | 567 | Works. Enough data. |
-| `debris` | **1,556** | **629** | Was 122/14 and unmeasurable. Now both trained and testable. |
-| `wreck` | 1,373 | 836 | Weak. Some data, noisy labels. |
-| `ghost_net` | **215** | 36 | New in gv5. Thin — always quote the count beside the metric. |
-| `plane` | **39** | 9 | Starved. 62 KLSG images are being annotated to fix this. |
+| Class | Train | Test | test mAP50 | Verdict |
+|---|---|---|---|---|
+| `debris` | 1,556 | 629 | **0.870** | Best by far — and see the caveat below, it is one survey. |
+| `ghost_pot` | **7,434** | 567 | 0.314 | Works. The class with enough data. |
+| `plane` | 39 | 9 | 0.293 | Recall 0.333, up from 0.000. Nine test boxes: do not trust the number. |
+| `wreck` | 1,373 | 836 | 0.279 | Weak, but tripled from gv2's 0.095. |
+| `ghost_net` | 215 | 36 | **0.009** | **Does not work.** Recall 0.000. |
+
+`ghost_net` needs saying plainly, because it is the headline object and the
+table above is the only place the truth is legible. Precision reads 1.000 and
+means nothing: the model made almost no net predictions at all. 215 training
+boxes over 51 images is not enough for the hardest target in the set —
+`ghost_pot` needed 7,434 to reach 0.314, and a net is thin, faint and diffuse
+where a pot is compact.
+
+The annotation is still worth having. It is the first annotated ghost-net set
+from public side-scan data, with a documented convention, and it is what makes
+a future run possible. What it does not license is the claim. Say: *"we
+produced the first annotated ghost-net dataset from public side-scan sonar; at
+215 training boxes the detector does not yet learn the class."*
 
 The pattern is exact: 7,434 boxes gives a working class; 39 boxes gives a class
 that does nothing. There is no mystery here, only a data shortage.
@@ -94,8 +107,6 @@ precision 0.580    recall 0.361    mAP50 0.352    mAP50-95 0.200
 Trajectory on the same frozen test split — this is the number to show if anyone
 asks whether the work is going anywhere:
 
-| run | mAP50 | precision | recall |
-|---|---|---|---|
 | run | mAP50 | precision | recall |
 |---|---|---|---|
 | gv | 0.160 | 0.140 | 0.285 |
