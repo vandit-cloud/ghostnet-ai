@@ -123,6 +123,7 @@ def main() -> int:
             print(f"  no --weights given; using the newest run: {show(runs[0])}")
 
     from ghostnet import SETTINGS, detect, warmup  # noqa: E402  (after the env var is set)
+    from ghostnet.report import write_csv  # noqa: E402
 
     floor = args.conf if args.conf is not None else SETTINGS.review_floor_artificial
     out_dir = Path(args.out).expanduser() if args.out else AI_ROOT / "experiments" / "tryout"
@@ -139,12 +140,14 @@ def main() -> int:
         print("    pass --weights, or set GHOSTNET_WEIGHTS.\n")
 
     summary = []
+    payloads = []
     for path in images:
         meta = {**survey_meta, "survey_id": "TRYOUT", "frame_id": path.stem}
         payload = detect(str(path), meta)
         dets = payload.get("detections") or []
         reported = [d for d in dets if d["calibrated_confidence"] >= floor]
 
+        payloads.append(payload)
         (out_dir / f"{path.stem}.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
         if not args.json_only:
@@ -169,6 +172,14 @@ def main() -> int:
         print("\n  warnings raised (these explain anything odd above):")
         for w in sorted(warned):
             print(f"    - {w}")
+
+    # One CSV across the whole run, not one per frame. The problem statement
+    # asks for an anomaly report, and a report is a survey, not a picture.
+    csv_path = write_csv(payloads, out_dir / "report.csv")
+    n_rows = sum(len(p.get("detections") or []) or 1 for p in payloads)
+    print(f"\n  CSV report: {show(csv_path)}  ({n_rows} rows over {len(payloads)} frames)")
+    print("  Frames with nothing found appear as record_type=frame_clear, so the file")
+    print("  distinguishes 'looked and it was clear' from 'never processed'.")
 
     print(f"\n  annotated images and payloads: {show(out_dir)}")
     print("  Amber = reported to a reviewer. Blue = found but held below the floor.")

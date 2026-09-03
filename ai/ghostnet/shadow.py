@@ -125,14 +125,23 @@ def shadow_context(
     if near is None:
         return "not_evaluated: no comparable near flank inside this frame"
 
+    # Two numbers, deliberately. `contrast` is normalised by the OBJECT's own
+    # return -- that is the statistic the thresholds were measured against, and
+    # it is what cancels per-source contrast normalisation. But it is not a
+    # quantity to show a human: a dim object beside a bright near flank makes
+    # it exceed 1.0, and "230% darker" is not a sentence anyone should read in
+    # a report. So the prose quotes the plain drop relative to the near flank,
+    # which is bounded and means what it says.
     contrast = (near - away) / obj
+    drop = (near - away) / near if near > 0 else 0.0
+    drop = max(0.0, min(1.0, drop))
     where = "starboard" if side >= 0 else "port"
 
     if contrast >= CONFIRM_CONTRAST:
-        return (f"confirmed: the {where} flank is {contrast:.0%} darker than the near flank, "
+        return (f"confirmed: the {where} flank is {drop:.0%} darker than the near flank, "
                 "consistent with an object standing proud of the seabed")
     if contrast >= WEAK_CONTRAST:
-        return (f"weak: the {where} flank is {contrast:.0%} darker than the near flank, "
+        return (f"weak: the {where} flank is {drop:.0%} darker than the near flank, "
                 "within the range ordinary seabed variation also produces")
     if cls in FLAT_CLASSES:
         return ("absent, as expected: a flat-lying target casts no shadow, so this is "

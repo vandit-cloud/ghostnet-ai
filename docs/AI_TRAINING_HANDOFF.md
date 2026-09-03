@@ -174,7 +174,7 @@ code**, not accuracy problems, and none of them need a GPU:
 | 5 | Acoustic shadow | **DONE** — `ghostnet/shadow.py`. Paired away-flank vs near-flank test, direction taken from nadir. Reports evidence for a reviewer; never suppresses a detection. |
 | 6 | Sonar/vehicle dropouts | missing. Flagging detections that fall in dropout rows needs no retraining. |
 | 8 | Sonar metadata parsing | partial — a hand-written JSON sidecar. No XTF/JSF reader, and no XTF file to test one against. |
-| 12 | JSON / **CSV** reports | JSON done, CSV missing. Explicitly named in the PS. |
+| 12 | JSON / **CSV** reports | **DONE** — `ghostnet/report.py`, `write_csv(frames, path)`. `try_model.py` writes `report.csv` for every run. |
 
 Requirements 3 and 6 are the remaining challenges the problem statement names
 as why the task is hard. A judge will look for them by name.
@@ -442,8 +442,10 @@ type, expect a large drop. Say so before being asked; it is worth marks.
   None need a GPU; four of the five can be done while a model trains.
 - **No `test_geo.py`.** Geotagging is one of four named deliverables and has no
   automated test coverage.
-- `SETTINGS.model_version` still reads `"v0-stub"` in payload provenance rather
-  than the actual run name.
+- ~~`SETTINGS.model_version` reads `"v0-stub"`~~ **fixed.** It now names the run:
+  from `models/trained/ghostnet.json` for the promoted model, else from the
+  experiment directory. `"v0-stub"` survives only for the genuinely
+  weightless case, which is a real state worth labelling.
 - `review_floor_artificial` is 0.20 and has never been chosen against a measured
   recall-vs-threshold curve. It happens to be reasonable; it was not derived.
   `testbench.html` now has the slider that would let it be derived.

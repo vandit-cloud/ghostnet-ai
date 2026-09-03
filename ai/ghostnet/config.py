@@ -81,6 +81,11 @@ class Settings:
 
     # --- versioning (§34: every inference identifies its provenance) -------
     model_id: str = "ghostnet-yolo11s"
+    #: Filled in from the weights actually loaded -- see __post_init__. The
+    #: literal below is what a payload reports when there are no weights at
+    #: all, which is a real state (Member 2 can build the whole app before a
+    #: model exists) and should be visibly labelled as such rather than
+    #: claiming a version.
     model_version: str = "v0-stub"
     dataset_version: str = "none"
     preprocessing_version: str = "v0"
@@ -106,6 +111,37 @@ class Settings:
                 self.weights_path = promoted if promoted.exists() else None
         else:
             self.weights_path = Path(self.weights_path)
+        # Name the model in every payload it produces.
+        #
+        # This read "v0-stub" on every detection the project has ever emitted,
+        # including the ones written into report.csv and handed to Member 2 --
+        # so a stored result could not be traced back to the run that made it,
+        # which is the entire purpose of a provenance block. The run name is
+        # recoverable from the weights path (experiments/<run>/weights/best.pt),
+        # and a promoted file falls back to its own stem.
+        if self.model_version == "v0-stub" and self.weights_path is not None:
+            w = Path(self.weights_path)
+            sidecar = w.with_suffix(".json")
+            if sidecar.exists():
+                # A promoted file is a COPY, so its own name says nothing about
+                # which run made it -- ghostnet.pt could be any of them. The
+                # sidecar written at promotion time is the only thing that
+                # knows, and it carries the source path and a hash so the claim
+                # is checkable rather than asserted.
+                try:
+                    import json as _json
+
+                    self.model_version = str(
+                        _json.loads(sidecar.read_text(encoding="utf-8")).get("model_version")
+                        or w.stem
+                    )
+                except Exception:
+                    self.model_version = w.stem
+            elif w.parent.name == "weights" and w.parent.parent.name:
+                self.model_version = w.parent.parent.name
+            else:
+                self.model_version = w.stem
+
         if self.device == "cpu":
             self.half = False  # fp16 on CPU is slower, not faster
 
