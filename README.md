@@ -33,8 +33,13 @@ halves.
 ## Start here
 
 - **Downloading data?** [`docs/DOWNLOAD_GUIDE.md`](docs/DOWNLOAD_GUIDE.md) — step-by-step, with links.
-- **Member 2:** [`docs/HANDOFF.md`](docs/HANDOFF.md). It has everything needed to
-  build the full application before a model exists.
+- **Member 2:** [`docs/HANDOFF.md`](docs/HANDOFF.md) to build the app before a
+  model exists, then [`docs/INTEGRATION_PLAN.md`](docs/INTEGRATION_PLAN.md) to
+  wire the trained one in. **Use `detect_batch`, not `detect` in a loop** -- it
+  is ten times faster, for a reason explained there.
+- **What the model can and cannot do:**
+  [`docs/MODEL_CAPABILITY_EVIDENCE.md`](docs/MODEL_CAPABILITY_EVIDENCE.md),
+  with the command to reproduce every number.
 - **Member 1:** [`docs/SIH26057_GhostNet_AI_BASIC_BUILD_PLAN.md`](docs/SIH26057_GhostNet_AI_BASIC_BUILD_PLAN.md)
   is the build target; the two master plans are the reference behind it.
 
