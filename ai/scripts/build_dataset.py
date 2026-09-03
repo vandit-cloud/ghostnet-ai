@@ -100,6 +100,20 @@ SPLIT_POLICY = {
     # untouched by this because synthesis never sees the test split: its
     # backgrounds come from train only.
     "GHOSTNET-SYNTH": {"mode": "fixed", "map": {"train": "train"}},
+    # Hand-drawn KLSG aircraft, train-only for the same reason SubPipe is:
+    # gv6 exists to answer whether synthetic nets helped ghost_net, and that
+    # question needs the test split gv5 was scored on to stay untouched.
+    #
+    # Letting these split randomly took plane's test boxes from 9 to 19, which
+    # is better measurement in isolation -- but it also reshuffled the random
+    # draw for every other random-mode source, moving ghost_net's test boxes
+    # from 36 to 38 and silently ending the comparison the run is for. Adding
+    # data to a random pool perturbs every other member of it.
+    #
+    # plane stays hard to measure at 9 test boxes. That is a real cost, taken
+    # deliberately, and it is recoverable later by giving these their own
+    # policy once the ghost_net question is settled.
+    "PLANE-HAND": {"mode": "fixed", "map": {"train": "train"}},
 }
 DEFAULT_POLICY = {"mode": "random"}
 

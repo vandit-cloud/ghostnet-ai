@@ -49,10 +49,17 @@ A raw detector score is a ranking number, not a probability, and it is
 systematically overconfident. `raw_score` is in the payload for debugging only.
 Threshold on `calibrated_confidence`.
 
-**`uncertainty` — `"low"` is a real claim, so treat it as one.**
+**`uncertainty` — `"low"` is a real claim, and today it never happens.**
 Until the model is calibrated on a validation set, the pipeline **refuses to emit
 `"low"`** and caps at `"medium"` no matter how high the score. If you see `"low"`,
-a temperature was genuinely fitted. Colour-code accordingly.
+a temperature was genuinely fitted.
+
+But do not design a UI state around it. Measured on 259 real detections from the
+shipped model, the **highest** calibrated confidence produced was **0.728**, and
+the `"low"` band starts at 0.75 — so `"low"` is currently unreachable, not merely
+rare. Build the `"low"` branch so it renders correctly if it ever appears, and
+expect `"medium"` and `"high"` to be the only two states you actually see.
+Section 3b explains why, and it is the most misused thing in this contract.
 
 **`latitude` / `longitude` can be `null`, and that is legal.**
 Missing navigation metadata, or a detection inside the water column, means no
@@ -73,6 +80,66 @@ when it is being careful.
 
 ---
 
+## 3b. There are two score scales. Never set a threshold without saying which.
+
+**This has now caused three separate defects, so it gets its own section.**
+
+The detector emits a **raw score**. It is systematically overconfident, so a
+fitted temperature squashes it toward 0.5 to produce
+`calibrated_confidence`. The squash is severe, and it works *against* you at the
+top of the range: to reach a calibrated 0.85, the detector must first produce a
+raw 0.99.
+
+| you want calibrated | detector must produce raw |
+|---|---|
+| 0.85 | 0.9912 |
+| 0.80 | 0.9775 |
+| 0.75 | 0.9520 |
+| 0.65 | 0.8436 |
+| 0.50 | 0.5000 |
+
+0.50 is the fixed point: below it the squash raises scores, above it lowers them.
+
+### What the shipped model actually produces
+
+Measured over 500 random held-out tiles, 259 detections, at the deployed
+detector floor:
+
+| | calibrated confidence |
+|---|---|
+| 5th percentile | 0.318 |
+| median | 0.422 |
+| 75th percentile | 0.562 |
+| 90th percentile | 0.664 |
+| 99th percentile | 0.700 |
+| **maximum** | **0.728** |
+
+32.6% of tiles carried at least one detection. Band split: `low` **0.0%**,
+`medium` 40.2%, `high` 59.8%.
+
+**So the whole useful range is roughly 0.30 to 0.73.** A threshold at 0.8 or 0.85
+selects nothing at all — it is not strict, it is dead.
+
+### What to do instead
+
+**Key your logic off `uncertainty`, not off numbers.** It is already computed
+from band edges fitted to this distribution, it is a closed three-value
+vocabulary, and it survives a retrain — which a hardcoded 0.85 does not. If you
+have written priority tiers, severity colours, or alert rules against numeric
+confidence, they are almost certainly selecting nothing. Check them against the
+table above.
+
+If you genuinely need a numeric threshold, take it from the table, and write the
+scale name next to it in the code. Every one of the three defects this section
+exists to prevent was a number chosen on one scale by someone reasoning about
+the other.
+
+**These figures are properties of one trained model.** They move on every
+retrain, so re-measure rather than trusting them after the model changes, and
+never carry a threshold across a model change without re-deriving it.
+
+---
+
 ## 4. `class`: four values, and `natural` is not noise
 
 ```
@@ -80,12 +147,29 @@ ghost_net | debris | natural | unknown
 ```
 
 `natural` means the model actively decided "this is seabed topology, not a
-man-made object." That is the evidence the artificial-vs-natural separation
-works, which is one of the problem statement's own requirements. It is
-**reported, not suppressed**.
+man-made object." It stays in the vocabulary because removing a value would be a
+breaking change.
 
-Suggested handling: filter `natural` out of the default map view, but keep it
-available behind a toggle and count it in the stats. Do not discard it at ingest.
+**But the shipped model never emits it, and no future model on this plan will.**
+`natural` is not a training class. Every natural example the project has is a
+hard negative — a tile with no object on it — which YOLO expresses as an empty
+label file, not a class. A `natural` class would carry zero instances. Nobody is
+going to hand-draw boxes around rocks, so this stays out for good. The reasoning
+is written out at length in `ai/ghostnet/taxonomy.py`.
+
+**So do not build a UI filter, tab, or legend entry for `natural`.** It can only
+ever show an empty list. In practice you will see three values: `ghost_net`,
+`debris`, `unknown`.
+
+The artificial-vs-natural separation is still measured, and measured more
+honestly than a class label would be: it is the **false-alarm rate on held-out
+tiles carrying no annotation** — 7.8% at the deployed operating point. That is
+the number to put on screen when you want to show the separation working. If you
+want a "natural" figure in the dashboard, derive it from that, not from a class
+count that will always be zero.
+
+Note `review_status: rejected_natural` is a different thing and is correct: that
+is a *human* deciding a detection was seabed after all. Keep it.
 
 `unknown` is an anomaly the model could not name. It is **actionable** — show it.
 
