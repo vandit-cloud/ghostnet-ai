@@ -62,7 +62,7 @@ Eight sources merged into one dataset, 18,310 images:
 | `ghost_pot` | **7,434** | 567 | 0.314 | Works. The class with enough data. |
 | `plane` | 39 | 9 | 0.293 | Recall 0.333, up from 0.000. Nine test boxes: do not trust the number. |
 | `wreck` | 1,373 | 836 | 0.279 | Weak, but tripled from gv2's 0.095. |
-| `ghost_net` | 215 | 36 | **0.009** | **Does not work.** Recall 0.000. |
+| `ghost_net` | 215 -> **2,246** | 36 | **0.009** | Did not work at 215. Synthetic boxes added for gv6; the 36 test boxes are unchanged and still real. |
 
 `ghost_net` needs saying plainly, because it is the headline object and the
 table above is the only place the truth is legible. Precision reads 1.000 and
@@ -232,6 +232,38 @@ code**, not accuracy problems, and none of them need a GPU:
 Requirement 3 (speckle) is the last of the named challenges still open, and it
 is the one that needs a training run rather than an afternoon: §12 of the build
 plan says any filter must be validated against the model, not assumed.
+
+### Synthetic ghost nets, and the one line that keeps them honest
+
+`ghost_net` scored mAP50 0.009 with recall 0.000 at 215 training boxes, and
+there is no more real net data to collect -- China-Offshore's 73 chips are the
+only public side-scan nets anyone has found. So `synth_ghost_net.py` composites
+those real net returns onto real train-split seabed: 1,364 frames, 2,031 boxes,
+taking training from 215 to **2,246**.
+
+This is not fabricated ground truth. Every net pixel is a real net pixel; only
+the arrangement is synthetic, and the position is known exactly because we
+chose it rather than guessed it.
+
+**Compositing is multiplicative, not a paste.** A rectangle pasted onto a
+background leaves a brightness discontinuity, and a detector will learn the
+SEAM -- scoring beautifully on synthetic data and finding nothing real. A net
+attenuates a return rather than replacing it, so a morphological closing
+estimates the seabed under the net and only the ratio is transferred. Where
+there is no net the ratio is 1.0 and the background passes through untouched.
+
+**Synthetic frames are pinned to TRAIN in SPLIT_POLICY, and this is the line
+that matters.** They look exactly like test data and would score well on
+themselves. Verified after the rebuild:
+
+    train  1,364 synthetic frames
+    val        0
+    test       0
+
+The test split is byte-identical to the one gv5 was scored on -- same 4,346
+frames, same 36 real ghost_net boxes, same counts for every other class. gv6 is
+therefore a clean A/B against gv5, and the ghost_net number it produces is
+measured entirely on real nets.
 
 ### What the speckle work found -- and the metric that lied
 

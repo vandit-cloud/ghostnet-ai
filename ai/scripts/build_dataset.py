@@ -90,6 +90,16 @@ SPLIT_POLICY = {
     # than an incomparable meaningful one, and the wreck/plane/ghost_pot
     # columns are unaffected.
     "SUBPIPE": {"mode": "temporal", "cuts": [(0.70, "train"), (1.00, "test")]},
+    # Synthetic ghost nets go ENTIRELY to train, and this is not a tuning
+    # choice -- it is the line that keeps the result honest. The frames are
+    # real net returns composited onto real seabed, so they look exactly like
+    # test data and would score well on themselves. A ghost_net number
+    # measured on generated nets would be self-congratulation.
+    #
+    # The 36 real held-out boxes stay the only thing that counts, and they are
+    # untouched by this because synthesis never sees the test split: its
+    # backgrounds come from train only.
+    "GHOSTNET-SYNTH": {"mode": "fixed", "map": {"train": "train"}},
 }
 DEFAULT_POLICY = {"mode": "random"}
 
