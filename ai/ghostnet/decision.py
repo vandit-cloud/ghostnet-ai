@@ -31,10 +31,29 @@ _CALIBRATION_LOADED = False
 
 _CALIBRATION_WEIGHTS: str | None = None
 
+#: Set when a calibrator file EXISTS but could not be read. Distinct from the
+#: file being absent, which is the legitimate uncalibrated state.
+_CALIBRATION_ERROR: str | None = None
+
 
 def load_calibration(settings: Settings = SETTINGS) -> float:
-    """Read the fitted temperature from models/calibrator/temperature.json."""
-    global _TEMPERATURE, _CALIBRATION_LOADED, _CALIBRATION_WEIGHTS
+    """Read the fitted temperature from models/calibrator/temperature.json.
+
+    A missing file and an unreadable one are NOT the same thing, and the
+    difference used to be invisible. Both fell back to T == 1.0, which
+    `is_calibrated()` reads as "never fitted" -- so a truncated or half-written
+    temperature.json silently downgraded every score to raw and capped every
+    detection at "medium" uncertainty, with nothing anywhere saying why. The
+    symptom (no 'low' uncertainty ever appears) looks exactly like a model that
+    has simply not been calibrated yet.
+
+    So a parse failure now records itself for `calibration_mismatch()` to
+    surface, and deliberately does NOT latch `_CALIBRATION_LOADED`: re-reading
+    a small JSON file on each call costs nothing measurable, and it means
+    fixing the file recovers the process instead of requiring a restart of
+    Member 2's API.
+    """
+    global _TEMPERATURE, _CALIBRATION_LOADED, _CALIBRATION_WEIGHTS, _CALIBRATION_ERROR
     if _CALIBRATION_LOADED:
         return _TEMPERATURE
     path = Path(settings.models_dir) / "calibrator" / "temperature.json"
@@ -43,9 +62,18 @@ def load_calibration(settings: Settings = SETTINGS) -> float:
             blob = json.loads(path.read_text())
             _TEMPERATURE = float(blob["temperature"])
             _CALIBRATION_WEIGHTS = blob.get("weights")
-        except Exception:
+            _CALIBRATION_ERROR = None
+        except Exception as exc:
             _TEMPERATURE = 1.0
             _CALIBRATION_WEIGHTS = None
+            _CALIBRATION_ERROR = (
+                "calibrator at " + path.name + " exists but could not be read ("
+                + type(exc).__name__ + "); scores are RAW and uncertainty is capped "
+                "at 'medium'. Re-run ai/scripts/fit_calibration.py."
+            )
+            return _TEMPERATURE  # not latched -- a repaired file is picked up
+    else:
+        _CALIBRATION_ERROR = None
     _CALIBRATION_LOADED = True
     return _TEMPERATURE
 
@@ -69,6 +97,11 @@ def calibration_mismatch(settings: Settings = SETTINGS) -> str | None:
     lives here and the caller surfaces it as a warning.
     """
     load_calibration(settings)
+    # An unreadable calibrator outranks a mismatched one: there is no fitted
+    # temperature to compare against, and the caller needs to hear the louder
+    # of the two facts.
+    if _CALIBRATION_ERROR:
+        return _CALIBRATION_ERROR
     if _CALIBRATION_WEIGHTS is None or settings.weights_path is None:
         return None
     fitted, active = Path(_CALIBRATION_WEIGHTS), Path(settings.weights_path)

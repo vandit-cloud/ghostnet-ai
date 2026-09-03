@@ -458,8 +458,11 @@ type, expect a large drop. Say so before being asked; it is worth marks.
 - **Five PS requirements are unimplemented code** — shadow context, dropouts,
   speckle, XTF parsing, CSV export. See "The gap nobody has started" in Part 1.
   None need a GPU; four of the five can be done while a model trains.
-- **No `test_geo.py`.** Geotagging is one of four named deliverables and has no
-  automated test coverage.
+- ~~No `test_geo.py`~~ **closed.** 16 tests asserting physics -- directions,
+  monotonicity, and the cases where the honest answer is None -- rather than
+  stored coordinates nobody independently checked. Mutation-tested: an
+  across-track sign flip fails 3, layback towed ahead fails 1, heading error in
+  degrees instead of radians fails 1, dropping the slant correction fails 2.
 - ~~`SETTINGS.model_version` reads `"v0-stub"`~~ **fixed.** It now names the run:
   from `models/trained/ghostnet.json` for the promoted model, else from the
   experiment directory. `"v0-stub"` survives only for the genuinely

@@ -7,6 +7,7 @@ on Member 2's machine. No absolute paths are ever baked in.
 
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -21,6 +22,20 @@ def _env_path(var: str, default: Path) -> Path:
     """Environment override wins; otherwise the repo-relative default."""
     raw = os.environ.get(var)
     return Path(raw).expanduser().resolve() if raw else default
+
+
+def _read_json(path: Path) -> dict:
+    """Read a small JSON sidecar, or {} when it is missing or unreadable.
+
+    Provenance must never be the thing that fails an inference run, so every
+    failure here degrades to "unknown" rather than raising. A corrupt sidecar
+    leaves the version fields at their sentinels, which reads as "we do not
+    know" -- the one honest answer available.
+    """
+    try:
+        return json.loads(Path(path).read_text(encoding="utf-8")) or {}
+    except Exception:
+        return {}
 
 
 def resolve_device(preference: str = "auto") -> str:
@@ -119,28 +134,54 @@ class Settings:
         # which is the entire purpose of a provenance block. The run name is
         # recoverable from the weights path (experiments/<run>/weights/best.pt),
         # and a promoted file falls back to its own stem.
+        sidecar = (
+            _read_json(Path(self.weights_path).with_suffix(".json"))
+            if self.weights_path is not None
+            else {}
+        )
+
         if self.model_version == "v0-stub" and self.weights_path is not None:
             w = Path(self.weights_path)
-            sidecar = w.with_suffix(".json")
-            if sidecar.exists():
-                # A promoted file is a COPY, so its own name says nothing about
-                # which run made it -- ghostnet.pt could be any of them. The
-                # sidecar written at promotion time is the only thing that
-                # knows, and it carries the source path and a hash so the claim
-                # is checkable rather than asserted.
-                try:
-                    import json as _json
-
-                    self.model_version = str(
-                        _json.loads(sidecar.read_text(encoding="utf-8")).get("model_version")
-                        or w.stem
-                    )
-                except Exception:
-                    self.model_version = w.stem
+            # A promoted file is a COPY, so its own name says nothing about
+            # which run made it -- ghostnet.pt could be any of them. The
+            # sidecar written at promotion time is the only thing that
+            # knows, and it carries the source path and a hash so the claim
+            # is checkable rather than asserted.
+            if sidecar.get("model_version"):
+                self.model_version = str(sidecar["model_version"])
             elif w.parent.name == "weights" and w.parent.parent.name:
                 self.model_version = w.parent.parent.name
             else:
                 self.model_version = w.stem
+
+        # The DATASET is read from the sidecar, never from whichever build
+        # happens to be sitting in data/processed right now.
+        #
+        # Those two diverge the moment anyone re-runs build_dataset.py, which
+        # is exactly what staging a newly annotated class does. Reading the
+        # live build_report.json would then stamp this model with a dataset it
+        # was never trained on -- and a provenance block that is confidently
+        # wrong is worse than one that admits ignorance, because nothing
+        # downstream can tell the two apart.
+        if self.dataset_version == "none" and sidecar.get("dataset_version"):
+            self.dataset_version = str(sidecar["dataset_version"])
+
+        # CALIBRATION, by contrast, is read live, because the temperature file
+        # on disk is the one actually being applied to these scores. Naming the
+        # temperature and the split it was fitted on puts the correction in the
+        # payload itself, where a stored detection keeps it; decision.py's
+        # mismatch warning only reaches whoever is watching at the time.
+        if self.calibration_version == "none":
+            cal = _read_json(Path(self.models_dir) / "calibrator" / "temperature.json")
+            if cal.get("temperature") is not None:
+                try:
+                    self.calibration_version = "T%.4f-%s-n%s" % (
+                        float(cal["temperature"]),
+                        cal.get("fitted_on", "unknown"),
+                        cal.get("n_predictions", "?"),
+                    )
+                except (TypeError, ValueError):
+                    pass  # leave the sentinel; an unparseable file is "unknown"
 
         if self.device == "cpu":
             self.half = False  # fp16 on CPU is slower, not faster

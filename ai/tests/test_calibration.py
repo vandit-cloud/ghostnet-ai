@@ -141,6 +141,48 @@ def test_a_corrupt_calibration_file_falls_back_to_uncalibrated(cal, tmp_path, mo
     assert decision.assess_uncertainty(0.99, settings) == "medium"
 
 
+def test_a_corrupt_calibration_file_says_so_in_the_payload(cal, tmp_path, monkeypatch):
+    """Falling back to raw scores silently is the actual danger.
+
+    'No low uncertainty ever appears' looks identical to a model nobody has
+    calibrated yet, so the fallback has to announce itself. The warning rides
+    out on the channel infer.py already surfaces.
+    """
+    monkeypatch.setattr(decision, "_CALIBRATION_LOADED", False)
+    monkeypatch.setattr(decision, "_TEMPERATURE", 1.0)
+    monkeypatch.setattr(decision, "_CALIBRATION_ERROR", None)
+    weights = tmp_path / "ghostnet.pt"
+    weights.write_bytes(b"not really weights")
+    settings = Settings(models_dir=tmp_path, weights_path=weights)
+    (tmp_path / "calibrator").mkdir()
+    (tmp_path / "calibrator" / "temperature.json").write_text("{ not json")
+
+    warning = decision.calibration_mismatch(settings)
+    assert warning is not None
+    assert "could not be read" in warning
+    assert "fit_calibration" in warning
+
+
+def test_a_repaired_calibration_file_is_picked_up_without_a_restart(cal, tmp_path, monkeypatch):
+    """A parse failure must not latch. Member 2 runs this inside a long-lived
+    API process; requiring a restart to recover from a half-written file turns
+    a fixable mistake into an outage."""
+    monkeypatch.setattr(decision, "_CALIBRATION_LOADED", False)
+    monkeypatch.setattr(decision, "_TEMPERATURE", 1.0)
+    monkeypatch.setattr(decision, "_CALIBRATION_ERROR", None)
+    settings = Settings(models_dir=tmp_path)
+    (tmp_path / "calibrator").mkdir()
+    target = tmp_path / "calibrator" / "temperature.json"
+
+    target.write_text("{ truncated")
+    assert decision.load_calibration(settings) == 1.0
+    assert decision.calibration_mismatch(settings) is not None
+
+    target.write_text(json.dumps({"temperature": 1.75, "fitted_on": "val"}))
+    assert decision.load_calibration(settings) == pytest.approx(1.75)
+    assert decision.calibration_mismatch(settings) is None
+
+
 # --- the calibrator must belong to the model using it ----------------------
 
 def test_calibration_fitted_for_other_weights_is_flagged(cal, tmp_path, monkeypatch):
