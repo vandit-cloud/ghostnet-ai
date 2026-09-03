@@ -9,7 +9,7 @@ from . import preprocess, xtf
 from .config import SETTINGS, Settings
 from .contract import CONTRACT_VERSION, Detection, FrameResult, validate
 from .infer import detect, detect_batch, load_model, warmup
-from .report import csv_rows, write_csv
+from .report import csv_rows, geojson_features, write_csv, write_geojson
 from .survey import SurveyFrame, detect_survey, iter_survey_frames
 
 __version__ = "0.1.0"
@@ -29,6 +29,8 @@ __all__ = [
     # output
     "write_csv",
     "csv_rows",
+    "write_geojson",
+    "geojson_features",
     "validate",
     "Detection",
     "FrameResult",

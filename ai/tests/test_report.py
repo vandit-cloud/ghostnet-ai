@@ -97,3 +97,113 @@ def test_every_column_is_populated_or_deliberately_blank():
                            warnings=["something"])])
     unexpected = {c for c in COLUMNS if c not in rows[0]}
     assert not unexpected, unexpected
+
+
+# ---------------------------------------------------------------------------
+# GeoJSON export.
+# ---------------------------------------------------------------------------
+# These assert the properties that make a file openable on a real chart --
+# axis order, ring closure, radius scale -- not the formatting.
+
+import json as _json  # noqa: E402
+import math  # noqa: E402
+
+from ghostnet.report import (  # noqa: E402
+    CIRCLE_STEPS,
+    geojson_features,
+    write_geojson,
+)
+
+
+def located(**over) -> dict:
+    d = detection(latitude=20.0, longitude=70.0, position_error_m=25.0)
+    d.update(over)
+    return d
+
+
+def roles(feats: list[dict]) -> list[str]:
+    return [f["properties"]["geometry_role"] for f in feats]
+
+
+def test_located_detection_emits_point_and_circle():
+    feats = geojson_features([frame("f1", [located()])])
+    assert roles(feats) == ["position", "uncertainty"]
+    assert feats[0]["geometry"]["type"] == "Point"
+    assert feats[1]["geometry"]["type"] == "Polygon"
+    # Both halves must be reconcilable back to one detection.
+    assert {f["properties"]["detection_id"] for f in feats} == {"D-1"}
+
+
+def test_coordinates_are_lon_lat_not_lat_lon():
+    """The single most common way a GeoJSON export lands in the wrong ocean."""
+    feats = geojson_features([frame("f1", [located(latitude=20.0, longitude=70.0)])])
+    lon, lat = feats[0]["geometry"]["coordinates"]
+    assert (lon, lat) == (70.0, 20.0)
+
+
+def test_error_ring_is_closed_and_matches_the_radius():
+    feats = geojson_features([frame("f1", [located(position_error_m=25.0)])])
+    ring = feats[1]["geometry"]["coordinates"][0]
+    assert len(ring) == CIRCLE_STEPS + 1
+    assert ring[0] == ring[-1], "an exterior ring must be explicitly closed"
+
+    # Every vertex should sit ~25 m from the centre, north-south being the
+    # axis with no cos(lat) term to get wrong.
+    lat_span_m = (max(p[1] for p in ring) - min(p[1] for p in ring)) / 2 * 111_320
+    assert 24.0 < lat_span_m < 26.0
+
+
+def test_ring_is_counterclockwise():
+    """RFC 7946 asks the exterior ring to follow the right-hand rule."""
+    ring = geojson_features([frame("f1", [located()])])[1]["geometry"]["coordinates"][0]
+    area = sum(
+        (ring[i + 1][0] - ring[i][0]) * (ring[i + 1][1] + ring[i][1])
+        for i in range(len(ring) - 1)
+    )
+    assert area < 0, "shoelace sign says clockwise; exterior rings must be CCW"
+
+
+def test_circle_widens_in_longitude_at_high_latitude():
+    """A degree of longitude shortens towards the poles; the ring must not."""
+    def lon_span(lat):
+        d = located(latitude=lat)
+        ring = geojson_features([frame("f", [d])])[1]["geometry"]["coordinates"][0]
+        return max(p[0] for p in ring) - min(p[0] for p in ring)
+    assert lon_span(60.0) > lon_span(0.0) * 1.9
+
+
+def test_detection_without_coordinates_has_null_geometry():
+    d = detection(latitude=None, longitude=None, localization="none")
+    feats = geojson_features([frame("f1", [d])])
+    assert roles(feats) == ["unlocated"]
+    assert feats[0]["geometry"] is None
+
+
+def test_unlocated_can_be_dropped_for_strict_renderers():
+    d = detection(latitude=None, longitude=None, localization="none")
+    assert geojson_features([frame("f1", [d])], include_unlocated=False) == []
+
+
+def test_clean_frames_are_not_placed_on_the_map():
+    """Unlike the CSV, a frame with no detections contributes no feature."""
+    assert geojson_features([frame("f1", [])]) == []
+
+
+def test_zero_error_emits_a_point_but_no_degenerate_polygon():
+    feats = geojson_features([frame("f1", [located(position_error_m=0.0)])])
+    assert roles(feats) == ["position"]
+
+
+def test_raw_score_never_reaches_the_balloon():
+    """The handoff forbids showing raw_score to a user; a popup is user-facing."""
+    feats = geojson_features([frame("f1", [located()])])
+    assert all("raw_score" not in f["properties"] for f in feats)
+
+
+def test_written_file_is_a_parseable_featurecollection_without_bom(tmp_path):
+    path = write_geojson([frame("f1", [located()])], tmp_path / "s.geojson")
+    raw = path.read_bytes()
+    assert not raw.startswith(b"\xef\xbb\xbf"), "a BOM breaks strict JSON parsers"
+    doc = _json.loads(raw.decode("utf-8"))
+    assert doc["type"] == "FeatureCollection"
+    assert len(doc["features"]) == 2

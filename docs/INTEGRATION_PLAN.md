@@ -181,6 +181,40 @@ for Excel on Windows and both fail silently otherwise. Serve it as-is.
 
 ---
 
+## GeoJSON export is written too
+
+```python
+from ghostnet.report import write_geojson
+write_geojson(results, "survey_042.geojson")
+```
+
+The CSV is what an operator opens in Excel. This is what they drop onto a chart
+-- QGIS, Google Earth, Leaflet, anything that eats RFC 7946.
+
+**Two features per detection, sharing a `detection_id`.** A `Point` for the
+position, and a `Polygon` approximating the error circle, told apart by a
+`geometry_role` property (`position` / `uncertainty` / `unlocated`). That is the
+same rule as the map view -- **draw the error radius, not a pin** -- carried into
+the file, so an export cannot quietly reintroduce a precision claim the rest of
+the system refuses to make. Style them as two layers with one attribute filter.
+
+Two features rather than one `GeometryCollection` on purpose: GeometryCollection
+support is patchy and QGIS wants a geometry type per layer.
+
+**Detections with no coordinates become features with `"geometry": null`.**
+Valid RFC 7946, and it matches the CSV's rule -- something we found but could not
+place is a fact worth carrying. Some renderers skip null-geometry features
+without saying so, so pass `include_unlocated=False` if yours must not see them.
+
+**Unlike the CSV, this file has no BOM.** RFC 7946 requires UTF-8 and a BOM
+breaks strict JSON parsers. The two exports disagree on this deliberately: one
+is read by Excel, the other by a JSON parser. Serve each as written.
+
+`raw_score` is not in the properties. A map balloon is about as user-facing as
+it gets, and section 2 above forbids showing it.
+
+---
+
 ## Four things that will bite
 
 **1. It degrades, it does not raise.** Missing weights, missing metadata,
