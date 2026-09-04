@@ -23,7 +23,14 @@ Written 2026-09-04 after a full end-to-end verification on real sonar.
 | Demo sonar file, 40 MB | `demo/NBP0505_line01B_demo.xtf` |
 | Pre-generated CSV report | `demo/reports/NBP0505_line01B_full_survey.csv` |
 | Pre-generated JSON report | `demo/reports/NBP0505_line01B_full_survey.json` |
+| Raw data manifest, with provenance and checksums | `demo/RAW_DATA.md` |
+| The 5 sonar frames the detections came from | `demo/raw_frames/D-*.png` |
+| Raw table exports (survey, 40 frames, 5 detections) | `demo/raw_*_dbdump.csv` |
 | Login | `operator` / `operator123` |
+
+`demo/` is gitignored — it is data, not source, and a fresh clone will not
+have any of it. Everything above is regenerable; `demo/RAW_DATA.md` §"Regenerating"
+has the two commands.
 
 The database already holds one processed survey — **NBP0505 Line 01B — Golfo de
 Penas**, 40 frames, 5 detections — so the app has something to show the moment
@@ -170,14 +177,17 @@ of debris is obviously not an object.
 So say: *"the dimensions are a free plausibility filter — an operator rejects
 that in one click, and the system already flagged all of them `uncertainty:
 high`, `priority: low`, at 34–36% confidence, just above the review floor."*
-Only `D-6D702B97` (6.45 m × 43.6 m) is a plausible target.
+Only `D-C1308A5C` (6.45 m × 43.6 m) is a plausible target.
 
 ### 6. Review Queue — human judgement, recorded
 
 `Review Queue` shows everything pending. Accept one as artificial, reject
 another as natural. The detection's `review_status` updates and the decision is
 kept as an audit trail with reviewer and note — the model proposes, a person
-decides, and the record shows who decided.
+decides, and the record shows who decided. The reviewer is taken from the
+access token, not the request body, so a decision cannot be attributed to
+someone who did not make it. Worth saying if a judge asks about audit
+integrity.
 
 ### 7. Reports — the deliverable
 
@@ -239,6 +249,7 @@ Re-run one survey without wiping it: send `{"force_restart": true}` to
 | Process returns 409 | Working as designed — the survey already has detections | `force_restart: true`, or reset |
 | Upload rejected as too large | File over `max_upload_size_mb` (200) | Use the 40 MB slice |
 | 3D view looks empty | Default camera does not frame the survey | Click **Fit Survey** |
+| GIS map 404s | The survey id is wrong or the survey was deleted | Check `demo/.survey_id` against `select id from surveys;`. It used to answer 200-with-nothing here, which looked like "nothing found" |
 | Detections have no coordinates | The frame carried no usable sonar geometry | Expected and honest — check `localization_method`; `none` means it declined to guess |
 | `pytest` at the repo root only runs 246 AI tests | By design after the monorepo merge | Backend suite: `cd app/backend && .venv/Scripts/python.exe -m pytest` |
 

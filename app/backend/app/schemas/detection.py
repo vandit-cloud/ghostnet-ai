@@ -48,8 +48,10 @@ class DetectionOut(BaseModel):
 
 
 class DetectionReviewIn(BaseModel):
+    # No `reviewer` field: the server takes it from the access token. A client
+    # cannot name the reviewer, and an extra key here is ignored rather than
+    # honoured.
     decision: ReviewStatus
-    reviewer: str | None = None
     note: str | None = None
 
 

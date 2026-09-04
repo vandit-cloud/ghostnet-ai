@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.core.deps import get_current_user
 from app.schemas.map import MapBounds, MapMarker, SurveyMapOut, TrackPoint
-from app.services import map_service
+from app.services import map_service, survey_service
 
 router = APIRouter(prefix="/maps", tags=["maps"], dependencies=[Depends(get_current_user)])
 
@@ -23,6 +23,10 @@ def get_survey_detections(
     review_status: str | None = None,
     db: Session = Depends(get_db),
 ) -> SurveyMapOut:
+    # 404 on an unknown survey rather than an empty payload: an empty map reads
+    # as "nothing was found here", which is a different and misleading claim.
+    survey_service.get_survey_or_404(db, survey_id)
+
     detections = map_service.get_survey_markers(
         db, survey_id, min_lat, min_lon, max_lat, max_lon, detection_class, priority, review_status
     )

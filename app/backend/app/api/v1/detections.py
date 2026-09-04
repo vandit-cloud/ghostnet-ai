@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.core.deps import get_current_user
 from app.models.detection import Detection
+from app.models.user import User
 from app.schemas.common import Page
 from app.schemas.detection import BBox, DetectionOut, DetectionReviewIn, DetectionReviewOut, Dimensions
 from app.services import detection_service
@@ -65,10 +66,18 @@ def get_detection(detection_id: uuid.UUID, db: Session = Depends(get_db)) -> Det
 
 @router.post("/{detection_id}/review", response_model=DetectionReviewOut, status_code=201)
 async def review_detection(
-    detection_id: uuid.UUID, payload: DetectionReviewIn, db: Session = Depends(get_db)
+    detection_id: uuid.UUID,
+    payload: DetectionReviewIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ) -> DetectionReviewOut:
+    # The reviewer is the authenticated user, never `payload.reviewer`. The
+    # token is the only thing we can verify, so it is the only thing we record
+    # -- a decision must not be attributable to someone who did not make it.
+    # Any client-supplied `reviewer` is deliberately ignored.
+
     review = await detection_service.add_review_and_broadcast(
-        db, detection_id, payload.decision, payload.reviewer, payload.note
+        db, detection_id, payload.decision, user.username, payload.note
     )
     return DetectionReviewOut.model_validate(review)
 

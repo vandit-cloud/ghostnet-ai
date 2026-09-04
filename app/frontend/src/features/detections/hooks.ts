@@ -52,7 +52,8 @@ export function useDetectionReviews(detectionId: string | undefined) {
 export function useReviewDetection(detectionId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { decision: ReviewStatus; reviewer?: string; note?: string }) =>
+    // No `reviewer`: the backend records the authenticated user from the token.
+    mutationFn: (payload: { decision: ReviewStatus; note?: string }) =>
       apiFetch<DetectionReview>(`/detections/${detectionId}/review`, {
         method: "POST",
         body: JSON.stringify(payload),

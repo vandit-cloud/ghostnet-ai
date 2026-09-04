@@ -29,7 +29,7 @@ export default function ReviewWorkspacePage() {
 
   async function handleSubmit(decision: ReviewStatus, note: string) {
     try {
-      await reviewMutation.mutateAsync({ decision, note: note || undefined, reviewer: undefined });
+      await reviewMutation.mutateAsync({ decision, note: note || undefined });
       push("Review saved.", "success");
       router.push("/app/review");
     } catch {

@@ -46,7 +46,12 @@ def client():
 
 
 @pytest.fixture()
-def auth_headers():
+def auth_identity():
+    """The authenticated test user, headers plus the username behind them.
+
+    Tests that assert on server-recorded identity (audit trails) need to know
+    who the token belongs to; `auth_headers` alone hides it.
+    """
     session = db_module.SessionLocal()
     username = f"test-{uuid.uuid4().hex[:8]}"
     user = User(username=username, password_hash=hash_password("password123"), display_name="Test User")
@@ -54,4 +59,9 @@ def auth_headers():
     session.commit()
     session.close()
     token = create_access_token(username)
-    return {"Authorization": f"Bearer {token}"}
+    return {"username": username, "headers": {"Authorization": f"Bearer {token}"}}
+
+
+@pytest.fixture()
+def auth_headers(auth_identity):
+    return auth_identity["headers"]

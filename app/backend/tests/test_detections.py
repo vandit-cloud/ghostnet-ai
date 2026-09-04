@@ -64,7 +64,7 @@ def test_list_and_filter_detections(client, auth_headers, db_session):
     assert filtered.json()["total"] == 0
 
 
-def test_get_detection_detail_and_review(client, auth_headers, db_session):
+def test_get_detection_detail_and_review(client, auth_headers, auth_identity, db_session):
     survey, detection = _seed_detection(db_session, detection_id="D-DETAIL-001")
 
     detail = client.get(f"/api/v1/detections/{detection.id}", headers=auth_headers)
@@ -73,16 +73,19 @@ def test_get_detection_detail_and_review(client, auth_headers, db_session):
 
     review = client.post(
         f"/api/v1/detections/{detection.id}/review",
-        json={"decision": "accepted_artificial", "reviewer": "operator", "note": "Confirmed net."},
+        json={"decision": "accepted_artificial", "reviewer": "somebody-else", "note": "Confirmed net."},
         headers=auth_headers,
     )
     assert review.status_code == 201
+    # The audit trail names the authenticated user, not what the client claimed.
+    assert review.json()["reviewer"] == auth_identity["username"]
 
     detail_after = client.get(f"/api/v1/detections/{detection.id}", headers=auth_headers)
     assert detail_after.json()["review_status"] == "accepted_artificial"
 
     reviews = client.get(f"/api/v1/detections/{detection.id}/reviews", headers=auth_headers)
     assert len(reviews.json()) == 1
+    assert reviews.json()[0]["reviewer"] == auth_identity["username"]
 
 
 def test_map_markers(client, auth_headers, db_session):

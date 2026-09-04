@@ -31,8 +31,9 @@ USERNAME = os.environ.get("GHOSTNET_USER", "operator")
 PASSWORD = os.environ.get("GHOSTNET_PASSWORD", "operator123")
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-XTF = REPO / "demo" / "NBP0505_line01B_demo.xtf"
-REPORTS = REPO / "demo" / "reports"
+DEMO = REPO / "demo"
+XTF = DEMO / "NBP0505_line01B_demo.xtf"
+REPORTS = DEMO / "reports"
 
 SURVEY_NAME = "NBP0505 Line 01B — Golfo de Penas"
 SURVEY_LOCATION = "Golfo de Penas, Chile"
@@ -102,6 +103,10 @@ def main() -> int:
     )
     survey_id = survey["id"]
     print("survey :", survey_id)
+    # Stamp the id where the runbook's curl and psql examples can find it. Left
+    # unwritten it goes stale the first time the demo is re-seeded, and the map
+    # endpoint queried with a dead id used to answer 200-with-nothing.
+    (DEMO / ".survey_id").write_text(survey_id, encoding="utf-8")
     if survey["name"] != SURVEY_NAME:
         print("  WARNING: the name did not round-trip; check request encoding")
 
