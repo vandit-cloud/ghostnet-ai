@@ -46,14 +46,19 @@ ai/data/annotate/*/review_*.png
 
 # --- model weights ---------------------------------------------------------
 # Pretrained weights are re-downloadable (ai/scripts/fetch_weights.py).
-# Trained weights are build artefacts; ship the good one as a GitHub Release
-# asset rather than bloating every clone's history.
+# Training artefacts stay out -- every run produces a set and they are large.
 *.pt
 *.pth
 *.onnx
 *.engine
 ai/models/pretrained/*
 ai/models/trained/*
+
+# ...except the deployed model. 18 MB, and without it the backend silently
+# falls back to MockAIAdapter, so a fresh clone would show invented detections.
+# Shipping it is what lets anyone do a real end-to-end run. See docs/SETUP.md.
+!ai/models/trained/ghostnet.pt
+!ai/models/trained/ghostnet.json
 
 # --- runtime ---------------------------------------------------------------
 ai/experiments/*
@@ -87,6 +92,14 @@ Thumbs.db
 # ...but always keep the directory markers.
 !**/.gitkeep
 
-# Demo assets: a 40 MB slice of a real survey, regenerable in one command
-# (see docs/DEMO_RUNBOOK.md). Data, not source.
-demo/
+# Demo assets. The sonar input and the reference reports ship, so a clone can
+# reproduce the exact run the docs describe (see demo/RAW_DATA.md). Everything
+# else in here is per-machine or per-run and goes stale: the survey id, the
+# table dumps, the extracted frames keyed by detection ref.
+demo/*
+!demo/RAW_DATA.md
+!demo/NBP0505_line01B_demo.xtf
+!demo/reports/
+demo/reports/*
+!demo/reports/NBP0505_line01B_full_survey.csv
+!demo/reports/NBP0505_line01B_full_survey.json

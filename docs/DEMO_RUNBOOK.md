@@ -33,9 +33,10 @@ presenter's script.
 | Raw table exports (survey, 40 frames, 5 detections) | `demo/raw_*_dbdump.csv` |
 | Login | `operator` / `operator123` |
 
-`demo/` is gitignored — it is data, not source, and a fresh clone will not
-have any of it. Everything above is regenerable; `demo/RAW_DATA.md` §"Regenerating"
-has the two commands.
+The sonar file and both reference reports are committed, so a fresh clone has
+them (see `docs/SETUP.md`). The per-run leftovers in `demo/` — the survey id,
+the table dumps, the extracted frames — are not, because they go stale;
+`demo/RAW_DATA.md` §"Regenerating" rebuilds them.
 
 The database already holds one processed survey — **NBP0505 Line 01B — Golfo de
 Penas**, 40 frames, 5 detections — so the app has something to show the moment
