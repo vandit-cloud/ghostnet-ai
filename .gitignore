@@ -86,3 +86,7 @@ Thumbs.db
 
 # ...but always keep the directory markers.
 !**/.gitkeep
+
+# Demo assets: a 40 MB slice of a real survey, regenerable in one command
+# (see docs/DEMO_RUNBOOK.md). Data, not source.
+demo/
