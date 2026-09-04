@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import "leaflet/dist/leaflet.css";
+@import "leaflet.markercluster/dist/MarkerCluster.css";
+@import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background-color: #050b14;
+  color: #e2e8f0;
+}
+
+html {
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(34, 211, 238, 0.12), transparent 28%),
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 24%),
+    linear-gradient(180deg, #07111b 0%, #030810 100%);
+  font-feature-settings: "tnum" 1;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(141, 223, 242, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(141, 223, 242, 0.035) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(circle at center, black 35%, transparent 85%);
+  opacity: 0.35;
+}
+
+* {
+  border-color: #1f3a52;
+}
+
+::selection {
+  background: rgba(34, 211, 238, 0.22);
+  color: #f8fafc;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a1420;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1f3a52;
+  border-radius: 6px;
+}
+
+.leaflet-container {
+  background: #0a1420;
+}
+
+/* Dark-mode raster tiles via CSS filter (no third-party dark-tile API key
+   required). Scoped to the tile pane only (not the whole map container) so
+   markers/popups/legend keep their real colors instead of inverting too. */
+.map-dark-mode .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.6);
+}
+
+.sonar-grid-bg {
+  background-image:
+    radial-gradient(circle at top, rgba(34, 211, 238, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(8, 19, 31, 0.72), rgba(3, 8, 16, 0.94)),
+    repeating-linear-gradient(0deg, rgba(34, 211, 238, 0.05) 0, rgba(34, 211, 238, 0.05) 1px, transparent 1px, transparent 48px),
+    repeating-linear-gradient(90deg, rgba(34, 211, 238, 0.05) 0, rgba(34, 211, 238, 0.05) 1px, transparent 1px, transparent 48px);
+}
+
+.panel {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(38, 74, 101, 0.72);
+  background:
+    radial-gradient(circle at top right, rgba(34, 211, 238, 0.1), transparent 30%),
+    linear-gradient(180deg, rgba(15, 30, 46, 0.88), rgba(6, 13, 22, 0.92));
+  box-shadow:
+    0 28px 60px rgba(2, 8, 15, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(18px);
+}
+
+.panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.34), transparent);
+  pointer-events: none;
+}
+
+.panel::after {
+  content: "";
+  position: absolute;
+  inset: auto -20% -45% auto;
+  width: 16rem;
+  height: 16rem;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.12), transparent 72%);
+  pointer-events: none;
+}

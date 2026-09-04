@@ -1,0 +1,25 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+backend/uploads/
+backend/.env
+.env
+node_modules/
+.next/
+frontend/.env.local
+*.log
+.DS_Store
+
+# --- build / tool artifacts (added 2026-09-04 at git init) -----------------
+.pytest_cache/
+tsconfig.tsbuildinfo
+*.bak
+
+# The AI package is installed EDITABLE from Member 1's repo
+# (pip install -e "E:/New folder/ai" --no-deps), so its weights and calibrator
+# live over there and are gitignored there too. Nothing to ignore here -- but
+# note the backend cannot produce real detections without them.
+
+# Claude Code runtime state (a stale PID/session lock, not project config)
+.claude/scheduled_tasks.lock
