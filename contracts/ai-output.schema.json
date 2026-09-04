@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ghostnet-ai/contracts/ai-output.schema.json",
   "title": "GhostNet-AI frame result",
-  "description": "What the AI returns for ONE sonar frame. Generated from ghostnet/contract.py by ai/scripts/export_schemas.py; do not edit by hand. Contract version 1.0.0.",
+  "description": "What the AI returns for ONE sonar frame. Generated from ghostnet/contract.py by ai/scripts/export_schemas.py; do not edit by hand. Contract version 1.1.0.",
   "$defs": {
     "Detection": {
       "type": "object",
@@ -166,6 +166,37 @@
       },
       "required": [],
       "additionalProperties": false
+    },
+    "FramePosition": {
+      "type": "object",
+      "properties": {
+        "latitude": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "longitude": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "heading_deg": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "timestamp": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [],
+      "additionalProperties": false
     }
   },
   "type": "object",
@@ -202,6 +233,16 @@
     "contract_version": {
       "type": "string",
       "description": "Semver of this contract. A major bump is a breaking change for Member 2."
+    },
+    "frame_position": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/FramePosition"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "required": [

@@ -1,0 +1,11 @@
+{
+  "temperature": 2.722031,
+  "fitted_on": "val",
+  "weights": "ai\\models\\trained\\ghostnet.pt",
+  "n_predictions": 1604,
+  "n_correct": 611,
+  "iou_threshold": 0.5,
+  "conf_threshold": 0.05,
+  "ece_before": 0.217835,
+  "ece_after": 0.089091
+}

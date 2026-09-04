@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GhostNet Brand Board</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #07111b;
+        --bg-deep: #030810;
+        --panel: rgba(13, 25, 39, 0.92);
+        --panel-strong: rgba(19, 37, 56, 0.95);
+        --line: rgba(45, 86, 117, 0.9);
+        --cyan: #22d3ee;
+        --cyan-soft: #8ddff2;
+        --foam: #d7f7ff;
+        --slate: #8fa8bc;
+        --white: #f4fbff;
+        --critical: #f87171;
+        --high: #fb923c;
+        --ok: #86efac;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", "Aptos", sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(34, 211, 238, 0.18), transparent 24%),
+          radial-gradient(circle at top right, rgba(14, 165, 233, 0.16), transparent 20%),
+          linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+        color: var(--white);
+      }
+
+      main[data-document-role="page"] {
+        width: 1600px;
+        min-height: 900px;
+        margin: 0 auto;
+        padding: 44px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      main[data-document-role="page"]::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(141, 223, 242, 0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(141, 223, 242, 0.05) 1px, transparent 1px);
+        background-size: 72px 72px;
+        mask-image: radial-gradient(circle at center, black 30%, transparent 88%);
+        pointer-events: none;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 1.45fr 0.95fr;
+        gap: 24px;
+      }
+
+      .panel {
+        background:
+          radial-gradient(circle at top right, rgba(34, 211, 238, 0.14), transparent 30%),
+          linear-gradient(180deg, var(--panel-strong) 0%, var(--panel) 100%);
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        padding: 28px;
+        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+      }
+
+      .eyebrow {
+        font-size: 12px;
+        letter-spacing: 0.34em;
+        text-transform: uppercase;
+        color: var(--cyan-soft);
+        margin: 0 0 12px;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        font-family: Bahnschrift, "Segoe UI", sans-serif;
+        font-size: 52px;
+        line-height: 1.02;
+        margin-bottom: 18px;
+      }
+
+      .lead {
+        max-width: 760px;
+        font-size: 18px;
+        line-height: 1.7;
+        color: #d6e5ef;
+      }
+
+      .chip-row,
+      .action-row,
+      .stat-grid,
+      .token-grid,
+      .kpi-grid,
+      .direction-grid {
+        display: grid;
+        gap: 14px;
+      }
+
+      .chip-row {
+        margin-top: 22px;
+        display: flex;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        padding: 10px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(34, 211, 238, 0.3);
+        background: rgba(34, 211, 238, 0.1);
+        font-size: 11px;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: var(--cyan-soft);
+      }
+
+      .stat-grid {
+        margin-top: 18px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .stat-card,
+      .token-card,
+      .kpi-card,
+      .direction-card {
+        border-radius: 22px;
+        border: 1px solid rgba(45, 86, 117, 0.88);
+        background: rgba(0, 0, 0, 0.12);
+        padding: 18px;
+      }
+
+      .label {
+        font-size: 11px;
+        letter-spacing: 0.26em;
+        text-transform: uppercase;
+        color: var(--slate);
+      }
+
+      .value {
+        margin-top: 10px;
+        font-size: 16px;
+        line-height: 1.5;
+        color: var(--white);
+      }
+
+      .action-row {
+        margin-top: 22px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .action {
+        padding: 14px 16px;
+        border-radius: 999px;
+        border: 1px solid rgba(45, 86, 117, 0.88);
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--white);
+        font-size: 11px;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        text-align: center;
+      }
+
+      .sections {
+        margin-top: 24px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+
+      h2 {
+        font-family: Bahnschrift, "Segoe UI", sans-serif;
+        font-size: 30px;
+        margin-bottom: 16px;
+      }
+
+      .token-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .swatch {
+        width: 100%;
+        height: 90px;
+        border-radius: 18px;
+        margin-bottom: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .kpi-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        margin-top: 16px;
+      }
+
+      .kpi-number {
+        margin-top: 14px;
+        font-family: Consolas, monospace;
+        font-size: 34px;
+      }
+
+      .muted {
+        margin-top: 10px;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #a8bccb;
+      }
+
+      .direction-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        margin-top: 16px;
+      }
+
+      .direction-card h3 {
+        font-size: 18px;
+        margin-bottom: 10px;
+      }
+
+      ul {
+        margin: 12px 0 0;
+        padding-left: 18px;
+        color: #d6e5ef;
+        line-height: 1.7;
+      }
+
+      .footer-note {
+        margin-top: 22px;
+        padding: 18px 20px;
+        border-radius: 24px;
+        border: 1px solid rgba(45, 86, 117, 0.88);
+        background: rgba(34, 211, 238, 0.05);
+        color: #d6e5ef;
+        line-height: 1.7;
+      }
+    </style>
+  </head>
+  <body>
+    <main data-document-role="page" data-label="GhostNet Brand Board">
+      <section class="hero">
+        <div class="panel">
+          <p class="eyebrow">GhostNet-AI / UI Direction</p>
+          <h1>Marine command-center UI for sonar intelligence and live analyst review.</h1>
+          <p class="lead">
+            The refreshed product direction emphasizes tactical clarity over generic admin styling: layered dark-ocean surfaces, instrument-grade typography, cyan telemetry highlights, and a dashboard layout built around mission status, 3D survey theater, and rapid decision flow.
+          </p>
+          <div class="chip-row">
+            <div class="chip">Dark ocean base</div>
+            <div class="chip">Cyan telemetry</div>
+            <div class="chip">Glass panels</div>
+            <div class="chip">Analyst-first hierarchy</div>
+          </div>
+          <div class="action-row">
+            <div class="action">Open GIS map</div>
+            <div class="action">Review queue</div>
+            <div class="action">Generate reports</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <p class="eyebrow">Mission Posture</p>
+          <div class="stat-grid">
+            <div class="stat-card">
+              <div class="label">Live pipeline</div>
+              <div class="value">Processing status gets elevated placement and clear progress feedback.</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">Review load</div>
+              <div class="value">Pending analyst work is surfaced as a high-pressure metric instead of a hidden table value.</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">Lead signal</div>
+              <div class="value">Top detection class becomes part of the mission briefing for fast context.</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">Confidence loop</div>
+              <div class="value">Confirmed vs rejected outcomes anchor trust in the model pipeline.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="sections">
+        <div class="panel">
+          <h2>Visual Tokens</h2>
+          <div class="token-grid">
+            <div class="token-card">
+              <div class="swatch" style="background:#07111b"></div>
+              <div class="label">Abyss base</div>
+              <div class="value">#07111B</div>
+            </div>
+            <div class="token-card">
+              <div class="swatch" style="background:#0f1e2e"></div>
+              <div class="label">Panel shell</div>
+              <div class="value">#0F1E2E</div>
+            </div>
+            <div class="token-card">
+              <div class="swatch" style="background:#22d3ee"></div>
+              <div class="label">Telemetry cyan</div>
+              <div class="value">#22D3EE</div>
+            </div>
+            <div class="token-card">
+              <div class="swatch" style="background:#8ddff2"></div>
+              <div class="label">Foam highlight</div>
+              <div class="value">#8DDFF2</div>
+            </div>
+            <div class="token-card">
+              <div class="swatch" style="background:#f87171"></div>
+              <div class="label">Critical alert</div>
+              <div class="value">#F87171</div>
+            </div>
+            <div class="token-card">
+              <div class="swatch" style="background:#fb923c"></div>
+              <div class="label">High alert</div>
+              <div class="value">#FB923C</div>
+            </div>
+          </div>
+          <div class="footer-note">
+            Typography stack: Bahnschrift or a similar industrial display face for headings, Segoe UI Variable or Aptos for interface text, and Consolas for numbers and operational metrics.
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Dashboard Rhythm</h2>
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="label">Frames</div>
+              <div class="kpi-number" style="color:var(--foam)">12,480</div>
+              <div class="muted">High-volume telemetry reads like instrumentation.</div>
+            </div>
+            <div class="kpi-card">
+              <div class="label">Detections</div>
+              <div class="kpi-number" style="color:var(--foam)">143</div>
+              <div class="muted">Cards become mission summaries, not plain counters.</div>
+            </div>
+            <div class="kpi-card">
+              <div class="label">High priority</div>
+              <div class="kpi-number" style="color:var(--high)">19</div>
+              <div class="muted">Escalation is visible immediately.</div>
+            </div>
+            <div class="kpi-card">
+              <div class="label">Pending review</div>
+              <div class="kpi-number" style="color:var(--critical)">12</div>
+              <div class="muted">Human workload is treated as a primary signal.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" style="margin-top:24px;">
+        <p class="eyebrow">Key Screens</p>
+        <h2>UI / UX Moves</h2>
+        <div class="direction-grid">
+          <div class="direction-card">
+            <h3>Command Shell</h3>
+            <ul>
+              <li>Sidebar becomes a mission rail with richer wayfinding and section context.</li>
+              <li>Top bar shifts from plain header to operational status line.</li>
+              <li>Background grid supports the sonar identity without going neon.</li>
+            </ul>
+          </div>
+          <div class="direction-card">
+            <h3>Survey Theater</h3>
+            <ul>
+              <li>3D replay earns more visual space and a dedicated section title.</li>
+              <li>Surrounding panels explain class mix, trend, and latest alert.</li>
+              <li>Quick actions stay near the active mission instead of being scattered.</li>
+            </ul>
+          </div>
+          <div class="direction-card">
+            <h3>Intel Feed</h3>
+            <ul>
+              <li>Recent detections move into a cleaner evidence table with better hover states.</li>
+              <li>Priority badges stay crisp and round for faster scanning.</li>
+              <li>Confidence and timestamps use monospace or tabular treatment for consistency.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

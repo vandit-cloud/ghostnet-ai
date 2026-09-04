@@ -1,0 +1,65 @@
+{
+  "weights": "E:\\New folder\\ai\\experiments\\gv6-yolo11s\\weights\\best.pt",
+  "split": "test",
+  "background_tiles": 2930,
+  "curve": [
+    {
+      "threshold": 0.1,
+      "frames_flagged": 369,
+      "rate": 0.12593856655290103,
+      "total_boxes": 700,
+      "calibrated_equivalent": 0.2099
+    },
+    {
+      "threshold": 0.2,
+      "frames_flagged": 196,
+      "rate": 0.06689419795221843,
+      "total_boxes": 438,
+      "calibrated_equivalent": 0.3023
+    },
+    {
+      "threshold": 0.25,
+      "frames_flagged": 139,
+      "rate": 0.04744027303754266,
+      "total_boxes": 317,
+      "calibrated_equivalent": 0.3401
+    },
+    {
+      "threshold": 0.3,
+      "frames_flagged": 95,
+      "rate": 0.032423208191126277,
+      "total_boxes": 222,
+      "calibrated_equivalent": 0.3749
+    },
+    {
+      "threshold": 0.4,
+      "frames_flagged": 46,
+      "rate": 0.015699658703071672,
+      "total_boxes": 103,
+      "calibrated_equivalent": 0.4391
+    },
+    {
+      "threshold": 0.5,
+      "frames_flagged": 23,
+      "rate": 0.007849829351535836,
+      "total_boxes": 53,
+      "calibrated_equivalent": 0.5
+    },
+    {
+      "threshold": 0.6,
+      "frames_flagged": 6,
+      "rate": 0.0020477815699658703,
+      "total_boxes": 18,
+      "calibrated_equivalent": 0.5609
+    },
+    {
+      "threshold": 0.7,
+      "frames_flagged": 2,
+      "rate": 0.0006825938566552901,
+      "total_boxes": 4,
+      "calibrated_equivalent": 0.6251
+    }
+  ],
+  "note": "False-positive rate on tiles whose labels are empty, i.e. real side-scan seabed verified to contain no object. This is how the artificial-vs-natural requirement is scored: there is no natural class, because nobody draws boxes around rocks.",
+  "scale_warning": "`threshold` is a RAW detector score. The shipped review floor is applied to CALIBRATED confidence, and the two differ sharply -- the 0.20 floor corresponds to a raw score near 0.02. Read the rate at the operating point from ai/scripts/derive_review_floor.py, which sweeps calibrated confidence; quoting a row from here as the deployed false-alarm rate overstates the model."
+}

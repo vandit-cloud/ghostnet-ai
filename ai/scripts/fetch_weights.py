@@ -16,7 +16,6 @@ need for a network connection five minutes beforehand.
 from __future__ import annotations
 
 import shutil
-import sys
 from pathlib import Path
 
 AI_ROOT = Path(__file__).resolve().parent.parent

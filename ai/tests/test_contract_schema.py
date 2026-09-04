@@ -44,6 +44,21 @@ def output_validator() -> Draft202012Validator:
     return Draft202012Validator(load("ai-output.schema.json"))
 
 
+@pytest.fixture(scope="module")
+def input_validator() -> Draft202012Validator:
+    """The input schema with `required` dropped.
+
+    survey_meta.example.json is the --meta sidecar, not a whole input document:
+    the image travels separately as a path argument, so the fixture legitimately
+    lacks the schema's one required property. Dropping `required` still asserts
+    everything the fixture can drift on -- unknown keys, wrong types, bad
+    ranges -- while letting a partial document be partial.
+    """
+    schema = load("ai-input.schema.json")
+    schema.pop("required", None)
+    return Draft202012Validator(schema)
+
+
 @pytest.mark.parametrize("name", SCHEMA_NAMES)
 def test_schema_file_exists_and_is_valid_json_schema(name):
     assert (CONTRACTS / name).exists(), f"{name} missing -- run ai/scripts/export_schemas.py"
@@ -67,11 +82,22 @@ def test_contract_version_is_pinned_across_schemas():
     assert CONTRACT_VERSION in load("ai-output.schema.json")["description"]
 
 
+#: Fixtures are not all the same KIND of document. Everything in fixtures/ is
+#: example OUTPUT except survey_meta.example.json, which is example INPUT --
+#: the navigation metadata Member 2 passes in. Globbing them all against the
+#: output schema fails on that one for the right reason (it has latitude and
+#: altitude_m, not survey_id and detections) and the wrong cause. Each is now
+#: checked against the schema it is actually an example of, so BOTH sides of
+#: the contract get fixture coverage instead of one side plus a red herring.
+INPUT_FIXTURES = {"survey_meta.example.json"}
+
+
 @pytest.mark.parametrize("fixture", sorted(p.name for p in FIXTURES.glob("*.json")))
-def test_fixtures_validate(fixture, output_validator):
+def test_fixtures_validate(fixture, output_validator, input_validator):
     """Member 2 builds the entire UI against these. If one drifts out of spec,
     the mock and the real service diverge silently."""
-    errors = sorted(output_validator.iter_errors(json.loads((FIXTURES / fixture).read_text())), key=str)
+    validator = input_validator if fixture in INPUT_FIXTURES else output_validator
+    errors = sorted(validator.iter_errors(json.loads((FIXTURES / fixture).read_text())), key=str)
     assert not errors, fixture + ": " + "; ".join(e.message for e in errors[:3])
 
 
@@ -124,3 +150,35 @@ def test_nullable_position_fields_are_actually_nullable():
     det = load("ai-output.schema.json")["$defs"]["Detection"]["properties"]
     for field in ("latitude", "longitude", "position_error_m"):
         assert "null" in det[field]["type"], field + " must be nullable"
+
+
+def test_a_corrupt_frame_degrades_instead_of_raising(output_validator, tmp_path):
+    """An upload service is exactly where truncated and mislabelled files
+    arrive. The contract promise is that a frame always comes back as a valid
+    payload explaining itself, never as an exception the caller must catch.
+
+    This was unreachable until a promoted model started loading by default:
+    before that the no-weights early return caught it, so the crash hid behind
+    a missing model rather than being handled.
+    """
+    img = tmp_path / "truncated.png"
+    img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 20)
+    out = detect(img, {"survey_id": "SURVEY-TEST"})
+    assert not list(output_validator.iter_errors(out))
+    assert out["detections"] == []
+    assert any("could not read" in w for w in out["warnings"]), out["warnings"]
+
+
+def test_one_bad_frame_does_not_lose_the_batch(tmp_path):
+    """detect_batch sends frames to the model in groups, so a single
+    undecodable file would take its whole chunk down with it."""
+    from ghostnet import detect_batch
+
+    bad = tmp_path / "bad.png"
+    bad.write_bytes(b"not really a png")
+    good = tmp_path / "good.png"
+    good.write_bytes(bad.read_bytes())          # also bad, but distinct name
+
+    out = detect_batch([bad, good], {"survey_id": "S"})
+    assert len(out) == 2, "every input must yield exactly one payload"
+    assert all(o["detections"] == [] for o in out)

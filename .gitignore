@@ -15,9 +15,34 @@ __pycache__/
 ai/data/raw/*
 ai/data/interim/*
 ai/data/processed/*
+ai/data/hard_negatives/*
+ai/data/metadata/raw/*
+ai/data/metadata/normalized/*
+ai/data/annotations/raw/*
+ai/data/annotations/normalized/*
+
+# ai/data/provenance/ is NOT ignored, on purpose. dataset_candidates.csv and
+# data_inventory.csv are small text records of where data came from, what
+# licence it carries and what is actually on disk. They are the audit trail the
+# plan's provenance requirement asks for -- losing them costs more than the few
+# kilobytes they take.
 *.xtf
 *.jsf
 *.sdf
+
+# ai/data/annotate/ holds hand-drawn ground truth: the ONLY labels in this
+# project that were produced here rather than inherited, and the only ones no
+# download can replace. The labels are committed. The image copies beside them
+# are not -- they are re-fetchable from China-Offshore-SSS-AI and KLSG, and
+# they are 29 MB.
+#
+# _guide/ IS committed: it is the worked examples that define the annotation
+# convention, and taxonomy.py points a reader at it to explain what a
+# ghost_net box means. A convention nobody can see is a convention nobody can
+# reproduce. Recompressed to 1.4 MB for that reason.
+ai/data/annotate/*/images/
+# Transient overlays from check_annotations.py --render. Regenerated on demand.
+ai/data/annotate/*/review_*.png
 
 # --- model weights ---------------------------------------------------------
 # Pretrained weights are re-downloadable (ai/scripts/fetch_weights.py).
@@ -32,6 +57,22 @@ ai/models/trained/*
 
 # --- runtime ---------------------------------------------------------------
 ai/experiments/*
+# ...but keep the RESULTS. Weights and plots are large and regenerable; these
+# are small JSON records of what a run actually scored and what it was trained
+# on. Losing them means a metric nobody can trace back to a dataset or commit.
+# Re-enter the run directories, re-exclude everything inside them, then
+# whitelist the few small files. Un-ignoring the directory alone lets every
+# plot and sample batch back in -- 8.7 MB on the first run.
+!ai/experiments/*/
+ai/experiments/*/*
+!ai/experiments/*/test_metrics.json
+!ai/experiments/*/background_metrics.json
+!ai/experiments/*/provenance.json
+!ai/experiments/*/results.csv
+# results.raw.csv is the pre-deduplication original, kept when two resumed
+# trainers each wrote a row for the same epoch. It is the evidence that the
+# edit to results.csv was a dedup and not a quiet correction of a metric.
+!ai/experiments/*/results.raw.csv
 runs/
 *.log
 .env
