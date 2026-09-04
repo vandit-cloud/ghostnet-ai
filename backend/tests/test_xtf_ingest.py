@@ -120,3 +120,70 @@ def test_a_frame_time_that_will_not_parse_still_sorts():
     assert _parse_time(None).tzinfo is not None
     assert _parse_time("not a date").tzinfo is not None
     assert _parse_time("2005-07-01T05:54:51").year == 2005
+
+
+# ---------------------------------------------------------------------------
+# The storage_reference / filesystem-path confusion (found 2026-09-04)
+# ---------------------------------------------------------------------------
+# `file_service` used to hand `ingest_xtf` the storage_reference -- a
+# storage-relative key like "<survey_id>/<uuid>_name.xtf" -- instead of
+# resolving it with `storage.path_for()`. Both end in ".xtf", so the extension
+# check passed and the failure surfaced only as a FileNotFoundError swallowed
+# into a warning: a real 40 MB survey stored VALID with ZERO frames.
+#
+# Every test above calls ingest_xtf with a real path, which is why none of them
+# saw it. The bug lived entirely in the CALL SITE, so that is what these check.
+
+
+def test_a_storage_reference_is_not_a_path_and_produces_no_frames(db_session):
+    """Documents the trap directly: the reference SHAPE reaches the extension
+    check intact and gets all the way to the reader before failing."""
+    created, warnings = ingest_xtf(
+        db_session,
+        uuid.uuid4(),
+        uuid.uuid4(),
+        f"{uuid.uuid4()}/{uuid.uuid4().hex}_survey.xtf",  # a storage_reference
+    )
+    assert created == 0
+    assert warnings and "could not be read" in warnings[0]
+
+
+def test_file_service_hands_ingest_a_path_that_exists(db_session, monkeypatch, tmp_path):
+    """The actual regression guard. Whatever file_service passes to ingest_xtf
+    must be resolvable on disk -- not a storage key."""
+    from app.services import file_service
+    from app.storage.local import LocalStorageBackend
+
+    seen: dict[str, object] = {}
+
+    def _spy(db, survey_id, file_id, storage_path, max_pings=None):
+        seen["path"] = storage_path
+        return 0, []
+
+    monkeypatch.setattr("app.services.xtf_ingest.ingest_xtf", _spy)
+
+    storage = LocalStorageBackend(root=str(tmp_path))
+    import io as _io
+
+    # A real survey row: survey_files carries a FK to it.
+    from app.models.survey import Survey
+
+    survey = Survey(name="path-regression")
+    db_session.add(survey)
+    db_session.flush()
+
+    file_service.upload_survey_file(
+        db_session,
+        storage,
+        survey.id,
+        "line01.xtf",
+        _io.BytesIO(b"XTF\x00not-really-sonar-but-it-is-on-disk"),
+        None,
+    )
+
+    assert "path" in seen, "file_service never called ingest_xtf for a .xtf upload"
+    from pathlib import Path as _Path
+
+    handed = _Path(str(seen["path"]))
+    assert handed.is_absolute(), f"got a relative reference, not a path: {handed}"
+    assert handed.exists(), f"path handed to ingest_xtf does not exist: {handed}"

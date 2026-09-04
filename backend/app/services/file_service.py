@@ -119,8 +119,15 @@ def upload_survey_file(
         # progress reporting all behave exactly as they do for image uploads.
         from app.services.xtf_ingest import ingest_xtf
 
+        # storage.path_for(), NOT storage_reference. The reference is a
+        # storage-relative key ("<survey_id>/<unique_name>"); resolving it to a
+        # filesystem path is the storage backend's whole job. Passing the key
+        # straight through made Path() interpret it relative to the server's
+        # working directory, which raised FileNotFoundError inside ingest_xtf
+        # and produced a file marked VALID with zero frames -- and the unit
+        # tests could not see it, because they call ingest_xtf with a real path.
         created, ingest_warnings = ingest_xtf(
-            db, survey_id, survey_file.id, storage_reference
+            db, survey_id, survey_file.id, storage.path_for(storage_reference)
         )
         if created:
             # The file carried its own metadata after all -- it was in the ping

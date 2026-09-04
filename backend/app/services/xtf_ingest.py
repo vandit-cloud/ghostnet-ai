@@ -75,10 +75,16 @@ def ingest_xtf(
     db: Session,
     survey_id: uuid.UUID,
     file_id: uuid.UUID,
-    storage_path: str,
+    storage_path: str | Path,
     max_pings: int | None = None,
 ) -> tuple[int, list[str]]:
     """Tile an .xtf into SonarFrame rows. Returns (frames_created, warnings).
+
+    `storage_path` is a REAL FILESYSTEM PATH, not a `storage_reference`. Callers
+    holding a reference must resolve it first with `storage.path_for()`. The two
+    look alike and both end in `.xtf`, so the extension check below passes
+    either way and the difference only surfaces as a FileNotFoundError that this
+    function turns into a warning -- a file marked VALID with zero frames.
 
     Adds rows to the session but does NOT commit -- the caller owns the
     transaction, so a bad file cannot leave a survey half-populated.
