@@ -3,6 +3,11 @@
 Everything needed to run the demo yourself, in order, with the exact commands.
 Written 2026-09-04 after a full end-to-end verification on real sonar.
 
+If you are driving the console rather than starting it, the click-by-click
+guide is `docs/OPERATOR_MANUAL.md` — exact field names, what to type, and what
+each screen does. This runbook covers bringing the stack up and the
+presenter's script.
+
 **Read the two red flags first:**
 
 1. **Start the frontend before anything else takes port 3000.** The shipped
