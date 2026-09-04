@@ -108,7 +108,8 @@ def ingest_xtf(
     except ImportError:
         return 0, [
             "the AI package is not installed on this server, so .xtf files cannot "
-            'be split into frames. Install it with: pip install -e "<path>/ai"'
+            "be split into frames. Install it from the repository root with: "
+            "pip install -e ./ai --no-deps"
         ]
 
     out_dir = path.parent / FRAME_SUBDIR / path.stem

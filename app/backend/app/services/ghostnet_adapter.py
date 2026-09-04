@@ -5,12 +5,18 @@ protocol, so nothing else in the backend changes. `get_ai_adapter()` picks this
 one when the package and a trained model are both present, and falls back to
 the mock when they are not.
 
-Install (Member 1's repo path, editable):
+Install, editable, FROM THE REPOSITORY ROOT:
 
-    pip install -e "E:/New folder/ai"
+    pip install -e ./ai --no-deps
 
-That pulls torch, ultralytics, opencv and pyproj. On a machine with no GPU the
-package runs on CPU by design -- slower, still correct.
+Relative on purpose. The AI half lives in this same repository at ai/ (the two
+were separate repos until 2026-09-04), so an absolute path resolves only on the
+machine it was written on and breaks the moment a second PC clones this.
+
+`--no-deps` because torch, ultralytics, opencv and pyproj are expected to be
+present already -- see app/README.md for why the backend venv is created with
+--system-site-packages rather than pulling a second 2.6 GB copy of torch. On a
+machine with no GPU the package runs on CPU by design: slower, still correct.
 
 Two things this adapter deliberately does NOT do
 ------------------------------------------------

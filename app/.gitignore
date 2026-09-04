@@ -16,10 +16,10 @@ frontend/.env.local
 tsconfig.tsbuildinfo
 *.bak
 
-# The AI package is installed EDITABLE from Member 1's repo
-# (pip install -e "E:/New folder/ai" --no-deps), so its weights and calibrator
-# live over there and are gitignored there too. Nothing to ignore here -- but
-# note the backend cannot produce real detections without them.
+# The AI package is installed EDITABLE from ai/ in this same repository
+# (`pip install -e ./ai --no-deps`, run from the repository root), so its
+# weights and calibrator live there and are gitignored there. Nothing to ignore
+# here -- but note the backend cannot produce real detections without them.
 
 # Claude Code runtime state (a stale PID/session lock, not project config)
 .claude/scheduled_tasks.lock
