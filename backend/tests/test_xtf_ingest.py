@@ -187,3 +187,95 @@ def test_file_service_hands_ingest_a_path_that_exists(db_session, monkeypatch, t
     handed = _Path(str(seen["path"]))
     assert handed.is_absolute(), f"got a relative reference, not a path: {handed}"
     assert handed.exists(), f"path handed to ingest_xtf does not exist: {handed}"
+
+
+# ---------------------------------------------------------------------------
+# Sonar geometry (added 2026-09-04)
+# ---------------------------------------------------------------------------
+# The first real .xtf run put all 40 frames on the vessel track and ZERO
+# markers on the map: sonar_frames had nowhere to keep nadir_col,
+# range_resolution_m and altitude_m, so they were never passed to the AI and
+# the detector correctly declined to invent coordinates.
+#
+# iter_survey_frames already returns all six on `frame.meta`. Ingest just has
+# to store them, and it must store them PER TILE -- nadir_col shifts as the
+# waterfall is cut across-track.
+
+
+def test_ingest_stores_the_sonar_geometry_from_frame_meta(db_session, monkeypatch, tmp_path):
+    from dataclasses import dataclass
+
+    from app.models.sonar_frame import SonarFrame
+    from app.models.survey import Survey
+    from app.models.survey_file import SurveyFile
+
+    @dataclass
+    class _Pos:
+        latitude: float = -46.35
+        longitude: float = -73.73
+        heading_deg: float = 348.5
+        timestamp: str = "2005-07-01T05:54:51"
+
+    @dataclass
+    class _Frame:
+        frame_id: str
+        image_path: object
+        meta: dict
+        position: object
+        ping_offset: int
+
+    # Two tiles from the SAME ping block, with DIFFERENT nadir_col -- the case
+    # that makes per-frame storage necessary rather than per-ping.
+    def _fake_iter(path, out_dir=None, max_pings=None, **kw):
+        for i, nadir in enumerate((1024.0, 384.0)):
+            yield _Frame(
+                frame_id=f"tile{i}",
+                image_path=tmp_path / f"tile{i}.png",
+                meta={
+                    "nadir_col": nadir,
+                    "range_resolution_m": 0.0974700003862381,
+                    "altitude_m": 7.7976,
+                    "along_track_res_m": 2.4924,
+                    "layback_m": 0.0,
+                    "nadir_row": 320.0,
+                },
+                position=_Pos(),
+                ping_offset=0,
+            )
+
+    monkeypatch.setattr("ghostnet.iter_survey_frames", _fake_iter, raising=False)
+
+    survey = Survey(name="geometry-ingest")
+    db_session.add(survey)
+    db_session.flush()
+    sf = SurveyFile(
+        survey_id=survey.id, filename="line01.xtf", storage_reference="x/line01.xtf",
+        format="xtf", size=1, checksum="c",
+    )
+    db_session.add(sf)
+    db_session.flush()
+
+    xtf = tmp_path / "line01.xtf"
+    xtf.write_bytes(b"not-read-because-iter-is-faked")
+    created, warnings = ingest_xtf(db_session, survey.id, sf.id, xtf)
+    db_session.flush()
+
+    assert created == 2, warnings
+    frames = (
+        db_session.query(SonarFrame)
+        .filter(SonarFrame.survey_id == survey.id)
+        .order_by(SonarFrame.frame_id)
+        .all()
+    )
+    assert [f.nadir_col for f in frames] == [1024.0, 384.0], (
+        "nadir_col must be stored per tile; one value per ping block would "
+        "misplace every tile but the first"
+    )
+    for f in frames:
+        assert f.range_resolution_m is not None
+        assert f.altitude_m is not None
+        assert f.along_track_res_m is not None
+        assert f.nadir_row == 320.0
+        # depth and range stay NULL on purpose -- they are NOT altitude and
+        # range_resolution, and substituting them corrupts every position.
+        assert f.depth is None and f.range is None

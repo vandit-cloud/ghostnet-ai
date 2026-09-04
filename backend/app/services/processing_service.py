@@ -125,6 +125,17 @@ async def _run_job(job_id: uuid.UUID) -> None:
                     heading=frame.heading,
                     depth=frame.depth,
                     range=frame.range,
+                    # Sonar geometry. Passing these is what lets the AI turn a
+                    # bounding box into a coordinate; without them it reports
+                    # the detection with localization "none" rather than
+                    # guessing, and the map draws a track with no markers.
+                    # NULL on image uploads, which never had ping headers.
+                    nadir_col=frame.nadir_col,
+                    range_resolution_m=frame.range_resolution_m,
+                    altitude_m=frame.altitude_m,
+                    along_track_res_m=frame.along_track_res_m,
+                    layback_m=frame.layback_m,
+                    nadir_row=frame.nadir_row,
                 )
                 result = adapter.analyze_frame(
                     survey_id=str(survey_id),

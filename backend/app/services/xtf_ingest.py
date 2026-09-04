@@ -118,6 +118,7 @@ def ingest_xtf(
     try:
         for frame in iter_survey_frames(path, out_dir=out_dir, max_pings=max_pings):
             position = frame.position
+            meta = frame.meta or {}
             if position is None or position.latitude is None:
                 unplaced += 1
             db.add(
@@ -132,6 +133,18 @@ def ingest_xtf(
                     longitude=position.longitude if position else None,
                     heading=position.heading_deg if position else None,
                     # depth and range stay NULL -- see the module docstring.
+                    #
+                    # The sonar geometry, on the other hand, is stored: it is
+                    # already on `frame.meta` in the shape detect() reads,
+                    # derived from the ping headers, and PER TILE -- nadir_col
+                    # shifts as the waterfall is cut across-track. Dropping it
+                    # here is what left the map with a track and no markers.
+                    nadir_col=meta.get("nadir_col"),
+                    range_resolution_m=meta.get("range_resolution_m"),
+                    altitude_m=meta.get("altitude_m"),
+                    along_track_res_m=meta.get("along_track_res_m"),
+                    layback_m=meta.get("layback_m"),
+                    nadir_row=meta.get("nadir_row"),
                     metadata_source="xtf",
                     quality_status="ok" if position else "no_navigation",
                 )
