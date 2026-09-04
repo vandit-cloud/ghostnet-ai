@@ -18,7 +18,10 @@ async def start_processing(
     db: Session = Depends(get_db),
 ) -> ProcessingJobOut:
     survey_service.get_survey_or_404(db, survey_id)
-    job = processing_service.start_processing(db, survey_id)
+    # force_restart was declared on the request schema and never read, so a
+    # second Process on a finished survey silently appended a duplicate set of
+    # detections instead of being refused.
+    job = processing_service.start_processing(db, survey_id, payload.force_restart)
     return ProcessingJobOut.model_validate(job)
 
 

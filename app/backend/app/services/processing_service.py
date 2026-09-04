@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core import db as db_module
 from app.core.errors import ApiError
+from app.models.detection import Detection
 from app.models.enums import JobStage, JobStatus, SurveyStatus
 from app.models.processing_job import ProcessingJob
 from app.models.sonar_frame import SonarFrame
@@ -40,13 +41,50 @@ def get_active_job_for_survey(db: Session, survey_id: uuid.UUID) -> ProcessingJo
     )
 
 
-def start_processing(db: Session, survey_id: uuid.UUID) -> ProcessingJob:
-    """Idempotent: if a job is already running for this survey, return it
-    instead of starting a duplicate (spec section 17 - refresh must not
-    restart processing)."""
+def start_processing(
+    db: Session, survey_id: uuid.UUID, force_restart: bool = False
+) -> ProcessingJob:
+    """Start a detection job for a survey.
+
+    Idempotent against a job already RUNNING: that one is returned instead of
+    starting a duplicate (spec section 17 - refresh must not restart
+    processing).
+
+    Idempotent against a job already FINISHED too, and that half was missing.
+    Scoring a survey twice does not replace its detections, it appends a second
+    full set: three runs of the same 40-frame survey left 15 detections, three
+    identical copies at each of five positions, and duplicated the map pins,
+    the review queue and every row of the report. So a survey that already has
+    detections is refused unless the caller explicitly asks to redo it.
+
+    `force_restart=True` DELETES the survey's existing detections first, and
+    that is not a cheap thing to do: detection_reviews cascade off detections,
+    so it discards the operator's accept/reject decisions along with them. It
+    is the caller's call to make, which is why it is a flag and not a default.
+    """
     existing = get_active_job_for_survey(db, survey_id)
     if existing:
         return existing
+
+    already = db.query(Detection).filter(Detection.survey_id == survey_id).count()
+    if already:
+        if not force_restart:
+            raise ApiError(
+                409,
+                "ALREADY_PROCESSED",
+                f"This survey already has {already} detection(s) from an earlier "
+                f"run. Processing it again would add a second copy of every one "
+                f"rather than replacing them. Send force_restart=true to discard "
+                f"the existing detections -- and note that also discards any "
+                f"review decisions made on them.",
+            )
+        deleted = (
+            db.query(Detection)
+            .filter(Detection.survey_id == survey_id)
+            .delete(synchronize_session=False)
+        )
+        db.commit()
+        logger.info("force_restart: discarded %s detection(s) for survey %s", deleted, survey_id)
 
     frames_total = db.query(SonarFrame).filter(SonarFrame.survey_id == survey_id).count()
 

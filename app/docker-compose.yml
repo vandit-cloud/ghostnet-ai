@@ -20,6 +20,21 @@ services:
       retries: 10
 
   backend:
+    # NOTE: this build context is ./backend, so the image CANNOT reach ai/ at
+    # the repository root, and it installs only requirements.txt -- no torch,
+    # no ultralytics, no ghostnet.
+    #
+    # A backend started this way therefore runs on MockAIAdapter. It works, and
+    # every payload is stamped model_version "mock-ghostnet-dev-v0" (visible on
+    # the detection detail page), but the detections are NOT real: they are not
+    # produced by the trained model and must never be shown as results.
+    #
+    # Real detections need the local setup in README.md -- a venv with the AI
+    # package installed editable from ai/. Making this image do it would mean
+    # moving the context to the repository root and baking ~2.6 GB of torch and
+    # CUDA into the layer, which is a deliberate decision nobody has taken yet.
+    #
+    # Treat compose as "the app, with a stand-in detector".
     build: ./backend
     restart: unless-stopped
     environment:

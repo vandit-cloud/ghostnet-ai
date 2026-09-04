@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from geoalchemy2 import Geometry
-from sqlalchemy import String, DateTime, ForeignKey, Float, JSON, func
+from sqlalchemy import String, DateTime, ForeignKey, Float, JSON, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
@@ -11,9 +11,26 @@ from app.models.enums import Priority, ReviewStatus, Uncertainty
 
 class Detection(Base):
     __tablename__ = "detections"
+    __table_args__ = (
+        UniqueConstraint("frame_id", "detection_ref", name="uq_detections_frame_ref"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    detection_ref: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    # Unique WITHIN A FRAME, not globally -- that is exactly what the AI
+    # contract promises for `detection_id` ("Stable per-detection identifier,
+    # unique within a frame", contracts/ai-output.schema.json).
+    #
+    # It used to be `unique=True`, a global constraint the contract never
+    # backed. ghostnet mints these as "D-" + uuid4().hex[:8], i.e. 32 bits, so
+    # a global constraint fails on the birthday problem rather than on any bug:
+    # about a 1% chance of a collision by 10,000 stored detections, 25% by
+    # 50,000 and 69% by 100,000. The symptom would have been an unhandled
+    # IntegrityError killing a processing job part-way through, at a scale this
+    # system is meant to reach.
+    #
+    # The ref is display-only -- every lookup in this codebase goes through the
+    # UUID primary key -- so the global constraint bought nothing.
+    detection_ref: Mapped[str] = mapped_column(String(50), nullable=False)
     survey_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("surveys.id", ondelete="CASCADE"), nullable=False)
     frame_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("sonar_frames.id", ondelete="CASCADE"), nullable=False)
     source_file_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("survey_files.id", ondelete="CASCADE"), nullable=False)

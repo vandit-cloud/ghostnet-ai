@@ -89,20 +89,44 @@ function SceneContents(props: Scene3DProps) {
   const trackPoints: [number, number, number][] = track.map((p) => [p.x, 0.4, p.z]);
   const vesselPosition: [number, number, number] | null = vessel ? [vessel.x, 0, vessel.z] : null;
 
+  // Everything below is sized RELATIVE TO THE SURVEY, and it has to be.
+  //
+  // projectLatLon returns METRES, so the scene is as big as the survey line:
+  // NBP0505 line 01B spans about 1,680 m along-track by 607 m across. The
+  // markers are authored at 1.3-2.6 world units and the fog was fixed at
+  // 220/1150, so on a real survey every marker was roughly ONE PIXEL and the
+  // far half of the track sat beyond the fog's far plane. The route line was
+  // the only thing visible, because a line keeps a 1 px minimum width however
+  // small it is in world space.
+  //
+  // A fixed world constant is only ever right for one survey size. These are
+  // fractions of the extent instead, so a 200 m harbour scan and a 5 km
+  // offshore line both frame correctly.
+  // bounds is null until the survey has at least one placed point; 1000 is a
+  // neutral stand-in that only ever applies to an empty scene.
+  const extent = bounds
+    ? Math.max(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ, 1)
+    : 1000;
+  const markerScale = Math.max(1, extent / 60);
+
   return (
     <>
       <color attach="background" args={["#040a12"]} />
-      <fog attach="fog" args={["#040a12", 220, 1150]} />
+      <fog attach="fog" args={["#040a12", extent * 0.25, extent * 2.2]} />
       <ambientLight intensity={0.45} color="#0d2430" />
       <directionalLight position={[120, 180, 80]} intensity={0.65} color="#bfe9f5" />
-      <pointLight position={[0, 60, 0]} intensity={0.3} color="#22d3ee" distance={400} decay={2} />
+      <pointLight position={[0, 60, 0]} intensity={0.3} color="#22d3ee" distance={Math.max(400, extent)} decay={2} />
 
       <OceanSurface paused={paused} />
       <CoverageSwath points={track} />
       <SurveyRoute points={trackPoints} />
 
       {vesselPosition && (
-        <group position={vesselPosition} rotation={[0, (vessel!.headingDeg * Math.PI) / 180, 0]}>
+        <group
+          position={vesselPosition}
+          rotation={[0, (vessel!.headingDeg * Math.PI) / 180, 0]}
+          scale={markerScale}
+        >
           <Vessel />
           <SonarSweep active={sonarActive} paused={paused} />
         </group>
@@ -116,12 +140,20 @@ function SceneContents(props: Scene3DProps) {
           priority={d.priority}
           selected={d.id === selectedId}
           paused={paused}
+          scale={markerScale}
           onSelect={() => onSelectDetection?.(d.id)}
         />
       ))}
 
       <CameraRig cameraMode={cameraMode} fitRequestId={fitRequestId} bounds={bounds} vesselPosition={vesselPosition} />
-      <OrbitControls makeDefault enableDamping dampingFactor={0.08} maxPolarAngle={Math.PI / 2.1} minDistance={30} maxDistance={2000} />
+      <OrbitControls
+        makeDefault
+        enableDamping
+        dampingFactor={0.08}
+        maxPolarAngle={Math.PI / 2.1}
+        minDistance={Math.max(5, extent / 60)}
+        maxDistance={Math.max(2000, extent * 3)}
+      />
     </>
   );
 }

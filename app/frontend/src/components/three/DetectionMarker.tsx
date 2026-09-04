@@ -30,6 +30,7 @@ export function DetectionMarker({
   priority,
   selected = false,
   paused,
+  scale = 1,
   onSelect,
 }: {
   position: [number, number, number];
@@ -37,6 +38,10 @@ export function DetectionMarker({
   priority: string;
   selected?: boolean;
   paused: boolean;
+  /** Multiplier sized from the survey extent -- see Scene3D. The shapes are
+   *  authored at 1.3-2.6 world units, which is about a pixel on a 1.7 km
+   *  survey line, so without this they render invisibly small. */
+  scale?: number;
   onSelect?: () => void;
 }) {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -61,7 +66,7 @@ export function DetectionMarker({
   }
 
   return (
-    <group position={position}>
+    <group position={position} scale={scale}>
       <mesh ref={meshRef} position={[0, 3, 0]} onClick={handleClick}>
         <ShapeForClass detectionClass={detectionClass} />
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={selected ? 0.7 : 0.3} />

@@ -79,6 +79,23 @@ cp .env.local.example .env.local
 npm run dev
 ```
 
+## Docker gives you the app, with a STAND-IN detector
+
+`docker compose up` builds the backend from the `./backend` context, which
+cannot reach `ai/` at the repository root. The image has no torch and no
+`ghostnet`, so `get_ai_adapter()` falls back to `MockAIAdapter`.
+
+Everything runs — upload, processing, map, reports — but the detections are
+invented. They are stamped `model_version: mock-ghostnet-dev-v0` and the
+backend logs `AI adapter: MockAIAdapter -- these are NOT real detections` at
+startup, so a stored result can always be traced back. **Do not demo from
+Docker.** The mock's numbers look plausible on the dashboard and the map; you
+have to open a detection's detail page to see which detector produced them.
+
+For real detections use the local setup above. Making the image self-sufficient
+means moving the compose context to the repository root and baking ~2.6 GB of
+torch/CUDA into the layer — a decision nobody has taken yet.
+
 ## Tests
 
 Backend (needs a running Postgres+PostGIS — detections use a PostGIS geometry column with no sqlite equivalent):
