@@ -19,6 +19,15 @@ param(
     [int]$Patience = 12,
     [string]$Model = "yolo11s",
     [int]$Batch = 4,
+    # Dataset to train and evaluate on. Empty means train.py's default, which
+    # is ai/data/processed (the speckled build gv1-gv6 used).
+    #
+    # This parameter exists because omitting it was a silent wrong-answer bug:
+    # a derived dataset -- ai/data/processed_despeckled, from
+    # build_despeckled.py -- would have been ignored here and the run would
+    # have trained on speckled data under the despeckled run's name, with
+    # nothing in the log to say so.
+    [string]$Data = "",
     [switch]$Resume,
     [switch]$SkipTrain
 )
@@ -124,6 +133,7 @@ if ($SkipTrain) {
             # scale. It cost a run at 7,147 images after being fine at 1,335.
             "--workers", "0"
         )
+        if ($Data) { $a += @("--data", $Data) }
         if ($doResume) { $a += "--resume" }
         return $a
     }
@@ -182,8 +192,20 @@ $best = Join-Path $ExpDir "weights\best.pt"
 if (-not (Test-Path $best)) { Write-Step "no best.pt at $best -- stopping"; exit 1 }
 
 Write-Step "CALIBRATE on val"
-& $Py (Join-Path $Root "ai\scripts\fit_calibration.py") --weights $best --device 0
-if ($LASTEXITCODE -ne 0) { Write-Step "CALIBRATE FAILED rc=$LASTEXITCODE" } else { Write-Step "CALIBRATE OK" }
+
+# Written RUN-LOCAL, always. Not by remembering to set GHOSTNET_MODELS_DIR
+# first: this is the pipeline that fits calibration unattended, so the one
+# accident it must be structurally incapable of is refitting the SHIPPED
+# model's temperature against experiment weights. That happened once already
+# (gv6's temperature paired with gv5's weights) and had to be undone by hand.
+# Promotion fits calibration again, deliberately, against the promoted path --
+# see EXPERIMENT_GV7_PLAN.md 1.4.
+$CalOut = Join-Path $ExpDir "models\calibrator\temperature.json"
+$calArgs = @((Join-Path $Root "ai\scripts\fit_calibration.py"),
+             "--weights", $best, "--device", "0", "--out", $CalOut)
+if ($Data) { $calArgs += @("--data", $Data) }
+& $Py $calArgs
+if ($LASTEXITCODE -ne 0) { Write-Step "CALIBRATE FAILED rc=$LASTEXITCODE" } else { Write-Step "CALIBRATE OK -> $CalOut" }
 
 # --- step 3: artificial-vs-natural false-positive rate ----------------------
 # The headline number for the problem statement: how often the detector cries
@@ -191,7 +213,13 @@ if ($LASTEXITCODE -ne 0) { Write-Step "CALIBRATE FAILED rc=$LASTEXITCODE" } else
 # 4 GB does not reliably hold 32 at 640.
 
 Write-Step "BACKGROUND EVAL on test"
-& $Py (Join-Path $Root "ai\scripts\evaluate_background.py") --weights $best --split test --batch 8
+$bgArgs = @((Join-Path $Root "ai\scripts\evaluate_background.py"),
+            "--weights", $best, "--split", "test", "--batch", "8")
+# Must match the training domain. Scoring a despeckle-trained model on
+# speckled tiles is the transform-symmetry violation this whole run exists
+# to avoid -- and it would look like a plain regression, not a mistake.
+if ($Data) { $bgArgs += @("--data-root", (Split-Path -Parent $Data)) }
+& $Py $bgArgs
 if ($LASTEXITCODE -ne 0) { Write-Step "BACKGROUND EVAL FAILED rc=$LASTEXITCODE" } else { Write-Step "BACKGROUND EVAL OK" }
 
 # --- summary ---------------------------------------------------------------
