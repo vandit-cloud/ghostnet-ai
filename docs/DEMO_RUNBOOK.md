@@ -221,15 +221,104 @@ All true, all verifiable on screen.
 
 ---
 
+## 5b. The four per-class demo files — upload them live
+
+`NBP0505 Line 01B` is the honest headline: a real, unedited slice of a 2005
+side-scan line. What it cannot do is let a judge check the model's work — real
+seabed is mostly speckle, and after the tile-edge fix it reports 2 detections
+across 40 frames, which is correct and undramatic.
+
+`demo/xtf/` holds four containers you can **drag into the browser during the
+demo**, one per object class:
+
+| file | contents | detections |
+|---|---|---|
+| `wrecks_demo_fixture.xtf` | 4 shipwrecks + 2 clean seabed | 6 |
+| `aircraft_demo_fixture.xtf` | 4 aircraft + 2 clean seabed | 7 |
+| `debris_demo_fixture.xtf` | 4 pipeline frames + 2 clean seabed | 4 |
+| `ghost_gear_demo_fixture.xtf` | 1 ghost net + 3 crab pots + 2 clean seabed | 13, incl. the net |
+
+New Survey → drop the file → Start Processing. Six tiles, ~10 seconds, then the
+completion panel and the detections.
+
+> **Every target tile produces at least one detection. Every clean-seabed tile
+> produces none.** That holds in all four files and across all 40 NBP0505
+> frames. It is the sentence worth saying out loud, because the PS's hard part
+> is telling debris from rocks and a detector that boxed everything would look
+> identical on the target tiles alone.
+
+They are not committed (`*.xtf` is gitignored, 6.4 MB each). Rebuild with:
+
+```bash
+.venv/Scripts/python.exe scripts/build_demo_xtf.py
+```
+
+They are also pre-seeded as four surveys by
+`.venv/Scripts/python.exe ../../scripts/showcase_seed.py`, so there is a
+fallback if a live upload goes wrong.
+
+### What to say about them
+
+Say it plainly — the answer is good, and the files are named
+`*_demo_fixture.xtf` so the question is going to come up anyway:
+
+- **The imagery is real.** Every sample is a real side-scan frame from a public
+  dataset's **held-out** split. Nothing here was trained on.
+- **The detections are not staged.** Produced live by the model at processing
+  time, through the same code path the raw NBP0505 file takes.
+- **The container is synthetic.** These pings never existed as pings; they are
+  a re-encoding of frames that arrived as PNG and JPEG, given a track so the
+  map has something to draw. The source frames come from four countries, so
+  there is no real track they could share.
+- **The frames were chosen** for being legible and for surviving the round trip
+  — see `demo/xtf/README.md`. That selection is a demo decision. The model's
+  output on them is not.
+
+### Which detection to open
+
+Sort the Detections table by **Confidence** before clicking. Each tile can
+carry more than one box and the strongest is not first by default — on the
+wrecks file the top detection is 59% with IoU 0.94 against the human label,
+while an incidental one on the same hull sits at 36%.
+
+Open **Sonar Viewer** on it: the frame, the box, and the AI evidence beside it
+— `artificial verification`, `shadow context` (now real, because the container
+carries geometry), and `notes`, which names the detector's finer class. A wreck
+reads as *class Debris, detector class wreck*.
+
+### Why NBP0505 only reports 2 detections
+
+It used to report 9, and 8 were the same artifact: the detector reacting to the
+640 px tile boundary and producing thin strips welded to a frame edge (F1/F3 in
+docs/KNOWN_ISSUES.md). Those are now suppressed by shape, so 38 of its 40
+frames correctly report nothing. The suppression can be switched off, a frame
+that loses a detection to it says so in its warnings, and it is covered by
+seven tests.
+
+---
+
 ## 6. Reset between runs
 
-Wipe all survey data, keep the login:
+**One survey**: open it and press **Delete Survey**, then type its name to
+confirm. That removes its files, frames, detections, jobs, reports and the
+review decisions on them, and deletes the uploaded bytes off disk. Use this to
+clear a survey you uploaded live during a rehearsal — it is also worth showing,
+since a judge who asks "what if I upload the wrong file?" is asking about this.
+
+**Everything**, keeping the login:
 
 ```bash
 PGPASSWORD=ghostnet "/e/SIH-Debries-rudra/pgportable/pgsql/bin/psql.exe" -h 127.0.0.1 -U ghostnet -d ghostnet -c "delete from surveys;"
 ```
 
-That cascades to files, frames, detections, jobs and reports.
+That cascades to files, frames, detections, jobs and reports. It does not
+remove the uploaded files from `app/backend/uploads/` — the Delete Survey button
+does, the SQL does not.
+
+**Before demoing**, check which survey the Dashboard is showing: its numbers are
+now scoped to the survey it names, and that survey is the most recently updated
+one. Open **NBP0505 Line 01B** last, or delete the leftover rehearsal surveys,
+so the card leads with the one you are about to talk about.
 
 Rebuild the whole demo state from scratch in one go — upload, process, export
 both reports:
