@@ -125,3 +125,7 @@ demo/reports/*
 # Local rollback snapshots: a 19 MB copy of weights git already tracks.
 # Safety net for a bad promotion, not history.
 ai/models/_rollback/
+
+# Despeckled dataset copy, built by ai/scripts/build_despeckled.py.
+# Derived from processed/, ~4 GB, rebuildable in minutes.
+ai/data/processed_despeckled/

@@ -208,7 +208,13 @@ def main() -> int:
 
     if provenance["dataset_build"]:
         b = provenance["dataset_build"]
-        print(f"  dataset  {b['split_sizes']}  classes {b.get('declared_classes')}")
+        # .get throughout: a derived dataset (build_despeckled.py) writes a
+        # slimmer report than build_dataset.py, and a preflight must not
+        # traceback over a missing informational key.
+        print(f"  dataset  {b.get('split_sizes') or b.get('dataset_version', 'unknown')}"
+              f"  classes {b.get('declared_classes')}")
+        if b.get("preprocessing"):
+            print(f"  preproc  {b['preprocessing']}   (derived from {b.get('derived_from')})")
         for w in b.get("warnings", []):
             print(f"  ! dataset warning: {w}")
 
