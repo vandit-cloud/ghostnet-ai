@@ -1,0 +1,27 @@
+{
+  "dataset_version": "test4346-8bfbcc102487",
+  "splits": {
+    "train": {
+      "n_images": 13896,
+      "n_labels": 13896,
+      "n_background": 6041,
+      "image_list": "64939cdf884d682a7067479faed84166339828492b7e1fbb202ce2ec62d14070",
+      "label_content": "bffa394f1c0a4fe652176de726e2e03df499b92690cb4ea28b4b7a5d9cbdae02"
+    },
+    "val": {
+      "n_images": 1492,
+      "n_labels": 1492,
+      "n_background": 820,
+      "image_list": "8e18545d3c80ca58f305d5df226389b5bbaf5b5b86c55fafc4db689088a5667a",
+      "label_content": "427ad98049bf33715bfbb50053b27bbdffba37747e5d2cb50dbb7c23683e8ef9"
+    },
+    "test": {
+      "n_images": 4346,
+      "n_labels": 4346,
+      "n_background": 2930,
+      "image_list": "8bfbcc1024874fe8d9b176d1758a0a354f47a5d5b8cd46f67dc7b2e92a7c6dd6",
+      "label_content": "09b61d8a64353cb3249f62dda516c046bb00f850a4f854fe39e72800ae28b434"
+    }
+  },
+  "note": "dataset_version is keyed on the TEST split only, because test is the ruler and train/val are allowed to grow. Compare `splits.test` digests to assert comparability with an earlier run."
+}

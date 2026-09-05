@@ -81,6 +81,9 @@ def main() -> int:
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--force", action="store_true",
                     help="overwrite an existing run of this name instead of refusing")
+    ap.add_argument("--allow-dataset-drift", action="store_true",
+                    help="train even though the test split does not match build_report.json. "
+                         "The run is then not comparable to earlier runs; record that in notes.md")
     ap.add_argument("--dry-run", action="store_true", help="print the config and check the data, train nothing")
     args = ap.parse_args()
 
@@ -147,6 +150,37 @@ def main() -> int:
             return 1
         weights = str(checkpoint)
         print(f"  resuming from {show(checkpoint)}")
+
+    # The test split is the ruler. Assert it has not moved before spending
+    # hours measuring against it -- EXPERIMENT_GV7_PLAN.md 1.5. A source with no
+    # split policy re-draws the random pool and silently changes WHICH boxes are
+    # in test, which invalidates every comparison and raises no error.
+    #
+    # Placed after the resume/force guards so a wrong-flag mistake still gets
+    # its specific message: those tell you how to save a run, this one only
+    # tells you the run would not be comparable.
+    from _fingerprint import check_test_split
+
+    splits_ok, drift = check_test_split(data_path.parent)
+    if splits_ok:
+        print("  dataset: test split matches build_report.json")
+    else:
+        print()
+        print("! DATASET DRIFT -- this run would not be comparable to gv1-gv6:")
+        for problem in drift:
+            print(f"    {problem}")
+        if args.dry_run:
+            # Reported, not fatal: a dry run exists to surface exactly this
+            # before anyone commits GPU hours to it.
+            print("\n  (dry run: reporting only)")
+        elif not args.allow_dataset_drift:
+            print()
+            print("  Refusing to start. Pass --allow-dataset-drift to train anyway,")
+            print("  and say so in the run's notes.md -- an unassertable run must")
+            print("  declare that it is unassertable.")
+            return 1
+        else:
+            print("\n  --allow-dataset-drift given; continuing. RECORD THIS in notes.md.")
 
     if not Path(weights).exists():
         print(f"weights not found: {weights}")

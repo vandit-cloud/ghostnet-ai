@@ -462,7 +462,20 @@ def main() -> int:
         "seed": args.seed,
         "warnings": problems,
     }
+
+    # Fingerprint the splits we just wrote, so a later run can assert the test
+    # split did not move underneath it (EXPERIMENT_GV7_PLAN.md 1.5). Computed
+    # here rather than on demand because this is the only moment the build is
+    # known to be internally consistent.
+    from _fingerprint import fingerprint_dataset
+
+    fp = fingerprint_dataset(out_root)
+    report["dataset_version"] = fp["dataset_version"]
+    report["fingerprints"] = fp
+
     (out_root / "build_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+    print(f"\n  dataset_version {fp['dataset_version']}")
+    print(f"  test image-list {fp['splits']['test']['image_list']}")
     print(f"\nwrote {show(out_root / 'data.yaml')}")
     print(f"wrote {show(out_root / 'build_report.json')}")
     return 1 if problems else 0
