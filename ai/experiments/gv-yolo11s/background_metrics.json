@@ -52,5 +52,6 @@
       "total_boxes": 103
     }
   ],
-  "note": "False-positive rate on tiles whose labels are empty, i.e. real side-scan seabed verified to contain no object. This is how the artificial-vs-natural requirement is scored: there is no natural class, because nobody draws boxes around rocks."
+  "note": "False-positive rate on tiles CARRYING NO ANNOTATION -- real side-scan seabed that nobody drew a box on. This is NOT the same as seabed verified to contain nothing: roughly half these tiles come from survey lines the source dataset left entirely unannotated, so every rate here is an UPPER BOUND. This is how the artificial-vs-natural requirement is scored: there is no natural class, because nobody draws boxes around rocks.",
+  "scale_warning": "`threshold` is a RAW detector score; the review floor is applied to CALIBRATED confidence. Different scales -- do not compare a row here with a row in review_floor.json. Which one is deployed depends on whether the raw gate (config.raw_conf_threshold) or the calibrated floor binds, and that depends on this run's calibration temperature. Worked out for gv5 in its own file."
 }
