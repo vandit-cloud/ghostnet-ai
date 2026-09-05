@@ -21,7 +21,10 @@ class Settings(BaseSettings):
     max_upload_size_mb: int = 200
     allowed_upload_extensions: tuple[str, ...] = (".xtf", ".jsf", ".tif", ".tiff", ".png", ".jpg", ".jpeg", ".json", ".csv")
 
-    cors_origins: list[str] = ["http://localhost:3000"]
+    # Both spellings of the dev frontend. An origin is matched as a literal
+    # string, so a browser opened at 127.0.0.1:3000 is a different origin from
+    # one opened at localhost:3000 and would otherwise be refused.
+    cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
 
 @lru_cache

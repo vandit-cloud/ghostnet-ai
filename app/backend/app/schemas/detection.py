@@ -24,6 +24,11 @@ class DetectionOut(BaseModel):
     id: uuid.UUID
     detection_ref: str
     survey_id: uuid.UUID
+    # Which survey this came from, resolved for display. The detections list is
+    # reachable from the sidebar with no survey scope at all, and without a name
+    # every survey's rows arrive in one undifferentiated table -- see B2 in
+    # docs/KNOWN_ISSUES.md.
+    survey_name: str | None = None
     frame_id: uuid.UUID
     detection_class: str
     raw_score: float | None

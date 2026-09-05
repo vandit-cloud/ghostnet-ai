@@ -12,7 +12,7 @@ import { EmptyState, ErrorState, LoadingSkeleton } from "@/components/States";
 import { useToastStore } from "@/components/Toast";
 import { UploadDropzone } from "@/components/UploadDropzone";
 import { useSurveyFiles, useUploadFile } from "@/features/upload/hooks";
-import { useSurvey } from "@/features/surveys/hooks";
+import { useDeleteSurvey, useSurvey } from "@/features/surveys/hooks";
 import type { SurveyFile } from "@/types";
 import { formatDateTime } from "@/utils/format";
 
@@ -24,7 +24,10 @@ export default function SurveyDetailPage() {
   const { data: survey, isLoading, isError, refetch } = useSurvey(surveyId);
   const { data: files, isLoading: filesLoading } = useSurveyFiles(surveyId);
   const uploadFile = useUploadFile(surveyId);
+  const deleteSurvey = useDeleteSurvey();
   const push = useToastStore((s) => s.push);
+
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
@@ -104,8 +107,34 @@ export default function SurveyDetailPage() {
             >
               Generate Report
             </Link>
+            <button
+              onClick={() => setConfirmingDelete(true)}
+              className="rounded-md border border-abyss-700 px-4 py-2 text-sm text-slate-400 hover:border-alert-critical/60 hover:text-alert-critical"
+            >
+              Delete Survey
+            </button>
           </div>
         </section>
+
+        {confirmingDelete && (
+          <DeleteSurveyDialog
+            survey={survey}
+            pending={deleteSurvey.isPending}
+            onCancel={() => setConfirmingDelete(false)}
+            onConfirm={async () => {
+              try {
+                await deleteSurvey.mutateAsync(surveyId);
+                push(`Deleted "${survey.name}".`, "success");
+                // Replace, not push: the survey behind this entry is gone, so
+                // Back must not land on a page that 404s.
+                router.replace("/app/surveys");
+              } catch {
+                push("Unable to delete this survey.", "error");
+                setConfirmingDelete(false);
+              }
+            }}
+          />
+        )}
 
         <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <SummaryStat label="Files" value={survey.file_count} />
@@ -149,6 +178,69 @@ export default function SurveyDetailPage() {
         </section>
       </div>
     </AppShell>
+  );
+}
+
+/** Confirmation for an action with no undo.
+ *
+ * Deleting a survey cascades away its files, frames, detections and the review
+ * decisions made on them. A yes/no dialog is too easy to click through for
+ * that, so the survey's name has to be typed -- the same gesture a repository
+ * host asks for, and for the same reason: it forces the operator to read which
+ * survey they are about to erase. */
+function DeleteSurveyDialog({
+  survey,
+  pending,
+  onCancel,
+  onConfirm,
+}: {
+  survey: { name: string; detection_count: number; file_count: number };
+  pending: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const [typed, setTyped] = useState("");
+  const matches = typed.trim() === survey.name;
+
+  return (
+    <section className="panel border border-alert-critical/40 p-5">
+      <h3 className="text-sm font-semibold text-alert-critical">Delete this survey?</h3>
+      <p className="mt-2 text-sm text-slate-300">
+        This permanently removes {survey.file_count} uploaded file
+        {survey.file_count === 1 ? "" : "s"}, every decoded frame, {survey.detection_count} detection
+        {survey.detection_count === 1 ? "" : "s"} and the review decisions recorded against them, plus any
+        reports generated from this survey. It cannot be undone.
+      </p>
+      <label className="mt-4 block text-xs text-slate-500">
+        Type <span className="font-mono text-slate-300">{survey.name}</span> to confirm
+      </label>
+      <input
+        autoFocus
+        value={typed}
+        onChange={(e) => setTyped(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && matches && !pending) onConfirm();
+          if (e.key === "Escape") onCancel();
+        }}
+        className="mt-1 w-full max-w-md rounded-md border border-abyss-600 bg-abyss-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-alert-critical"
+      />
+      <div className="mt-4 flex gap-2">
+        <button
+          onClick={onConfirm}
+          disabled={!matches || pending}
+          className="rounded-md bg-alert-critical px-4 py-2 text-sm font-medium text-abyss-950 disabled:opacity-40"
+        >
+          {pending ? "Deleting…" : "Delete permanently"}
+        </button>
+        <button
+          onClick={onCancel}
+          disabled={pending}
+          className="rounded-md border border-abyss-600 px-4 py-2 text-sm text-slate-300 hover:text-slate-100"
+        >
+          Cancel
+        </button>
+      </div>
+    </section>
   );
 }
 

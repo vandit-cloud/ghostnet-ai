@@ -97,7 +97,22 @@ def upload_survey_file(
             frame_id=f"FRAME-{uuid.uuid4().hex[:10].upper()}",
             ping_id=(metadata or {}).get("ping_id"),
             timestamp=frame_timestamp or datetime.now(timezone.utc),
-            image_reference=storage_reference,
+            # storage.path_for(), NOT storage_reference -- the same distinction
+            # the XTF branch below documents, and it was wrong here too.
+            #
+            # `processing_service` hands `image_reference` straight to the AI
+            # adapter as a filesystem path. A storage-relative key
+            # ("<survey_id>/<unique_name>") resolves against the server's
+            # working directory instead, so cv2.imread returned None, detect()
+            # reported "image not found" as a warning rather than an error, and
+            # the job completed successfully with zero detections. An uploaded
+            # PNG could therefore never produce a detection, and it looked like
+            # a model that found nothing rather than a path that did not exist.
+            #
+            # The XTF branch already stores a resolved path here, so this also
+            # makes the column mean one thing rather than two. Serving is
+            # unaffected: `storage.open()` joins an absolute path unchanged.
+            image_reference=str(storage.path_for(storage_reference)),
             latitude=(metadata or {}).get("latitude"),
             longitude=(metadata or {}).get("longitude"),
             heading=(metadata or {}).get("heading"),

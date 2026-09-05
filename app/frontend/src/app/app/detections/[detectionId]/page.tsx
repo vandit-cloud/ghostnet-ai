@@ -10,7 +10,7 @@ import { EvidenceSummary } from "@/components/EvidenceSummary";
 import { ErrorState, LoadingSkeleton } from "@/components/States";
 import { SonarViewer } from "@/components/SonarViewer";
 import { useDetection, useDetectionReviews } from "@/features/detections/hooks";
-import { formatConfidence, formatCoordinate, formatDateTime } from "@/utils/format";
+import { formatConfidence, formatCoordinate, formatDateTime, formatDetectionClassWithDetector } from "@/utils/format";
 
 export default function DetectionDetailPage() {
   const params = useParams<{ detectionId: string }>();
@@ -38,7 +38,7 @@ export default function DetectionDetailPage() {
       {/* primary focus: what / confidence / priority, immediately visible */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <span className="text-xl font-semibold capitalize text-slate-100">
-          {detection.detection_class.replace("_", " ")}
+          {formatDetectionClassWithDetector(detection.detection_class, detection.evidence_summary)}
         </span>
         <span className="text-xl font-semibold text-slate-100">{formatConfidence(detection.calibrated_confidence)}</span>
         <PriorityBadge priority={detection.priority} />

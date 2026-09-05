@@ -42,3 +42,30 @@ export function useUpdateSurvey(surveyId: string) {
     },
   });
 }
+
+/** Erase a survey and everything derived from it.
+ *
+ * A hard delete: the backend leans on the ondelete=CASCADE already declared on
+ * every child table, so files, frames, detections, jobs, reports and the review
+ * decisions hanging off those detections all go. There was no DELETE route in
+ * the API at all before this (A4 in docs/KNOWN_ISSUES.md), so a mistaken upload
+ * was permanent through the UI and cleanup meant raw SQL. The caller is
+ * responsible for confirming first -- there is no undo. */
+export function useDeleteSurvey() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (surveyId: string) => apiFetch<void>(`/surveys/${surveyId}`, { method: "DELETE" }),
+    onSuccess: (_data, surveyId) => {
+      // Drop this survey's own caches rather than leave them to go stale --
+      // every one of them now points at rows that no longer exist.
+      queryClient.removeQueries({ queryKey: ["survey", surveyId] });
+      queryClient.removeQueries({ queryKey: ["latest-job", surveyId] });
+      queryClient.removeQueries({ queryKey: ["active-job", surveyId] });
+      queryClient.removeQueries({ queryKey: ["survey-map", surveyId] });
+      queryClient.invalidateQueries({ queryKey: ["surveys"] });
+      queryClient.invalidateQueries({ queryKey: ["detections"] });
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+    },
+  });
+}

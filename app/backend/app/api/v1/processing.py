@@ -37,6 +37,18 @@ def get_active_job(survey_id: uuid.UUID, db: Session = Depends(get_db)) -> Proce
     return ProcessingJobOut.model_validate(job) if job else None
 
 
+@router.get("/surveys/{survey_id}/jobs/latest", response_model=ProcessingJobOut | None)
+def get_latest_job(survey_id: uuid.UUID, db: Session = Depends(get_db)) -> ProcessingJobOut | None:
+    """The survey's most recent job regardless of status -- see A1 in
+    docs/KNOWN_ISSUES.md. Unlike /jobs/active this keeps answering after the
+    run finishes, which is what lets the processing page show a result instead
+    of claiming nothing ran. 404s for a survey that does not exist rather than
+    returning null, so a bad id is distinguishable from "never processed"."""
+    survey_service.get_survey_or_404(db, survey_id)
+    job = processing_service.get_latest_job_for_survey(db, survey_id)
+    return ProcessingJobOut.model_validate(job) if job else None
+
+
 @router.post("/jobs/{job_id}/cancel", response_model=ProcessingJobOut)
 def cancel_job(job_id: uuid.UUID, db: Session = Depends(get_db)) -> ProcessingJobOut:
     job = processing_service.cancel_job(db, job_id)

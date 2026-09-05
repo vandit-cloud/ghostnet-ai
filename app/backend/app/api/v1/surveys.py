@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
@@ -9,6 +9,7 @@ from app.models.user import User
 from app.schemas.common import Page
 from app.schemas.survey import SurveyCreate, SurveyDetailOut, SurveyOut, SurveyUpdate
 from app.services import survey_service
+from app.storage.local import StorageBackend, get_storage_backend
 
 router = APIRouter(prefix="/surveys", tags=["surveys"], dependencies=[Depends(get_current_user)])
 
@@ -59,3 +60,15 @@ def get_survey(survey_id: uuid.UUID, db: Session = Depends(get_db)) -> SurveyDet
 def update_survey(survey_id: uuid.UUID, payload: SurveyUpdate, db: Session = Depends(get_db)) -> SurveyDetailOut:
     survey = survey_service.update_survey(db, survey_id, payload)
     return _to_out(db, survey, detail=True)
+
+
+@router.delete("/{survey_id}", status_code=204, response_class=Response)
+def delete_survey(
+    survey_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    storage: StorageBackend = Depends(get_storage_backend),
+) -> Response:
+    """Erase a survey and everything derived from it. 404 if it never existed,
+    so a repeated delete is honest about it rather than reporting success."""
+    survey_service.delete_survey(db, survey_id, storage)
+    return Response(status_code=204)

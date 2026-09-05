@@ -49,51 +49,66 @@ def build_dashboard_summary(db: Session) -> DashboardSummary:
         else None
     )
 
-    frames_processed = db.scalar(select(func.coalesce(func.sum(ProcessingJob.frames_processed), 0))) or 0
-    candidates = db.scalar(select(func.count()).select_from(Detection)) or 0
-    confirmed_artificial = (
+    # Every number on this card sits beside `current_survey`'s name, so every
+    # number is scoped to that survey. They used to be global counts: with four
+    # surveys in the database the card credited one 40-frame survey with 160
+    # frames and 20 detections, which reads as the app inventing results.
+    # See B1 in docs/KNOWN_ISSUES.md.
+    scope_id = current_survey_row.id if current_survey_row else None
+
+    def count_detections(*conditions) -> int:
+        if scope_id is None:
+            return 0
+        stmt = select(func.count()).select_from(Detection).where(Detection.survey_id == scope_id)
+        for condition in conditions:
+            stmt = stmt.where(condition)
+        return db.scalar(stmt) or 0
+
+    frames_processed = (
         db.scalar(
-            select(func.count()).select_from(Detection).where(Detection.review_status == ReviewStatus.ACCEPTED_ARTIFICIAL)
+            select(func.coalesce(func.sum(ProcessingJob.frames_processed), 0)).where(
+                ProcessingJob.survey_id == scope_id
+            )
         )
         or 0
-    )
-    high_priority = (
-        db.scalar(
-            select(func.count())
-            .select_from(Detection)
-            .where(Detection.priority.in_([Priority.HIGH, Priority.CRITICAL]))
-        )
-        or 0
-    )
-    needs_review = (
-        db.scalar(select(func.count()).select_from(Detection).where(Detection.review_status == ReviewStatus.PENDING))
-        or 0
-    )
-    rejected_natural = (
-        db.scalar(
-            select(func.count()).select_from(Detection).where(Detection.review_status == ReviewStatus.REJECTED_NATURAL)
-        )
-        or 0
-    )
+    ) if scope_id else 0
+    candidates = count_detections()
+    confirmed_artificial = count_detections(Detection.review_status == ReviewStatus.ACCEPTED_ARTIFICIAL)
+    high_priority = count_detections(Detection.priority.in_([Priority.HIGH, Priority.CRITICAL]))
+    needs_review = count_detections(Detection.review_status == ReviewStatus.PENDING)
+    rejected_natural = count_detections(Detection.review_status == ReviewStatus.REJECTED_NATURAL)
 
     class_rows = (
         db.query(Detection.detection_class, func.count().label("count"))
+        .filter(Detection.survey_id == scope_id)
         .group_by(Detection.detection_class)
         .all()
+        if scope_id
+        else []
     )
     class_distribution = [ClassCount(detection_class=row[0], count=row[1]) for row in class_rows]
 
     since = datetime.now(timezone.utc) - timedelta(days=13)
     trend_rows = (
         db.query(func.date(Detection.created_at).label("day"), func.count().label("count"))
-        .filter(Detection.created_at >= since)
+        .filter(Detection.survey_id == scope_id, Detection.created_at >= since)
         .group_by(func.date(Detection.created_at))
         .order_by(func.date(Detection.created_at))
         .all()
+        if scope_id
+        else []
     )
     detection_trend = [TrendPoint(date=str(row[0]), count=row[1]) for row in trend_rows]
 
-    recent_rows = db.query(Detection).order_by(Detection.created_at.desc()).limit(10).all()
+    recent_rows = (
+        db.query(Detection)
+        .filter(Detection.survey_id == scope_id)
+        .order_by(Detection.created_at.desc())
+        .limit(10)
+        .all()
+        if scope_id
+        else []
+    )
     recent_detections = [
         RecentDetection(
             id=d.id,

@@ -14,8 +14,31 @@ const STAGES: JobStage[] = [
   "SAVING",
 ];
 
+/** Where the stepper should sit for a given job.
+ *
+ * STAGES lists the eight stages that do work. The backend's JobStage enum has
+ * ten -- it also has QUEUED (before any of them) and DONE (after all of them),
+ * and a bare `STAGES.indexOf()` returned -1 for both. -1 renders every node
+ * pending, so the stepper was fully grey while queued and then went *back* to
+ * fully grey the instant the stage became DONE: the visible collapse at the
+ * finish line reported in A3 of docs/KNOWN_ISSUES.md.
+ *
+ * Terminal statuses are read from `status`, not `stage`. A cancelled or failed
+ * job stops wherever it stopped, so its last stage stays `current` and the
+ * stages after it stay pending -- the stepper shows how far it got rather than
+ * claiming the pipeline finished. */
+function stageIndex(job: ProcessingJob): number {
+  if (job.status === "COMPLETED" || job.status === "PARTIAL" || job.stage === "DONE") {
+    return STAGES.length; // every node done, nothing current
+  }
+  if (job.stage === "QUEUED") {
+    return -1; // nothing started yet: every node pending, none pulsing
+  }
+  return STAGES.indexOf(job.stage);
+}
+
 export function ProcessingProgress({ job }: { job: ProcessingJob }) {
-  const currentIndex = STAGES.indexOf(job.stage);
+  const currentIndex = stageIndex(job);
 
   return (
     <div className="space-y-6">

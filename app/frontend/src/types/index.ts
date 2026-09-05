@@ -106,6 +106,7 @@ export interface Detection {
   id: string;
   detection_ref: string;
   survey_id: string;
+  survey_name: string | null;
   frame_id: string;
   detection_class: string;
   raw_score: number | null;

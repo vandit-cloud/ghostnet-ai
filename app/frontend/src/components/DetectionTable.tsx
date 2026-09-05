@@ -6,7 +6,12 @@ import { useMemo, useState } from "react";
 import { PriorityBadge, ReviewStatusBadge, UncertaintyLabel } from "@/components/Badges";
 import { MeterBar } from "@/components/MeterBar";
 import type { Detection } from "@/types";
-import { formatConfidence, formatCoordinate, formatDateTime } from "@/utils/format";
+import {
+  formatConfidence,
+  formatCoordinate,
+  formatDateTime,
+  formatDetectionClassWithDetector,
+} from "@/utils/format";
 
 const PRIORITY_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 
@@ -18,7 +23,18 @@ function sortValue(d: Detection, key: SortKey): number {
   return new Date(d.created_at).getTime();
 }
 
-export function DetectionTable({ detections }: { detections: Detection[] }) {
+/** `showSurvey` defaults on: the table is reachable from the sidebar with no
+ * scope, and rows from four surveys in one undifferentiated list is most of
+ * why a freshly processed survey feels like it produced nothing (B2 in
+ * docs/KNOWN_ISSUES.md). Pages that are already scoped to one survey pass
+ * false rather than repeat the same name down every row. */
+export function DetectionTable({
+  detections,
+  showSurvey = true,
+}: {
+  detections: Detection[];
+  showSurvey?: boolean;
+}) {
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 } | null>(null);
 
   const rows = useMemo(() => {
@@ -57,6 +73,7 @@ export function DetectionTable({ detections }: { detections: Detection[] }) {
         <thead className="bg-abyss-800/60 text-left text-xs uppercase tracking-wide text-slate-500">
           <tr>
             <th className="px-4 py-3">Detection ID</th>
+            {showSurvey && <th className="px-4 py-3">Survey</th>}
             <th className="px-4 py-3">Class</th>
             <SortHeader sortKey="confidence">Confidence</SortHeader>
             <th className="px-4 py-3">Uncertainty</th>
@@ -74,7 +91,23 @@ export function DetectionTable({ detections }: { detections: Detection[] }) {
                   {d.detection_ref}
                 </Link>
               </td>
-              <td className="px-4 py-3 capitalize text-slate-300">{d.detection_class.replace("_", " ")}</td>
+              {showSurvey && (
+                <td className="px-4 py-3">
+                  <Link
+                    href={`/app/surveys/${d.survey_id}`}
+                    className="text-slate-300 hover:text-cyan-accent hover:underline"
+                  >
+                    {d.survey_name ?? "—"}
+                  </Link>
+                </td>
+              )}
+              {/* Contract class plus the detector's finer call. The contract
+                  stores four values and collapses wreck/plane/debris/crab pot
+                  into `debris`, so this column alone read "Debris" for every
+                  row on a survey of aircraft. */}
+              <td className="px-4 py-3 text-slate-300">
+                {formatDetectionClassWithDetector(d.detection_class, d.evidence_summary)}
+              </td>
               <td className="px-4 py-3">
                 <MeterBar value={d.calibrated_confidence} label={formatConfidence(d.calibrated_confidence)} />
               </td>

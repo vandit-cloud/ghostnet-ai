@@ -34,6 +34,7 @@ export function useSurveyRealtime(surveyId: string | undefined) {
         retryRef.current = 0;
         setStatus("connected");
         queryClient.invalidateQueries({ queryKey: ["active-job", surveyId] });
+        queryClient.invalidateQueries({ queryKey: ["latest-job", surveyId] });
         queryClient.invalidateQueries({ queryKey: ["survey", surveyId] });
       };
 
@@ -59,6 +60,7 @@ export function useSurveyRealtime(surveyId: string | undefined) {
       switch (payload.event) {
         case "job.updated":
           queryClient.invalidateQueries({ queryKey: ["active-job", surveyId] });
+          queryClient.invalidateQueries({ queryKey: ["latest-job", surveyId] });
           if (payload.job_id) {
             queryClient.invalidateQueries({ queryKey: ["job", payload.job_id] });
           }
@@ -68,6 +70,10 @@ export function useSurveyRealtime(surveyId: string | undefined) {
           if (payload.job_id) {
             queryClient.invalidateQueries({ queryKey: ["job", payload.job_id] });
           }
+          // The processing page reads ["latest-job"] and only that, so
+          // per-frame progress has to land there too or the bar sits still
+          // between the 1500 ms polls.
+          queryClient.invalidateQueries({ queryKey: ["latest-job", surveyId] });
           break;
         case "detection.created":
         case "detection.updated":

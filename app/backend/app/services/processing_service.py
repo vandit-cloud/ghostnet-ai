@@ -41,6 +41,39 @@ def get_active_job_for_survey(db: Session, survey_id: uuid.UUID) -> ProcessingJo
     )
 
 
+def get_latest_job_for_survey(db: Session, survey_id: uuid.UUID) -> ProcessingJob | None:
+    """The survey's most recent job, whatever state it is in.
+
+    `get_active_job_for_survey` deliberately returns nothing once a job leaves
+    QUEUED|VALIDATING|PROCESSING, which is right for "is something running?"
+    and wrong for "what happened to my run?". The processing page needs the
+    second question answered -- it used to derive the job id from the active
+    endpoint, so the instant a job completed the id evaporated and the page
+    reported that nothing had ever run. This is the one source of truth it
+    reads instead.
+    """
+    return (
+        db.query(ProcessingJob)
+        .filter(ProcessingJob.survey_id == survey_id)
+        .order_by(ProcessingJob.created_at.desc())
+        .first()
+    )
+
+
+def cancel_running_task(job_id: uuid.UUID) -> None:
+    """Stop a job's background task outright, for when its survey is going away.
+
+    `cancel_job` sets a co-operative flag that the frame loop checks between
+    frames; that is the polite path and it leaves the job row CANCELLED. Here
+    the row is about to be deleted, so there is nothing to co-operate with --
+    the task must not get another chance to write to it.
+    """
+    _cancel_flags.discard(str(job_id))
+    task = _running_tasks.pop(str(job_id), None)
+    if task and not task.done():
+        task.cancel()
+
+
 def start_processing(
     db: Session, survey_id: uuid.UUID, force_restart: bool = False
 ) -> ProcessingJob:

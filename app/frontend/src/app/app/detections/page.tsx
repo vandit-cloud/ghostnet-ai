@@ -9,6 +9,7 @@ import { FilterSelect } from "@/components/FilterBar";
 import { Panel } from "@/components/Panel";
 import { EmptyState, ErrorState, LoadingSkeleton } from "@/components/States";
 import { useDetections } from "@/features/detections/hooks";
+import { useSurveys } from "@/features/surveys/hooks";
 
 const CLASS_OPTIONS = [
   { value: "ghost_net", label: "Ghost Net" },
@@ -57,6 +58,16 @@ function DetectionsPageContent() {
     }
     router.push(`/app/detections?${params.toString()}`);
   }
+
+  // Landing here from the sidebar means no survey scope at all, so the table
+  // shows every survey's rows at once. A survey filter (and the Survey column
+  // in DetectionTable) is what makes that list readable -- B2 in
+  // docs/KNOWN_ISSUES.md.
+  const { data: surveys } = useSurveys(1, 200);
+  const surveyOptions = useMemo(
+    () => (surveys?.items ?? []).map((s) => ({ value: s.id, label: s.name })),
+    [surveys]
+  );
 
   const { data, isLoading, isError, refetch } = useDetections({
     survey_id,
@@ -113,11 +124,15 @@ function DetectionsPageContent() {
 
         <Panel className="p-5">
           <div className="flex flex-wrap items-end gap-4">
+            <FilterSelect label="Survey" value={survey_id ?? ""} options={surveyOptions} onChange={(v) => updateParam("survey_id", v)} />
             <FilterSelect label="Class" value={detection_class ?? ""} options={CLASS_OPTIONS} onChange={(v) => updateParam("detection_class", v)} />
             <FilterSelect label="Priority" value={priority ?? ""} options={PRIORITY_OPTIONS} onChange={(v) => updateParam("priority", v)} />
             <FilterSelect label="Review Status" value={review_status ?? ""} options={REVIEW_OPTIONS} onChange={(v) => updateParam("review_status", v)} />
             <div className="ml-auto text-sm text-slate-400">
-              {data ? `Showing ${data.items.length} of ${data.total} detections` : "Set filters to refine the queue"}
+              {data
+                ? `Showing ${data.items.length} of ${data.total} detections` +
+                  (survey_id ? "" : " across all surveys")
+                : "Set filters to refine the queue"}
             </div>
           </div>
         </Panel>
@@ -131,7 +146,7 @@ function DetectionsPageContent() {
         ) : !data || data.items.length === 0 ? (
           <EmptyState title="No detections found." description="Adjust your filters or process a survey." />
         ) : (
-          <DetectionTable detections={data.items} />
+          <DetectionTable detections={data.items} showSurvey={!survey_id} />
         )}
       </div>
     </AppShell>

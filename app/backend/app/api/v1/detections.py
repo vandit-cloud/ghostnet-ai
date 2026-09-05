@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.core.deps import get_current_user
 from app.models.detection import Detection
+from app.models.survey import Survey
 from app.models.user import User
 from app.schemas.common import Page
 from app.schemas.detection import BBox, DetectionOut, DetectionReviewIn, DetectionReviewOut, Dimensions
@@ -14,11 +15,12 @@ from app.services import detection_service
 router = APIRouter(prefix="/detections", tags=["detections"], dependencies=[Depends(get_current_user)])
 
 
-def _to_out(d: Detection) -> DetectionOut:
+def _to_out(d: Detection, survey_name: str | None = None) -> DetectionOut:
     return DetectionOut(
         id=d.id,
         detection_ref=d.detection_ref,
         survey_id=d.survey_id,
+        survey_name=survey_name,
         frame_id=d.frame_id,
         detection_class=d.detection_class,
         raw_score=d.raw_score,
@@ -55,13 +57,26 @@ def list_detections(
     items, total = detection_service.list_detections(
         db, page, page_size, survey_id, detection_class, min_confidence, priority, review_status
     )
-    return Page(items=[_to_out(d) for d in items], page=page, page_size=page_size, total=total)
+    # One query for the names on this page, rather than a lookup per row.
+    survey_ids = {d.survey_id for d in items}
+    names = (
+        dict(db.query(Survey.id, Survey.name).filter(Survey.id.in_(survey_ids)).all())
+        if survey_ids
+        else {}
+    )
+    return Page(
+        items=[_to_out(d, names.get(d.survey_id)) for d in items],
+        page=page,
+        page_size=page_size,
+        total=total,
+    )
 
 
 @router.get("/{detection_id}", response_model=DetectionOut)
 def get_detection(detection_id: uuid.UUID, db: Session = Depends(get_db)) -> DetectionOut:
     detection = detection_service.get_detection_or_404(db, detection_id)
-    return _to_out(detection)
+    survey = db.get(Survey, detection.survey_id)
+    return _to_out(detection, survey.name if survey else None)
 
 
 @router.post("/{detection_id}/review", response_model=DetectionReviewOut, status_code=201)
