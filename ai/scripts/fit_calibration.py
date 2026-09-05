@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import sys
 from pathlib import Path
 
@@ -42,7 +43,22 @@ AI_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(AI_ROOT))
 
 DATA_YAML = AI_ROOT / "data" / "processed" / "data.yaml"
-CALIBRATOR = AI_ROOT / "models" / "calibrator"
+
+
+def calibrator_dir() -> Path:
+    """Where temperature.json is written.
+
+    Must track the READER, which resolves `models_dir` from GHOSTNET_MODELS_DIR
+    (config.py) and then reads `<models_dir>/calibrator/temperature.json`
+    (decision.py). This used to be a hardcoded constant, so fitting calibration
+    for an experiment silently overwrote the SHIPPED model's temperature no
+    matter what the environment said -- which is exactly how gv6's temperature
+    ended up paired with gv5's weights and had to be reverted by hand.
+
+    Resolved at call time, not at import, so a test can set the variable after
+    this module is already loaded.
+    """
+    return Path(os.environ.get("GHOSTNET_MODELS_DIR", AI_ROOT / "models")) / "calibrator"
 
 
 def show(path: Path) -> str:
@@ -171,6 +187,10 @@ def main() -> int:
     ap.add_argument("--imgsz", type=int, default=640)
     ap.add_argument("--device", default="cpu",
                     help="CPU by default so this can run while a training job holds the GPU")
+    ap.add_argument("--out", default=None,
+                    help="explicit path for temperature.json. Overrides GHOSTNET_MODELS_DIR. "
+                         "Use it for an experiment-local fit so the shipped calibrator is "
+                         "never touched.")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -194,6 +214,12 @@ def main() -> int:
     print(f"\n  weights  {show(weights)}")
     print(f"  split    {args.split} ({len(files)} images) on {args.device}")
     print(f"  matching IoU >= {args.iou}, keeping predictions above conf {args.conf}\n")
+    destination = Path(args.out) if args.out else calibrator_dir() / "temperature.json"
+    print(f"  will write {show(destination)}")
+    if destination.resolve() == (AI_ROOT / "models" / "calibrator" / "temperature.json").resolve():
+        print("  ^ this is the SHIPPED calibrator. For an experiment, set GHOSTNET_MODELS_DIR")
+        print("    or pass --out, or you will re-fit the promoted model's temperature.")
+
     if args.dry_run:
         print("dry run: nothing fitted.")
         return 0
@@ -246,8 +272,9 @@ def main() -> int:
         print("    predictions, or a model still early in training. Prefer T = 1.0")
         print("    over a fitted value that makes things worse.")
 
-    CALIBRATOR.mkdir(parents=True, exist_ok=True)
-    out = CALIBRATOR / "temperature.json"
+    out_dir = Path(args.out).parent if args.out else calibrator_dir()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out = Path(args.out) if args.out else out_dir / "temperature.json"
     out.write_text(json.dumps({
         "temperature": round(t, 6),
         "fitted_on": args.split,
