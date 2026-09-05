@@ -299,3 +299,76 @@ def apply_decision_policy(
         return None
 
     return cls, confidence, assess_uncertainty(confidence, settings)
+
+
+def is_edge_sliver(
+    bbox: tuple[int, int, int, int] | list[int],
+    frame_width: int,
+    frame_height: int,
+    settings: Settings = SETTINGS,
+) -> bool:
+    """Whether a box is a thin strip welded to a frame border.
+
+    The artifact this exists for
+    ---------------------------
+    `survey._offsets` cuts a waterfall into 640 px tiles. The detector reacts
+    to the resulting image border, and produces boxes with a very particular
+    shape: flush against x=0 or x=W-1, a few dozen pixels thick, running most
+    of the frame's height. On the demo survey, eight of nine detections looked
+    like this:
+
+        tile x0=1408  x 605-639 (34 px wide)  y 169-636 (467 px tall)
+        tile x0=1280  x 604-638 (34 px wide)  y  80-640 (560 px tall)
+        tile x0=   0  x   0- 24 (24 px wide)  y   0-640 (640 px tall)
+
+    It is not an artefact of the across-track assembly -- that was a separate
+    bug (F1 in docs/KNOWN_ISSUES.md), and fixing it moved these boxes from one
+    fixed global column to each tile's own local edge without removing them.
+
+    What this costs, said out loud
+    ------------------------------
+    A real object clipped by a tile seam also touches the border, and this rule
+    will discard it when the visible sliver happens to be thin and long. Two
+    things make that an acceptable trade rather than a silent loss of recall:
+
+      * `_offsets` pulls the last tile back to end flush with the data, so
+        interior seams are shared by two tiles. An object cut by one is usually
+        whole, or more nearly whole, in its neighbour.
+      * The shape is discriminating on its own. A 34 px x 467 px strip is a
+        13:1 aspect ratio pinned to a border. Objects that thin and that long
+        exist -- a cable running along-track is exactly that -- which is why
+        this is a setting and why the caller reports the count rather than
+        dropping them quietly.
+
+    The proper fix is NMS in SURVEY coordinates, merging the two halves an
+    object splits into instead of judging each half alone. That is the work
+    `_offsets`'s own docstring defers, and this rule does not replace it.
+
+    Returns False when the frame size is unknown (0 or negative), because a
+    rule about proportions cannot be evaluated without them.
+    """
+    if not settings.suppress_edge_slivers:
+        return False
+    if frame_width <= 0 or frame_height <= 0:
+        return False
+
+    x, y, w, h = (int(v) for v in bbox)
+    if w <= 0 or h <= 0:
+        return False
+
+    tol = settings.edge_touch_px
+    max_thick = settings.edge_sliver_max_thickness
+    min_extent = settings.edge_sliver_min_extent
+
+    touches_side = x <= tol or (x + w) >= (frame_width - tol)
+    if touches_side and w <= frame_width * max_thick and h >= frame_height * min_extent:
+        return True
+
+    # The same shape rotated: a strip along the top or bottom border. Not seen
+    # in this data -- tiles are cut on both axes, so it is reachable -- and
+    # leaving it out would make the rule depend on which axis happened to fail.
+    touches_end = y <= tol or (y + h) >= (frame_height - tol)
+    if touches_end and h <= frame_height * max_thick and w >= frame_width * min_extent:
+        return True
+
+    return False

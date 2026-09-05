@@ -94,6 +94,20 @@ class Settings:
     review_floor_artificial: float = 0.20
     review_floor_natural: float = 0.45
 
+    # --- tile-edge artifacts ----------------------------------------------
+    #: Suppress detections that are thin strips welded to a frame border.
+    #: See decision.is_edge_sliver for what this costs and why it is on.
+    suppress_edge_slivers: bool = True
+    #: How close to the border counts as touching it, in pixels. A YOLO box on
+    #: the border lands on 0 or W-1, so this only absorbs rounding.
+    edge_touch_px: int = 2
+    #: Max thickness perpendicular to the border, as a fraction of that axis.
+    #: The observed artifacts are 34-38 px in a 640 px tile: 5-6%.
+    edge_sliver_max_thickness: float = 0.08
+    #: Min extent parallel to the border, as a fraction of that axis. A real
+    #: object clipped by a seam is rarely also a near-full-length strip.
+    edge_sliver_min_extent: float = 0.40
+
     # Uncertainty band edges on calibrated confidence.
     uncertainty_low_edge: float = 0.75
     uncertainty_medium_edge: float = 0.45

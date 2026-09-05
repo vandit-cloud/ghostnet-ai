@@ -266,12 +266,62 @@ def geometry_for(ping: Ping, image_width: int, along_track_res_m: float | None =
     )
 
 
+#: Fraction of a channel's samples used at each end when working out which way
+#: round its samples are stored. Ten percent is wide enough to average over
+#: speckle and narrow enough that the two windows do not overlap the middle.
+_ORIENT_WINDOW = 0.10
+
+
+def _samples_are_near_first(profile) -> bool:
+    """True if `profile` runs near-range -> far-range.
+
+    Side-scan amplitude falls off with range: the near end of a channel, at and
+    just beyond nadir, returns far more energy than the outer swath, and no
+    amount of TVG in the files seen here inverts that ordering. So the brighter
+    end is the near end, and comparing the two ends says which way round the
+    samples were written.
+
+    This is measured rather than assumed because it is NOT a constant. In the
+    NBP0505 file, channel 0 is stored near-first (mean 32.1 -> 2.2 across its
+    1024 samples) and channel 1 is stored far-first (2.7 -> 45.2) -- the two
+    channels run in opposite directions in the same file, from the same sonar,
+    in the same ping.
+    """
+    import numpy as np
+
+    n = max(1, int(len(profile) * _ORIENT_WINDOW))
+    return float(np.mean(profile[:n])) >= float(np.mean(profile[-n:]))
+
+
 def waterfall(pings: list[Ping], normalise: bool = True):
     """Assemble port+starboard channels into a conventional waterfall image.
 
     Returns a uint8 array, one row per ping, nadir down the centre: port
     reversed on the left, starboard on the right. That orientation is what
     `geometry_for(..., image_width)` assumes when it puts nadir at the middle.
+
+    Sample order is DETECTED per channel, not assumed
+    ------------------------------------------------
+    This used to reverse the port channel and take starboard as written, on the
+    assumption that both channels are stored near-range-first. In the NBP0505
+    file they are not: channel 1 is written far-range-first, so leaving it
+    as-is mirrored the whole starboard half of every frame. The visible result
+    was a sawtooth across-track profile -- dark at the left edge, bright at the
+    centre seam, dark again, bright at the right edge -- instead of the bright
+    nadir band down the middle that a side-scan waterfall is supposed to have.
+
+    That was not merely ugly. The brightest feature in the data, the nadir and
+    water-column return, was rendered at the OUTER edge of the swath, and the
+    detector duly boxed it: four of the five detections on the demo survey were
+    34-38 px wide vertical stripes flush against global column 2047. And
+    because `geometry_for` places nadir at the image centre, every starboard
+    detection's slant-range-to-ground-range conversion was measuring its
+    distance from the wrong place.
+
+    So each channel is now oriented to near-range-first before assembly, from
+    its own amplitude profile over the whole chunk (not per ping, which would
+    let one noisy ping flip a row). Nadir lands in the centre, which is what
+    the rest of the module already believed.
 
     Normalisation is per-image percentile stretch, not per-row. Per-row
     equalisation is tempting because it flattens the across-track gain ramp,
@@ -284,16 +334,37 @@ def waterfall(pings: list[Ping], normalise: bool = True):
     if not pings:
         return np.zeros((0, 0), np.uint8)
 
+    def channel_samples(chan):
+        dtype = {1: "<u1", 2: "<u2", 4: "<u4"}.get(chan.bytes_per_sample)
+        if dtype is None or chan.samples is None:
+            return None
+        return np.frombuffer(chan.samples, dtype=dtype).astype(np.float32)
+
+    # Pass 1: accumulate a mean amplitude profile per channel number, so the
+    # orientation decision is made once over the whole chunk.
+    profiles: dict[int, list] = {}
+    for ping in pings:
+        for chan in ping.channels:
+            data = channel_samples(chan)
+            if data is not None and data.size:
+                profiles.setdefault(chan.number, []).append(data)
+
+    near_first: dict[int, bool] = {}
+    for number, stack in profiles.items():
+        width = min(len(d) for d in stack)
+        mean_profile = np.mean([d[:width] for d in stack], axis=0)
+        near_first[number] = _samples_are_near_first(mean_profile)
+
+    # Pass 2: assemble, orienting every channel near-range-first first.
     rows = []
     for ping in pings:
         port = stbd = None
         for chan in ping.channels:
-            if chan.samples is None:
+            data = channel_samples(chan)
+            if data is None:
                 continue
-            dtype = {1: "<u1", 2: "<u2", 4: "<u4"}.get(chan.bytes_per_sample)
-            if dtype is None:
-                continue
-            data = np.frombuffer(chan.samples, dtype=dtype).astype(np.float32)
+            if not near_first.get(chan.number, True):
+                data = data[::-1]
             # Even channel numbers are port, odd starboard, in every EdgeTech
             # file seen here. Falling back on order rather than trusting a
             # name string that this file stores with leading control bytes.
@@ -308,6 +379,8 @@ def waterfall(pings: list[Ping], normalise: bool = True):
             port = np.zeros(width, np.float32)
         if stbd is None:
             stbd = np.zeros(width, np.float32)
+        # Both are now near-first, so port is flipped to put its near end
+        # against the centre and starboard is left running outward.
         rows.append(np.concatenate([port[::-1], stbd]))
 
     if not rows:

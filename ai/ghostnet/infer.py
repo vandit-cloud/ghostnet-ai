@@ -31,7 +31,12 @@ from .dropout import (
     invalid_row_mask,
 )
 from .shadow import shadow_context
-from .decision import apply_decision_policy, calibration_mismatch, escalate_uncertainty
+from .decision import (
+    apply_decision_policy,
+    calibration_mismatch,
+    escalate_uncertainty,
+    is_edge_sliver,
+)
 from .geo import SonarGeometry, geotag_pixel, pixel_to_ground_offset, position_error_m
 
 # One model, loaded once, guarded by a lock.
@@ -381,6 +386,23 @@ def detect(
                     "centre": ((x1 + x2) / 2.0, (y1 + y2) / 2.0),
                 }
             )
+
+    # Tile-edge artifacts, removed before the confidence policy runs.
+    #
+    # Reported in `warnings` rather than dropped quietly: this rule can also
+    # discard a real object that a tile seam clipped into a thin strip, and a
+    # reviewer who sees "3 detections" needs to be able to find out that two
+    # more were judged to be border artifacts. See decision.is_edge_sliver.
+    if gray is not None:
+        frame_h, frame_w = gray.shape[:2]
+        kept = [d for d in raw if not is_edge_sliver(d["bbox"], frame_w, frame_h, settings)]
+        removed = len(raw) - len(kept)
+        if removed:
+            result.warnings.append(
+                f"{removed} detection(s) suppressed as tile-edge artifacts: thin strips "
+                f"flush against a frame border. Set suppress_edge_slivers=False to see them."
+            )
+        raw = kept
 
     suppressed = 0
     for item in raw:

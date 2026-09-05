@@ -169,3 +169,61 @@ def test_layback_places_the_fish_astern():
     lat, _ = geotag_pixel(900, 0, 20.0, 70.0, g)
     assert lat < 20.0
     assert math.isclose(lat, 20.0, abs_tol=1e-3)
+
+
+# --- tile-edge artifacts ----------------------------------------------------
+#
+# `survey._offsets` cuts a waterfall into 640 px tiles and the detector reacts
+# to the resulting image border. Eight of the nine detections on the demo
+# survey were thin strips welded to one: 34 px wide, up to 640 px tall, flush
+# against x=0 or x=639. Fixing the across-track assembly (F1) moved them from
+# one fixed global column to each tile's own local edge without removing them,
+# which is how we know they are the border and not the sonar.
+
+
+def test_the_observed_artifacts_are_suppressed():
+    """The exact boxes measured on NBP0505, tile offsets included."""
+    for bbox in ([605, 169, 34, 467], [605, 14, 34, 621], [601, 2, 38, 386],
+                 [0, 0, 24, 640], [604, 80, 34, 560]):
+        assert decision.is_edge_sliver(bbox, 640, 640), bbox
+
+
+def test_a_real_object_in_the_middle_of_a_frame_survives():
+    assert not decision.is_edge_sliver([285, 63, 141, 47], 640, 640)
+    assert not decision.is_edge_sliver([77, 123, 437, 448], 514, 574)
+
+
+def test_touching_the_border_is_not_enough_on_its_own():
+    """The rule is a SHAPE rule, not a position rule.
+
+    The one genuine ghost_net detection in the whole test set starts at x=0.
+    Suppressing everything that touches a border would delete the problem
+    statement's headline object, which is the failure this test exists to
+    prevent.
+    """
+    assert not decision.is_edge_sliver([0, 107, 95, 154], 374, 438)
+    # A big object clipped by a seam: touches the edge, but nothing like thin.
+    assert not decision.is_edge_sliver([0, 100, 300, 400], 640, 640)
+
+
+def test_thin_but_not_touching_survives():
+    """A narrow object in open water is a legitimate detection."""
+    assert not decision.is_edge_sliver([300, 100, 30, 500], 640, 640)
+
+
+def test_the_same_shape_along_the_top_or_bottom_border():
+    """Tiles are cut on both axes, so the rotated case is reachable."""
+    assert decision.is_edge_sliver([20, 0, 500, 30], 640, 640)
+    assert decision.is_edge_sliver([20, 612, 500, 28], 640, 640)
+
+
+def test_it_can_be_turned_off():
+    off = Settings(suppress_edge_slivers=False)
+    assert not decision.is_edge_sliver([605, 169, 34, 467], 640, 640, off)
+
+
+def test_an_unknown_frame_size_suppresses_nothing():
+    """A rule about proportions cannot be evaluated without them, and guessing
+    would silently delete detections on any frame we failed to measure."""
+    assert not decision.is_edge_sliver([605, 169, 34, 467], 0, 0)
+    assert not decision.is_edge_sliver([605, 169, 34, 467], -1, 640)
