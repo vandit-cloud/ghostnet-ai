@@ -1,0 +1,462 @@
+{
+  "note": "Curated demo fixture, one .xtf per object class. Every frame is a real side-scan image from a public dataset's HELD-OUT split -- none was trained on. Frames were chosen by whether the model still detects the labelled object AFTER the full XTF round trip, not before it. Boxes in the app are produced live at processing time. Navigation in the containers is synthetic; the source frames come from four different countries.",
+  "model": "gv5-yolo11s",
+  "frames": [
+    {
+      "survey": "wrecks",
+      "file": "wrecks/01_wreck.png",
+      "expected_detector_class": "wreck",
+      "contract_class": "debris",
+      "source_dataset": "AI4Shipwrecks (Lake Huron, USA)",
+      "original_filename": "AI4SHIPWRECKS__Lucinda_van_Valkenburg_19__x960_y1440.png",
+      "split": "test",
+      "image_size": [
+        640,
+        640
+      ],
+      "label_area_pct": 43.32,
+      "measured_after_round_trip": {
+        "calibrated_confidence": 0.593,
+        "iou_with_human_label": 0.943,
+        "n_detections": 2
+      }
+    },
+    {
+      "survey": "wrecks",
+      "file": "wrecks/02_wreck.png",
+      "expected_detector_class": "wreck",
+      "contract_class": "debris",
+      "source_dataset": "AI4Shipwrecks (Lake Huron, USA)",
+      "original_filename": "AI4SHIPWRECKS__Montana_05__x960_y960.png",
+      "split": "val",
+      "image_size": [
+        640,
+        640
+      ],
+      "label_area_pct": 68.75,
+      "measured_after_round_trip": {
+        "calibrated_confidence": 0.5825,
+        "iou_with_human_label": 0.709,
+        "n_detections": 1
+      }
+    },
+    {
+      "survey": "wrecks",
+      "file": "wrecks/03_wreck.jpg",
+      "expected_detector_class": "wreck",
+      "contract_class": "debris",
+      "source_dataset": "SCTD sonar common target dataset (China)",
+      "original_filename": "SCTD__000185.jpg",
+      "split": "test",
+      "image_size": [
+        563,
+        550
+      ],
+      "label_area_pct": 36.05,
+      "measured_after_round_trip": {
+        "calibrated_confidence": 0.6248,
+        "iou_with_human_label": 0.94,
+        "n_detections": 1
+      }
+    },
+    {
+      "survey": "wrecks",
+      "file": "wrecks/04_wreck.jpg",
+      "expected_detector_class": "wreck",
+      "contract_class": "debris",
+      "source_dataset": "SCTD sonar common target dataset (China)",
+      "original_filename": "SCTD__000174.jpg",
+      "split": "val",
+      "image_size": [
+        1197,
+        585
+      ],
+      "label_area_pct": 25.99,
+      "measured_after_round_trip": {
+        "calibrated_confidence": 0.4432,
+        "iou_with_human_label": 0.648,
+        "n_detections": 2
+      }
+    },
+    {
+      "survey": "aircraft",
+      "file": "aircraft/01_plane.jpg",
+      "expected_detector_class": "plane",
+      "contract_class": "debris",
+      "source_dataset": "SCTD sonar common target dataset (China)",
+      "original_filename": "SCTD__000027.jpg",
+      "split": "test",
+      "image_size": [
+        439,
+        229
+      ],
+      "label_area_pct": 32.47,
+      "measured_after_round_trip": {
+        "calibrated_confidence": 0.5302,
+        "iou_with_human_label": 0.438,
+        "n_detections": 2
+      }
+    },
+    {
+      "survey": "aircraft",
+      "file": "aircraft/02_plane.jpg",
+      "expected_detector_class": "plane",
+      "contract_class": "debris",
+      "source_dataset": "SCTD sonar common target dataset (China)",
+      "original_filename": "SCTD__000074.jpg",
+      "split": "val",
+      "image_size": [
+        620,
+        745
+      ],
+      "label_area_pct": 34.04,
+      "measured_after_round_trip": {
+        "calibrated_confidence": 0.3459,
+        "iou_with_human_label": 0.855,
+        "n_detections": 2
+      }
+    },
+    {
+      "survey": "aircraft",
+      "file": "aircraft/03_plane.jpg",
+      "expected_detector_class": "plane",
+      "contract_class": "debris",
+      "source_dataset": "SCTD sonar common target dataset (China)",
+      "original_filename": "SCTD__000006.jpg",
+      "split": "val",
+      "image_size": [
+        300,
+        188
+      ],
+      "label_area_pct": 18.54,
+      "measured_after_round_trip": {
+        "calibrated_confidence": 0.3816,
+        "iou_with_human_label": 0.74,
+        "n_detections": 2
+      }
+    },
+    {
+      "survey": "aircraft",
+      "file": "aircraft/04_plane.jpg",
+      "expected_detector_class": "plane",
+      "contract_class": "debris",
+      "source_dataset": "SCTD sonar common target dataset (China)",
+      "original_filename": "SCTD__000080.jpg",
+      "split": "val",
+      "image_size": [
+        817,
+        787
+      ],
+      "label_area_pct": 32.55,
+      "measured_after_round_trip": {
+        "calibrated_confidence": 0.4781,
+        "iou_with_human_label": 0.683,
+        "n_detections": 1
+      }
+    },
+    {
+      "survey": "debris",
+      "file": "debris/01_debris.png",
+      "expected_detector_class": "debris",
+      "contract_class": "debris",
+      "source_dataset": "SubPipe (Porto, Portugal)",
+      "original_filename": "SUBPIPE__SSS_HF_images_1693570212.989__x3375_y0.png",
+      "split": "test",
+      "image_size": [
+        500,
+        500
+      ],
+      "label_area_pct": 72.37,
+      "measured_after_round_trip": {
+        "calibrated_confidence": 0.319,
+        "iou_with_human_label": 0.425,
+        "n_detections": 1
+      }
+    },
+    {
+      "survey": "debris",
+      "file": "debris/02_debris.png",
+      "expected_detector_class": "debris",
+      "contract_class": "debris",
+      "source_dataset": "SubPipe (Porto, Portugal)",
+      "original_filename": "SUBPIPE__SSS_HF_images_1693570100.969__x3375_y0.png",
+      "split": "test",
+      "image_size": [
+        500,
+        500
+      ],
+      "label_area_pct": 94.86,
+      "measured_after_round_trip": {
+        "calibrated_confidence": 0.4002,
+        "iou_with_human_label": 0.817,
+        "n_detections": 1
+      }
+    },
+    {
+      "survey": "debris",
+      "file": "debris/03_debris.png",
+      "expected_detector_class": "debris",
+      "contract_class": "debris",
+      "source_dataset": "SubPipe (Porto, Portugal)",
+      "original_filename": "SUBPIPE__SSS_HF_images_1693570099.969__x3375_y0.png",
+      "split": "test",
+      "image_size": [
+        500,
+        500
+      ],
+      "label_area_pct": 92.03,
+      "measured_after_round_trip": {
+        "calibrated_confidence": 0.4527,
+        "iou_with_human_label": 0.764,
+        "n_detections": 1
+      }
+    },
+    {
+      "survey": "debris",
+      "file": "debris/04_debris.png",
+      "expected_detector_class": "debris",
+      "contract_class": "debris",
+      "source_dataset": "SubPipe (Porto, Portugal)",
+      "original_filename": "SUBPIPE__SSS_HF_images_1693570109.969__x3375_y0.png",
+      "split": "test",
+      "image_size": [
+        500,
+        500
+      ],
+      "label_area_pct": 80.85,
+      "measured_after_round_trip": {
+        "calibrated_confidence": 0.3848,
+        "iou_with_human_label": 0.338,
+        "n_detections": 1
+      }
+    },
+    {
+      "survey": "ghost_gear",
+      "file": "ghost_gear/01_ghost_net.png",
+      "expected_detector_class": "ghost_net",
+      "contract_class": "ghost_net",
+      "source_dataset": "China-Offshore-SSS-AI net chips, boxes hand-drawn by this project",
+      "original_filename": "GHOSTNET-HAND__quanzhou_HN_057.png",
+      "split": "val",
+      "image_size": [
+        419,
+        378
+      ],
+      "label_area_pct": 10.51,
+      "measured_after_round_trip": {
+        "calibrated_confidence": 0.3096,
+        "iou_with_human_label": 0.646,
+        "n_detections": 1
+      }
+    },
+    {
+      "survey": "ghost_gear",
+      "file": "ghost_gear/02_ghost_pot.jpg",
+      "expected_detector_class": "ghost_pot",
+      "contract_class": "debris",
+      "source_dataset": "GhostVision derelict crab pots (USA)",
+      "original_filename": "GHOSTVISION__Contact_515_sslo_png_jpg.rf.9130a073c8946f00dc62cf1c9a63803d.jpg",
+      "split": "val",
+      "image_size": [
+        640,
+        640
+      ],
+      "label_area_pct": 0.38,
+      "measured_after_round_trip": {
+        "calibrated_confidence": 0.3552,
+        "iou_with_human_label": 0.907,
+        "n_detections": 1
+      }
+    },
+    {
+      "survey": "ghost_gear",
+      "file": "ghost_gear/03_ghost_pot.jpg",
+      "expected_detector_class": "ghost_pot",
+      "contract_class": "debris",
+      "source_dataset": "GhostVision derelict crab pots (USA)",
+      "original_filename": "GHOSTVISION__Rec14_wcp_ss_port_00011_png_jpg.rf.248bef1091991fdade425133597b2927.jpg",
+      "split": "test",
+      "image_size": [
+        640,
+        640
+      ],
+      "label_area_pct": 1.28,
+      "measured_after_round_trip": {
+        "calibrated_confidence": 0.4478,
+        "iou_with_human_label": 0.897,
+        "n_detections": 6
+      }
+    },
+    {
+      "survey": "ghost_gear",
+      "file": "ghost_gear/04_ghost_pot.jpg",
+      "expected_detector_class": "ghost_pot",
+      "contract_class": "debris",
+      "source_dataset": "GhostVision derelict crab pots (USA)",
+      "original_filename": "GHOSTVISION__Rec9_wcp_ss_star_00044_png_jpg.rf.cafaf08eb47b1611ab2dc2cd8115fcb6.jpg",
+      "split": "test",
+      "image_size": [
+        640,
+        640
+      ],
+      "label_area_pct": 1.57,
+      "measured_after_round_trip": {
+        "calibrated_confidence": 0.4653,
+        "iou_with_human_label": 0.772,
+        "n_detections": 5
+      }
+    },
+    {
+      "survey": "wrecks",
+      "file": "wrecks/90_natural_seabed.png",
+      "expected_detector_class": null,
+      "contract_class": null,
+      "source_dataset": "AI4Shipwrecks (Lake Huron, USA)",
+      "original_filename": "AI4SHIPWRECKS__Artificial_Reef_01__x0_y0.png",
+      "split": "test",
+      "image_size": [
+        640,
+        640
+      ],
+      "label_area_pct": 0.0,
+      "measured_after_round_trip": {
+        "calibrated_confidence": null,
+        "iou_with_human_label": null,
+        "n_detections": 0
+      }
+    },
+    {
+      "survey": "wrecks",
+      "file": "wrecks/91_natural_seabed.png",
+      "expected_detector_class": null,
+      "contract_class": null,
+      "source_dataset": "AI4Shipwrecks (Lake Huron, USA)",
+      "original_filename": "AI4SHIPWRECKS__Artificial_Reef_01__x0_y1440.png",
+      "split": "test",
+      "image_size": [
+        640,
+        640
+      ],
+      "label_area_pct": 0.0,
+      "measured_after_round_trip": {
+        "calibrated_confidence": null,
+        "iou_with_human_label": null,
+        "n_detections": 0
+      }
+    },
+    {
+      "survey": "aircraft",
+      "file": "aircraft/90_natural_seabed.png",
+      "expected_detector_class": null,
+      "contract_class": null,
+      "source_dataset": "AI4Shipwrecks (Lake Huron, USA)",
+      "original_filename": "AI4SHIPWRECKS__Artificial_Reef_01__x0_y0.png",
+      "split": "test",
+      "image_size": [
+        640,
+        640
+      ],
+      "label_area_pct": 0.0,
+      "measured_after_round_trip": {
+        "calibrated_confidence": null,
+        "iou_with_human_label": null,
+        "n_detections": 0
+      }
+    },
+    {
+      "survey": "aircraft",
+      "file": "aircraft/91_natural_seabed.png",
+      "expected_detector_class": null,
+      "contract_class": null,
+      "source_dataset": "AI4Shipwrecks (Lake Huron, USA)",
+      "original_filename": "AI4SHIPWRECKS__Artificial_Reef_01__x0_y1440.png",
+      "split": "test",
+      "image_size": [
+        640,
+        640
+      ],
+      "label_area_pct": 0.0,
+      "measured_after_round_trip": {
+        "calibrated_confidence": null,
+        "iou_with_human_label": null,
+        "n_detections": 0
+      }
+    },
+    {
+      "survey": "debris",
+      "file": "debris/90_natural_seabed.png",
+      "expected_detector_class": null,
+      "contract_class": null,
+      "source_dataset": "AI4Shipwrecks (Lake Huron, USA)",
+      "original_filename": "AI4SHIPWRECKS__Artificial_Reef_01__x0_y0.png",
+      "split": "test",
+      "image_size": [
+        640,
+        640
+      ],
+      "label_area_pct": 0.0,
+      "measured_after_round_trip": {
+        "calibrated_confidence": null,
+        "iou_with_human_label": null,
+        "n_detections": 0
+      }
+    },
+    {
+      "survey": "debris",
+      "file": "debris/91_natural_seabed.png",
+      "expected_detector_class": null,
+      "contract_class": null,
+      "source_dataset": "AI4Shipwrecks (Lake Huron, USA)",
+      "original_filename": "AI4SHIPWRECKS__Artificial_Reef_01__x0_y1440.png",
+      "split": "test",
+      "image_size": [
+        640,
+        640
+      ],
+      "label_area_pct": 0.0,
+      "measured_after_round_trip": {
+        "calibrated_confidence": null,
+        "iou_with_human_label": null,
+        "n_detections": 0
+      }
+    },
+    {
+      "survey": "ghost_gear",
+      "file": "ghost_gear/90_natural_seabed.png",
+      "expected_detector_class": null,
+      "contract_class": null,
+      "source_dataset": "AI4Shipwrecks (Lake Huron, USA)",
+      "original_filename": "AI4SHIPWRECKS__Artificial_Reef_01__x0_y0.png",
+      "split": "test",
+      "image_size": [
+        640,
+        640
+      ],
+      "label_area_pct": 0.0,
+      "measured_after_round_trip": {
+        "calibrated_confidence": null,
+        "iou_with_human_label": null,
+        "n_detections": 0
+      }
+    },
+    {
+      "survey": "ghost_gear",
+      "file": "ghost_gear/91_natural_seabed.png",
+      "expected_detector_class": null,
+      "contract_class": null,
+      "source_dataset": "AI4Shipwrecks (Lake Huron, USA)",
+      "original_filename": "AI4SHIPWRECKS__Artificial_Reef_01__x0_y1440.png",
+      "split": "test",
+      "image_size": [
+        640,
+        640
+      ],
+      "label_area_pct": 0.0,
+      "measured_after_round_trip": {
+        "calibrated_confidence": null,
+        "iou_with_human_label": null,
+        "n_detections": 0
+      }
+    }
+  ]
+}

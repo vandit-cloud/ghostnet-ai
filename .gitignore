@@ -103,3 +103,25 @@ demo/*
 demo/reports/*
 !demo/reports/NBP0505_line01B_full_survey.csv
 !demo/reports/NBP0505_line01B_full_survey.json
+
+# The showcase fixture DOES ship. It is 14 small frames plus a manifest, and
+# without them scripts/showcase_seed.py cannot run on a fresh clone -- the
+# frames are drawn from ai/data/processed/, which is rebuilt rather than
+# committed, so "re-stage it yourself" would mean downloading eight datasets
+# first. The manifest records the original filename and source dataset of every
+# frame, which is the provenance the plan's licensing section asks for.
+!demo/showcase/
+!demo/showcase/manifest.json
+!demo/showcase/frames/
+!demo/showcase/frames/**
+
+# The per-class .xtf containers themselves stay out -- `*.xtf` above already
+# ignores them and they are 6.4 MB each. They are generated from the showcase
+# frames, which DO ship, so `scripts/build_demo_xtf.py` rebuilds them on a
+# clone in about half a minute. The README explaining that does ship.
+!demo/xtf/
+!demo/xtf/README.md
+
+# Local rollback snapshots: a 19 MB copy of weights git already tracks.
+# Safety net for a bad promotion, not history.
+ai/models/_rollback/
