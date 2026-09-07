@@ -224,3 +224,41 @@ def test_data_yaml_and_report_are_written(run):
     assert f"nc: {len(TRAINING_CLASSES)}" in yaml and "0: wreck" in yaml
     assert "leakage" in yaml, "the split warning must travel with the dataset"
     assert (out / "tiling_report.json").exists()
+
+
+# --- D1: anisotropic tiles (EXPERIMENT_GV7_PLAN.md 10.2) --------------------
+
+def test_parse_tile_square_and_rectangular():
+    from masks_to_yolo import parse_tile
+
+    assert parse_tile("640") == (640, 640)
+    assert parse_tile("256x1024") == (256, 1024)
+    assert parse_tile(" 256X1024 ") == (256, 1024)
+
+
+def test_parse_tile_returns_height_first():
+    """HxW, matching numpy axis order. Transposed tiles look like a training
+    bug, not a tiling one, so this is worth pinning explicitly."""
+    from masks_to_yolo import parse_tile
+
+    h, w = parse_tile("256x1024")
+    assert (h, w) == (256, 1024) and h < w
+
+
+def test_parse_tile_rejects_non_multiples_of_32():
+    """YOLO's max stride is 32; a non-multiple is silently padded and every
+    box coordinate shifts."""
+    import pytest as _pytest
+    from masks_to_yolo import parse_tile
+
+    with _pytest.raises(ValueError, match="multiple of 32"):
+        parse_tile("250x1024")
+
+
+def test_parse_tile_rejects_garbage():
+    import pytest as _pytest
+    from masks_to_yolo import parse_tile
+
+    for bad in ("", "abc", "-64x64", "64x64x64"):
+        with _pytest.raises(ValueError):
+            parse_tile(bad)

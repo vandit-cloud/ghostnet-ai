@@ -22,7 +22,10 @@ AI_ROOT = Path(__file__).resolve().parent.parent
 DEST = AI_ROOT / "models" / "pretrained"
 
 # yolo11n for fast iteration, yolo11s as the 4 GB-VRAM training target.
-WEIGHTS = ["yolo11n.pt", "yolo11s.pt"]
+# yolo11s-seg is the Track D / D2 ghost_net segmentation backbone: a net is a
+# long thin fragmented shape that a box describes badly, so that class trains as
+# a single-class segmentation model of its own. See EXPERIMENT_GV7_PLAN.md 10.2.
+WEIGHTS = ["yolo11n.pt", "yolo11s.pt", "yolo11s-seg.pt"]
 
 
 def main() -> int:

@@ -210,6 +210,24 @@ def normalise_class(model_class: str) -> str:
 # -- an anomaly the model cannot name is exactly what a reviewer should see.
 ARTIFICIAL_CLASSES = frozenset({"ghost_net", "debris", "unknown"})
 
+#: Contract classes reported as REVIEW CANDIDATES rather than as claims.
+#:
+#: `ghost_net` is here because the model cannot detect nets. gv5 scored recall
+#: 0.000 on 36 held-out net boxes and gv6, with ten times the training boxes,
+#: scored 0.000 as well -- so the honest options are to surface weak candidates
+#: for a human or to surface nothing. We surface them, and we say what they are.
+#: See docs/EXPERIMENT_GV7_PLAN.md §10.5, Tier 1.
+REVIEW_ONLY_CLASSES = frozenset({"ghost_net"})
+
+
+def is_review_only(contract_class: str) -> bool:
+    """Whether a contract class may only be offered for review, never claimed.
+
+    Keyed on the CONTRACT class, so it is evaluated after `normalise_class`
+    and stays correct if the training taxonomy is renamed underneath it.
+    """
+    return contract_class in REVIEW_ONLY_CLASSES
+
 
 def is_calibrated(settings: Settings = SETTINGS) -> bool:
     """True once a temperature has actually been fitted on a validation set.
@@ -286,15 +304,49 @@ def apply_decision_policy(
     3. Suppression happens on CALIBRATED confidence, after temperature scaling,
        so the floor keeps a fixed meaning as the model changes. A floor on raw
        scores would silently drift every time the detector is retrained.
+
+    4. `ghost_net` gets a THIRD, lower floor and is flagged `review_only`. It
+       is not that nets matter less -- they are the headline class -- it is
+       that the model cannot detect them (recall 0.000 across gv5 and gv6), so
+       an ordinary floor suppresses the class entirely and an ordinary
+       rendering would overclaim it. A lenient floor is only defensible
+       BECAUSE the payload says the output is a candidate; the two halves are
+       one decision and must not be separated. See is_review_only.
+
+    5. The gate that matters for nets is the RAW one, not the calibrated one.
+       A calibrated floor cannot recover a box the detector never emitted, and
+       with raw_conf_threshold = 0.10 and T = 2.72 the minimum calibrated
+       confidence reaching this function is ~0.309 -- above review_floor_
+       artificial, which has therefore been inert since calibration was fitted.
+       Both floors are applied, but only the raw one changes what a reviewer
+       sees.
     """
     cls = normalise_class(model_class)
+
+    # RAW gate first. The detector is run at the lower of the two raw
+    # thresholds so that weak net boxes exist at all; every other class is
+    # re-gated here to the original raw_conf_threshold, so nothing outside
+    # REVIEW_ONLY_CLASSES sees any change in behaviour. Do this before
+    # calibration: raw is the scale the detector's own `conf` argument uses,
+    # and mixing the two scales is the standing trap on this codebase.
+    raw_floor = (
+        settings.raw_conf_threshold_net
+        if is_review_only(cls)
+        else settings.raw_conf_threshold
+    )
+    if raw_score < raw_floor:
+        return None
+
     confidence = calibrate(raw_score, settings)
 
-    floor = (
-        settings.review_floor_artificial
-        if cls in ARTIFICIAL_CLASSES
-        else settings.review_floor_natural
-    )
+    if is_review_only(cls):
+        # Lower bar, because the output is a candidate and not a claim. See
+        # config.review_floor_net for why this is a floor and not a tuned value.
+        floor = settings.review_floor_net
+    elif cls in ARTIFICIAL_CLASSES:
+        floor = settings.review_floor_artificial
+    else:
+        floor = settings.review_floor_natural
     if confidence < floor:
         return None
 

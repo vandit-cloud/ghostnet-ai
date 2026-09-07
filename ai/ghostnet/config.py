@@ -94,6 +94,40 @@ class Settings:
     review_floor_artificial: float = 0.20
     review_floor_natural: float = 0.45
 
+    #: `ghost_net` clears a LOWER bar than the other artificial classes, and
+    #: the output it produces is a review candidate rather than a detection
+    #: claim (contract field `review_only`; decision.is_review_only).
+    #:
+    #: This is Track D / D5 in docs/EXPERIMENT_GV7_PLAN.md, and it is the Tier 1
+    #: half of the two-tier rule in §10.5: shipping is lenient BECAUSE the
+    #: output asserts nothing. gv5 measured recall 0.000 on nets at the normal
+    #: floor, so the choice is between surfacing weak candidates for a human
+    #: and surfacing nothing at all.
+    #:
+    #: NOTE this floor is currently NON-BINDING and kept only for symmetry:
+    #: with raw_conf_threshold = 0.10 and T = 2.72, the lowest calibrated
+    #: confidence that can reach the policy at all is ~0.309, already above
+    #: even review_floor_artificial. The lever that actually decides what a
+    #: reviewer sees is raw_conf_threshold_net below. Setting a calibrated
+    #: floor here and expecting it to surface more nets would be a no-op.
+    review_floor_net: float = 0.10
+
+    #: The lever that actually works. `conf` is passed to the detector, so a
+    #: box scoring below it is never emitted and no downstream floor can
+    #: recover it -- which is why review_floor_artificial (0.20 calibrated,
+    #: ~0.0 raw-equivalent) has had no effect since calibration was fitted.
+    #:
+    #: Detection runs at min(raw_conf_threshold, raw_conf_threshold_net) and
+    #: every non-review-only class is then re-gated to raw_conf_threshold in
+    #: decision.apply_decision_policy. So the other four classes see EXACTLY
+    #: the behaviour they saw before -- the background activation rates in
+    #: docs/ are unchanged and remain quotable -- while nets get the wider net.
+    #:
+    #: 0.03 is chosen to sit below the raw scores gv5 produced on nets without
+    #: opening the floodgates; it is a starting point, not a tuned value, and
+    #: there is no net data to tune it against (11 test frames).
+    raw_conf_threshold_net: float = 0.03
+
     # --- tile-edge artifacts ----------------------------------------------
     #: Suppress detections that are thin strips welded to a frame border.
     #: See decision.is_edge_sliver for what this costs and why it is on.
@@ -111,6 +145,30 @@ class Settings:
     # Uncertainty band edges on calibrated confidence.
     uncertainty_low_edge: float = 0.75
     uncertainty_medium_edge: float = 0.45
+
+    def for_evaluation(self) -> "Settings":
+        """A copy with EVERY reporting gate disabled, for metric computation.
+
+        Evaluation must see unfiltered detector output: metrics computed on
+        policy-filtered output measure recall after the very filter that
+        damaged it. Scripts used to do this by hand with
+        `replace(settings, review_floor_artificial=0.0, review_floor_natural=0.0)`,
+        which silently went stale the moment a THIRD gate was added -- exactly
+        what happened when raw_conf_threshold_net arrived, and the kind of
+        quiet drift that makes a published number wrong.
+
+        Adding a gate? Add it here. This method is the list.
+        """
+        from dataclasses import replace
+
+        return replace(
+            self,
+            review_floor_artificial=0.0,
+            review_floor_natural=0.0,
+            review_floor_net=0.0,
+            raw_conf_threshold=0.0,
+            raw_conf_threshold_net=0.0,
+        )
 
     # --- versioning (§34: every inference identifies its provenance) -------
     model_id: str = "ghostnet-yolo11s"

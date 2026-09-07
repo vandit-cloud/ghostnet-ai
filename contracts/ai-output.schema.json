@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ghostnet-ai/contracts/ai-output.schema.json",
   "title": "GhostNet-AI frame result",
-  "description": "What the AI returns for ONE sonar frame. Generated from ghostnet/contract.py by ai/scripts/export_schemas.py; do not edit by hand. Contract version 1.1.0.",
+  "description": "What the AI returns for ONE sonar frame. Generated from ghostnet/contract.py by ai/scripts/export_schemas.py; do not edit by hand. Contract version 1.2.0.",
   "$defs": {
     "Detection": {
       "type": "object",
@@ -87,6 +87,9 @@
             "none"
           ],
           "description": "How the position was derived. A value of none means no position is claimed."
+        },
+        "review_only": {
+          "type": "boolean"
         },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"

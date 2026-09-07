@@ -18,7 +18,7 @@ from typing import Any, Literal
 #: 1.1.0 adds the optional `frame_position` block below. Additive and optional,
 #: so by the versioning rules in docs/HANDOFF.md section 7 this is a MINOR bump:
 #: a consumer pinned to major 1 keeps working untouched and simply ignores it.
-CONTRACT_VERSION = "1.1.0"
+CONTRACT_VERSION = "1.2.0"
 
 # Closed vocabularies. Member 2's DB uses these as enum values, so adding a
 # member is a breaking change for them -- never silently emit something else.
@@ -66,6 +66,16 @@ class Detection:
     longitude: float | None = None
     position_error_m: float | None = None
     localization: Localization = "none"
+
+    #: True when this detection is a REVIEW CANDIDATE, not a claim. The model
+    #: is not able to assert this class at a useful rate, so the payload says
+    #: so explicitly rather than letting a confidence number imply otherwise.
+    #:
+    #: Member 2: render these distinctly from ordinary detections -- they must
+    #: not appear in a "detections found" count, and must not be styled like a
+    #: confirmed `ghost_pot`. Treat it as "worth a human look", nothing more.
+    #: Added in contract 1.2.0; absent means False for older payloads.
+    review_only: bool = False
 
     dimensions: Dimensions = field(default_factory=Dimensions)
     review_status: ReviewStatus = "pending"

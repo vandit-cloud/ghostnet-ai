@@ -75,7 +75,7 @@ def test_below_artificial_floor_is_suppressed(uncalibrated):
 def test_evaluation_can_disable_the_floors(uncalibrated):
     """Metrics must be computable on unfiltered output, or recall is measured
     after the filter that damaged it."""
-    eval_settings = replace(uncalibrated, review_floor_artificial=0.0, review_floor_natural=0.0)
+    eval_settings = uncalibrated.for_evaluation()
     assert apply_decision_policy("ghost_net", 0.01, eval_settings) is not None
     assert apply_decision_policy("natural", 0.01, eval_settings) is not None
 

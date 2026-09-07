@@ -129,3 +129,15 @@ ai/models/_rollback/
 # Despeckled dataset copy, built by ai/scripts/build_despeckled.py.
 # Derived from processed/, ~4 GB, rebuildable in minutes.
 ai/data/processed_despeckled/
+
+# --- derived segmentation dataset ------------------------------------------
+# ai/data/net_seg/ is BUILT, not authored: build_net_seg_dataset.py copies the
+# 73 chips out of ai/data/processed/ and converts the labelme polygons in
+# ai/data/annotate/ghost_net_seg/labels/ into YOLO-seg txt. Both inputs are in
+# git, so the 24 MB of images and their derived labels are reproducible and
+# stay out. The two small records that say WHICH build this was -- the split
+# counts and the dataset_version hash the runs assert against -- are kept, for
+# the same reason ai/experiments/ keeps provenance.json.
+ai/data/net_seg/*
+!ai/data/net_seg/data.yaml
+!ai/data/net_seg/build_report.json

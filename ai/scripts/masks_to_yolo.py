@@ -144,6 +144,33 @@ def mask_to_boxes(mask: np.ndarray, min_area: int) -> list[tuple[int, int, int, 
     return boxes
 
 
+def parse_tile(spec: str) -> tuple[int, int]:
+    """'640' -> (640, 640); '256x1024' -> (256, 1024). Returns (height, width).
+
+    HxW, not WxH, because that is numpy axis order and every slice in this file
+    is image[y, x]. Getting it the other way round produces tiles that are
+    silently transposed -- which looks like a training problem rather than a
+    tiling one, and costs a run to find.
+    """
+    spec = spec.strip().lower()
+    parts = spec.split("x") if "x" in spec else [spec, spec]
+    if len(parts) != 2:
+        raise ValueError(f"expected '640' or 'HxW' like '256x1024', got {spec!r}")
+    try:
+        h, w = int(parts[0]), int(parts[1])
+    except ValueError:
+        raise ValueError(f"non-integer tile size in {spec!r}") from None
+    if h <= 0 or w <= 0:
+        raise ValueError(f"tile sizes must be positive, got {h}x{w}")
+    for name, v in (("height", h), ("width", w)):
+        if v % 32:
+            raise ValueError(
+                f"tile {name} {v} is not a multiple of 32; YOLO max stride is 32 "
+                f"and a non-multiple is silently padded, moving every box coordinate"
+            )
+    return h, w
+
+
 def tile_origins(length: int, tile: int, stride: int) -> list[int]:
     """Tile starts along one axis, always including a flush-to-edge final tile
     so the last strip of a frame is never silently discarded."""
@@ -167,7 +194,10 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Tile waterfalls and convert masks to YOLO boxes.")
     ap.add_argument("--dataset", required=True)
     ap.add_argument("--out", default=None)
-    ap.add_argument("--tile", type=int, default=640, help="tile size in pixels")
+    ap.add_argument("--tile", type=str, default="640",
+                    help="tile size in pixels: '640' for square, or 'HxW' e.g. '256x1024'. "
+                         "Anisotropic tiles match side-scan geometry, whose along-track and "
+                         "across-track resolutions differ -- see EXPERIMENT_GV7_PLAN.md 10.2")
     ap.add_argument("--overlap", type=float, default=0.25, help="fraction of tile overlapped by the next")
     ap.add_argument("--min-visible", type=float, default=0.35,
                     help="fraction of an object's area that must survive clipping for the fragment to be kept")
@@ -219,12 +249,18 @@ def main() -> int:
         return 1
 
     out_root = Path(args.out) if args.out else INTERIM_ROOT / dataset_id
-    stride = max(1, int(round(args.tile * (1.0 - args.overlap))))
+    try:
+        tile_h, tile_w = parse_tile(args.tile)
+    except ValueError as exc:
+        print(f"bad --tile: {exc}")
+        return 1
+    stride_y = max(1, int(round(tile_h * (1.0 - args.overlap))))
+    stride_x = max(1, int(round(tile_w * (1.0 - args.overlap))))
     report = Report()
 
     print(f"\nsource : {src}")
     print(f"output : {out_root if not args.dry_run else '(dry run)'}")
-    print(f"tiles  : {args.tile}px, stride {stride}px, class {class_id}={training_class}\n")
+    print(f"tiles  : {tile_h}x{tile_w}px HxW, stride {stride_y}x{stride_x}px, class {class_id}={training_class}\n")
 
     for split_name, img_dir, lbl_dir in splits:
         pos_tiles: list[tuple] = []
@@ -258,12 +294,12 @@ def main() -> int:
                 report.frames_all_negative += 1
 
             H, W = image.shape
-            for oy in tile_origins(H, args.tile, stride):
-                for ox in tile_origins(W, args.tile, stride):
+            for oy in tile_origins(H, tile_h, stride_y):
+                for ox in tile_origins(W, tile_w, stride_x):
                     report.tiles_considered += 1
-                    patch = image[oy:oy + args.tile, ox:ox + args.tile]
-                    if patch.shape[0] < args.tile or patch.shape[1] < args.tile:
-                        pad = np.zeros((args.tile, args.tile), dtype=patch.dtype)
+                    patch = image[oy:oy + tile_h, ox:ox + tile_w]
+                    if patch.shape[0] < tile_h or patch.shape[1] < tile_w:
+                        pad = np.zeros((tile_h, tile_w), dtype=patch.dtype)
                         pad[:patch.shape[0], :patch.shape[1]] = patch
                         patch = pad
 
@@ -272,12 +308,12 @@ def main() -> int:
                     tiny_here = False
                     for (x1, y1, x2, y2) in boxes:
                         cx1, cy1 = max(x1, ox), max(y1, oy)
-                        cx2, cy2 = min(x2, ox + args.tile), min(y2, oy + args.tile)
+                        cx2, cy2 = min(x2, ox + tile_w), min(y2, oy + tile_h)
                         full = max(1, (x2 - x1) * (y2 - y1))
                         if cx2 <= cx1 or cy2 <= cy1:
                             # distance from tile to object, for hard-negative ranking
-                            dx = max(x1 - (ox + args.tile), ox - x2, 0)
-                            dy = max(y1 - (oy + args.tile), oy - y2, 0)
+                            dx = max(x1 - (ox + tile_w), ox - x2, 0)
+                            dy = max(y1 - (oy + tile_h), oy - y2, 0)
                             nearest = min(nearest, int((dx * dx + dy * dy) ** 0.5))
                             continue
                         visible = (cx2 - cx1) * (cy2 - cy1) / full
@@ -292,11 +328,11 @@ def main() -> int:
                             report.boxes_too_small += 1
                             tiny_here = True
                             continue
-                        bw, bh = (cx2 - cx1) / args.tile, (cy2 - cy1) / args.tile
+                        bw, bh = (cx2 - cx1) / tile_w, (cy2 - cy1) / tile_h
                         bcx = (cx1 + cx2) / 2.0 - ox
                         bcy = (cy1 + cy2) / 2.0 - oy
                         lines.append(
-                            f"{class_id} {bcx / args.tile:.6f} {bcy / args.tile:.6f} {bw:.6f} {bh:.6f}"
+                            f"{class_id} {bcx / tile_w:.6f} {bcy / tile_h:.6f} {bw:.6f} {bh:.6f}"
                         )
 
                     stem = f"{img_path.stem}__x{ox}_y{oy}"

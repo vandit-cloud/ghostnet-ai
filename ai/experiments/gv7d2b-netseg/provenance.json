@@ -1,0 +1,17 @@
+{
+  "run": "gv7d2b-netseg",
+  "task": "segment",
+  "classes": [
+    "ghost_net"
+  ],
+  "weights_init": "E:\\New folder\\ai\\models\\pretrained\\yolo11s-seg.pt",
+  "data": "E:\\New folder\\ai\\data\\net_seg\\data.yaml",
+  "seed": 0,
+  "epochs": 1000,
+  "batch": 4,
+  "imgsz": 640,
+  "device": "cuda",
+  "git_commit": "a9fa70c013fe5be48b5caa2c04409737615f0cf1",
+  "cli": "ai\\scripts\\train_net_seg.py --name gv7d2b-netseg --epochs 1000",
+  "caveat": "test split is 11 chips -- upper bound only. NOT comparable with gv5 mAP50: different task, label geometry and metric. Report under Tier 1 of EXPERIMENT_GV7_PLAN.md 10.5 as a review candidate, never a detection claim."
+}

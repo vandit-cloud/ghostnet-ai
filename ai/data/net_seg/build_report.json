@@ -1,0 +1,17 @@
+{
+  "dataset_version": "netseg-51/11/11-db1888319541",
+  "task": "segment",
+  "classes": [
+    "ghost_net"
+  ],
+  "splits": {
+    "train": 51,
+    "val": 11,
+    "test": 11
+  },
+  "polygons": 425,
+  "split_inherited_from": "E:\\New folder\\ai\\data\\processed",
+  "source": "E:\\New folder\\ai\\data\\annotate\\ghost_net_seg",
+  "git_commit": "a9fa70c013fe5be48b5caa2c04409737615f0cf1",
+  "caveat": "test split is 11 chips; supports an upper bound only. Not comparable with gv5 mAP50 -- different task and ruler."
+}

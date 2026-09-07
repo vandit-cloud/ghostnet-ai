@@ -30,10 +30,21 @@ Two things follow, and they shape the whole plan:
    high-contrast. "Improve the model" therefore means *improve `wreck` and
    `ghost_pot`*, which is where the mass of measurable held-out data is
    (836 and 567 boxes).
-2. **`ghost_net` is not a data problem.** gv6 took it from 215 to 2,246
-   perfectly-labelled training boxes and recall moved 0.000 → 0.000. It is a
-   flat, shadowless, low-contrast target: one weak acoustic cue. gv7 does not
-   attempt to fix it and does not count it toward success.
+2. **`ghost_net` is not a *synthetic*-data problem.** — amended 2026-09-05;
+   the earlier wording, "not a data problem", was overstated and is corrected
+   here. gv6 took the class from 215 to 2,246 training boxes and recall moved
+   0.000 → 0.000, but a label-file audit shows that increase was **1,364
+   synthetic images against 51 real ones**. Real hand-labelled net imagery in
+   the whole dataset is **73 images from two Chinese sites** (train 48 quanzhou
+   + 3 yantai = 51, val 11, test 11). So what gv6 disproved is synthetic volume.
+   Real net data at scale has never been tested, because it has never existed
+   here. The physics still explains *why* nets are hard — flat, shadowless,
+   low-contrast, one weak acoustic cue, no shadow to pair it with — but physics
+   alone does not close the question, and external evidence now says the
+   formulation matters more (§10, Track D).
+
+   `ghost_net` remains **excluded from gv7.1–7.3 success criteria** and is
+   pursued separately as Track D, so the main cycle is not held hostage to it.
 
 ---
 
@@ -66,10 +77,16 @@ model's calibration regardless of any environment variable you set.** This is
 exactly what happened in gv6 — the temperature was refitted against gv6 weights
 while `ghostnet.pt` was still gv5, and had to be reverted by hand.
 
-**Prerequisite P1 (do before any gv7 run):** make the writer honour
-`GHOSTNET_MODELS_DIR`, or add an explicit `--out` argument. Either removes the
-whole class of accident. Ship it with a test that asserts the writer does not
-touch `ai/models/calibrator/` when the override is set.
+**Prerequisite P1 — LANDED 2026-09-05, commit `fc60e87`.** No longer
+outstanding; this subsection is kept because the *reasoning* still governs how
+every gv7 run is set up. `fit_calibration.py` now resolves its output through
+`calibrator_dir()`, which honours `GHOSTNET_MODELS_DIR` and is resolved at call
+time rather than at import, and an explicit `--out` argument was added as well.
+Guarded by `ai/tests/test_run_guards.py` (14 tests, passing), which asserts the
+writer does not touch `ai/models/calibrator/` when the override is set.
+
+The hardcoded `CALIBRATOR` constant quoted above no longer exists. Do not
+re-apply this fix; do still honour the isolation recipe in 1.2.
 
 ### 1.2 The isolation recipe
 
@@ -339,7 +356,9 @@ nothing.
 
 ## 8. What not to try, carried forward from gv6
 
-* **More synthetic nets.** Tested. Recall 0.000 → 0.000.
+* **More synthetic nets.** Tested. Recall 0.000 → 0.000. (Still true. But see
+  §10 — this rules out synthetic volume, not real net data, and not a change
+  of task formulation.)
 * **Nets by elimination** (anything not wreck/plane/debris/pot is a net). The
   residual bucket is mostly seabed; this destroys the false-alarm number six
   runs earned. The `unknown` contract class is the honest version.
@@ -363,3 +382,291 @@ nothing.
 3. **Is a test-set label audit in scope?** It re-baselines every historical
    number. Worth doing once, but it must be a deliberate, announced decision
    (§3.1), not a side effect.
+
+---
+
+## 10. Track D — the `ghost_net` question, reopened
+
+Added 2026-09-05 after an external-evidence review. Track D is **separate from
+gv7.1–7.3** and does not gate them; it exists because two facts surfaced that
+the original plan did not have.
+
+### 10.1 The two facts
+
+**Fact 1 — we have almost no real net data.** Counted from
+`ai/data/processed/*/labels/`, class 4:
+
+| split | images | boxes | composition |
+|---|---|---|---|
+| train | 1,415 | 2,246 | **1,364 synthetic**, 48 `quanzhou_HN`, 3 `yantai_HN` |
+| val | 11 | 47 | 10 quanzhou, 1 yantai |
+| test | 11 | 36 | 10 quanzhou, 1 yantai |
+
+73 real images, two sites (51 train + 11 val + 11 test). See the amendment in §2.
+
+**Fact 2 — someone solved this with barely more data than we have, by asking a
+different question.** GhostNetZero (Microsoft AI for Good Lab, WWF Germany,
+Accenture; tech report Sept 2025) reports **~90% ghost-net detection** trained
+on **239 Baltic Sea + 173 Puget Sound annotated segments** — 412 real images.
+
+Their choices differ from ours in four ways, and each is separately testable:
+
+| | GhostNetZero | GhostNet-AI gv5 |
+|---|---|---|
+| task | semantic segmentation, DeepLabV3 + ResNet50 | bounding-box detection, YOLO11-S |
+| patch | 2000×500 or 1000×250, resized to 2000×500 | **640×640 square** |
+| channels | left/right SSS views split | single view |
+| metric | **centroid detection rate** @ 3/5/10/20 px | mAP50 @ IoU 0.5 |
+| despeckling | **none** | none at train; inference filter ships OFF |
+
+Their stated reason for rejecting bounding boxes is the one that matters to us:
+segmentation gives "more accurate localization... particularly important for
+irregularly shaped ghost nets, such as those in string-like shapes."
+
+Their combined BS+PS model: mIoU 0.739 / 0.685, centroid detection 0.891 /
+0.929. Cross-region transfer was weak (BS-only scored 0.607 on PS), which is a
+warning about our own two-site training data.
+
+### 10.2 What Track D tests, cheapest first
+
+| step | change | cost | rationale |
+|---|---|---|---|
+| **D0** | build a real net evaluation set | labelling, no GPU | prerequisite — see 10.3 |
+| **D-geom** | **anisotropic tiles + segmentation head, merged** | ~1 day labelling + one run | one hypothesis, one run — see 10.2.1 |
+| **D3** | despeckle-**trained** model | one training run — **already committed** | a *different* hypothesis; stays separate |
+| **D5** | low-threshold net proposals → review queue | hours, no GPU | inference-layer; composes with any of the above |
+| **D4** | texture / curvilinear input channels | invasive — **cut this cycle** | needs a custom model YAML + dataloader, and breaks pretrained first-conv loading |
+
+### 10.2.1 Why D1 and D2 merge, against §3's default
+
+§3 says merging buys a number nobody can explain, and that rule is right for
+gv7.1–7.3. It does **not** hold here, for a reason specific to this class:
+
+**Staged attribution requires an evaluation set that can resolve the stages.**
+Ours cannot. Per §4.3, `ghost_net` at n=36 supports only an upper bound. Running
+anisotropic tiling and a segmentation head as two separate 14-hour runs would
+cost 28 GPU-hours to produce **two numbers neither of which is individually
+interpretable**. Attribution you cannot measure is not attribution; it is just
+a slower way to reach the same ambiguity.
+
+They also test **the same hypothesis**: *the target's geometry is wrong for our
+formulation.* A ghost net is a long, thin, string-like, fragmented object. Square
+tiles cut it; axis-aligned boxes cannot describe it. Those are two symptoms of
+one mismatch, and GhostNetZero changed both at once for the same reason.
+
+So D-geom is one run: **1024×256 tiles, `rect=True`, `yolo11s-seg`.** If it
+moves the needle, D0 then tells us by how much, and the stages can be
+disentangled later *on an eval set that can actually see the difference*.
+
+**D3 stays separate** because it is a genuinely different hypothesis — *the cue
+is present but buried in speckle* — and merging it would confound two unrelated
+explanations. It is also already committed as its own run.
+
+### 10.2.2 D1 is BLOCKED, and partly inapplicable — found 2026-09-05
+
+Two facts discovered while implementing it. Both are about our data, not the
+idea, and the second is the more important one.
+
+**Blocked: the source waterfalls are gone.** `ai/data/raw/` is down to 229 MB
+holding only `GHOSTNET-HAND`, `PLANE-HAND` and `MGDS_Download` — the prune in
+commit `ad70122` removed the AI4Shipwrecks, GhostVision, SubPipe and
+China-Offshore originals. What survives in `ai/data/interim/` is **already
+tiled to 640×640**. Re-tiling a tile is meaningless, so the dataset cannot be
+rebuilt at another tile shape without re-downloading the sources.
+
+**Inapplicable to nets anyway, which matters more.** The anisotropic-tile
+argument assumes a net is a long feature spanning a large waterfall that we
+then chop into squares. Our net data is not shaped like that. Every
+`GHOSTNET-HAND` image is a small pre-cut chip — 486×373, 348×378, 359×501,
+740×496 — handed to the detector whole. **Square tiling is not cutting our
+nets, because our nets were never tiled.** The mechanism D1 was meant to fix is
+not operating on this class.
+
+So D1 does not run this cycle, and D-geom reduces to D2 (segmentation), which
+is unaffected: a net inside a 486×373 chip is still a long, thin, fragmented
+object that an axis-aligned box describes badly.
+
+**What was still worth building.** `masks_to_yolo.py --tile` now accepts `HxW`
+(`--tile 256x1024`), validated, tested and ready for the day sources exist
+again or new survey data arrives. It is the correct default for *future* full
+waterfalls, and it cost an hour. The residual idea for the current data —
+training with `rect=True` so a 486×373 chip is not letterboxed into a square —
+is cheap and can ride along with D2 rather than justifying its own run.
+
+### 10.2.3 The rectangular-training trap, for whenever D1 does run
+
+`imgsz=[1024,256]` **does not work.** `engine/trainer.py` calls
+`check_imgsz(..., max_dim=1)`, which silently collapses a list to `max()` and
+warns *"'train' and 'val' imgsz must be an integer"*. Verified against the
+pinned `ultralytics 8.4.134`.
+
+The working route is to cut anisotropic tiles **on disk** — give
+`masks_to_yolo.py --tile` a `H×W` form — and train with `rect=True` and
+`imgsz=1024` as the long side. `rect=True` is refused only for multi-GPU, so it
+is fine on the single 3050. A 1024×256 tile is ~1.6× the pixels of 640×640, so
+expect **batch 2–3** under the 4 GB ceiling.
+
+**D2 has a real annotation cost we should not hide.** `masks_to_yolo.py` exists,
+so masks-to-boxes is a solved path — but it runs on AI4Shipwrecks, which shipped
+with masks. `ai/data/raw/research/GHOSTNET-HAND/` is `images/` + `labels/` only:
+the net annotations were drawn as **boxes**, not masks. Segmentation therefore
+means re-annotating 73 images as polygons. That is roughly a day, not a project,
+and it is the single highest-information day available on this class.
+
+**D3 note.** GhostNetZero reached ~90% with **no despeckling at all**, which
+weakens the "speckle is burying the cue" hypothesis. This does not cancel the
+run — different architecture, different data, and the −13% figure that ships the
+filter OFF was inference-only and therefore a transform-symmetry violation
+rather than a verdict. It does set expectations.
+
+### 10.3 D0 is not optional, and it comes first
+
+**An 11-image / 36-box test set from two sites cannot evaluate D-geom or D3.**
+Per §4.3 it supports only a rule-of-three upper bound: true recall < 8.3%. A
+real improvement to recall 0.15 would show as 5 of 36 boxes and be
+indistinguishable from noise. Running D1–D4 against the current split produces
+numbers nobody can interpret — the gv6 mistake in a new costume.
+
+Sourcing routes found, in order of plausibility:
+
+* **ghostnetzero.ai** is explicitly a data-*donation* platform — research
+  institutes, authorities and offshore wind operators upload sonar to it. A
+  two-way ask is plausible and costs an email.
+* **MARELITT Baltic** deployed two authentic 400 m ghost-net fleets as a
+  purpose-built **sonar testbed** off Simrishamn; 60+ net/line/cable targets
+  were diver-ground-truthed. This is labelled net data that exists.
+* **WWF Germany** holds the Baltic corpus behind the tech report.
+* **Dead end, confirmed:** HuggingFace `PINGEcosystem/sss-crab-pot-detection-ds`
+  is 6,674 images of crab pots with **no netting**, and at 6,674 vs our
+  GhostVision 6,655 we almost certainly already have it.
+
+### 10.4 A metric change worth adopting regardless
+
+GhostNetZero argues that IoU-based metrics understate operational utility: you
+only need to point a diver at the right spot, and three disconnected polygons
+over one long net should count as one true positive, not two false ones. Their
+**centroid detection rate** does exactly that.
+
+Our `ghost_net` mAP50 of 0.009 is therefore *partly* a metric artefact for a
+long, fragmented, string-like target. It does not rescue gv5 — recall was
+0.000, meaning no predictions at all, and no metric repairs that — but any
+Track D result should be reported under **both** mAP50 and a centroid detection
+rate, or we will under-read a real improvement.
+
+### 10.5 Promotion criterion for `ghost_net` — DECIDED 2026-09-05
+
+The strict-vs-lenient framing was a false binary. It was hard to answer because
+it bundled two different questions: *what may we ship?* and *what may we
+claim?* Those have different risk profiles and deserve different bars.
+
+**The rule: two tiers. Shipping is lenient. Claiming is strict.**
+
+**Tier 1 — review-queue eligibility (lenient).** A `ghost_net` prediction never
+asserts a detection. It enters the review queue as a candidate, surfaced under
+the `unknown`/review vocabulary, and the UI must not render it the way a
+`ghost_pot` detection is rendered. A Track D run earns Tier 1 if:
+
+* it produces any non-zero `ghost_net` recall at the deployed operating point, and
+* **no guardrail in §4.2 is breached** — in particular the background activation
+  rate at raw 0.20 stays ≤ 5.1% and overall precision stays ≥ 0.52, and
+* `debris`, `wreck` and `ghost_pot` mAP50 do not regress beyond §4.2 tolerance.
+
+The bar is low on the net class *because the output makes no claim*. The bar
+stays full-strength on everything else, because gv6's real damage was never its
+net score — it was 1.6× background activations and precision 0.580 → 0.373
+inflicted on the four classes that do work. That must not happen again, and
+Tier 1 is the clause that prevents it.
+
+**Tier 2 — detection claim (strict).** Before `ghost_net` may be quoted as a
+working class — in the submission, to a jury, in `MODEL_CAPABILITY_EVIDENCE.md`,
+or anywhere a number stands without a caveat — all of:
+
+* a rebuilt evaluation set of **≥ 300 real net boxes from ≥ 3 sites** (D0), and
+* recall **≥ 0.30** at the deployed operating point, and
+* three seeds, with spread below the effect size, and
+* a bootstrap 95% CI that does not overlap gv5's, and
+* reported under **both** mAP50 and centroid detection rate (§10.4).
+
+**Until Tier 2 passes, the only public statement about `ghost_net` is the
+rule-of-three bound:** with 0 of 36 found we are 95% confident true recall is
+below 8.3%. That sentence is the deliverable. It is not a failure to report —
+it is the honest form of the result, and it is the same discipline that made
+`docs/EXPERIMENT_GV6.md` worth having.
+
+**Why this way.** A single threshold would have forced a choice between
+shipping nothing useful and claiming something unsupported. Splitting the tiers
+lets a weak signal reach a human — which is exactly what GhostNetZero's
+human-in-the-loop platform does with its own predictions — while keeping the
+number we quote anchored to evidence we actually have.
+
+---
+
+## 11. D2 status — BUILT and ready to train (2026-09-06)
+
+The annotation pass is complete and the dataset exists. Training has NOT been
+started.
+
+### 11.1 What was produced
+
+**73 chips re-annotated as polygons: 425 polygons, every one valid.** Measured
+against the boxes they replace:
+
+| | old hand-drawn boxes | new polygons |
+|---|---|---|
+| shapes | ~4 per chip | 425 total |
+| median frame area claimed as net | **56.5%** | **7.0%** |
+
+An 8× reduction in seabed labelled as net. That over-claiming is the most
+plausible mechanical reason the class trained to recall 0.000: most of what the
+old boxes called `ghost_net` was empty seabed, so "seabed" was the majority of
+the class's training signal.
+
+Artefacts:
+
+* `ai/data/annotate/ghost_net_seg/` — chips, labelme JSON, YOLO-seg labels,
+  `HOW_TO_LABEL.md`, and `_guide/` review sheets
+* `ai/scripts/labelme_to_yoloseg.py` (+ 7 tests) — polygon conversion
+* `ai/scripts/build_net_seg_dataset.py` — dataset builder
+* `ai/scripts/train_net_seg.py` — training entry point
+* `ai/data/net_seg/` — `dataset_version: netseg-51/11/11-db1888319541`
+
+### 11.2 Two design decisions worth keeping
+
+**Single-class segmentation model, separate from gv5.** Ultralytics requires
+every label in a segmentation dataset to be a polygon. The other four classes
+exist only as boxes and the raw imagery to re-derive them was pruned in
+`ad70122`. Converting those boxes to 4-point rectangles to satisfy the format
+would teach the model that debris is rectangular — fake segmentation that
+damages the classes which currently work. So `ghost_net` gets its own model and
+gv5 keeps the other four unchanged.
+
+**The split is inherited, never recomputed.** 51/11/11, read back from
+`ai/data/processed/` by filename. Re-splitting 73 chips randomly would place a
+chip in test that gv5 trained on, and every later comparison would be measuring
+memorisation.
+
+### 11.3 The comparison trap this creates
+
+The 11 test chips now carry polygon labels. This is **not** the silent
+test-set edit §3.1 warns against — it is a new ruler for a different task, and
+the box-based detection ruler is untouched.
+
+But **a segmentation score from this dataset is not comparable with gv5's
+mAP50.** Different task, different label geometry, different metric. The caveat
+is written into `data.yaml`, `build_report.json` and `provenance.json` because
+someone will eventually put the two numbers side by side. At n=11 the honest
+output remains an upper bound (§4.3), reported under Tier 1 of §10.5 as a
+review candidate — never as a detection claim.
+
+### 11.4 To start it
+
+```bash
+python ai/scripts/fetch_weights.py            # once, needs network
+python ai/scripts/train_net_seg.py --dry-run  # confirms the plan
+python ai/scripts/train_net_seg.py            # ~13 iters/epoch
+```
+
+`degrees=0` in that script is not a free choice: side-scan across-track is
+RANGE, so a rotated tile is not an image the sonar can produce. Flips stay on —
+`fliplr` is the port/starboard mirror, `flipud` is the vessel running the other
+way, and both are real surveys.

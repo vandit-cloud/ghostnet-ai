@@ -1,0 +1,9 @@
+# Single-class ghost_net SEGMENTATION dataset (D2, Track D).
+# Built by ai/scripts/build_net_seg_dataset.py -- do not hand-edit.
+# NOT comparable with the detection dataset: different task and metric.
+path: E:/New folder/ai/data/net_seg
+train: train/images
+val: val/images
+test: test/images
+names:
+  0: ghost_net

@@ -33,6 +33,7 @@ from .dropout import (
 from .shadow import shadow_context
 from .decision import (
     apply_decision_policy,
+    is_review_only,
     calibration_mismatch,
     escalate_uncertainty,
     is_edge_sliver,
@@ -240,7 +241,11 @@ def _predict_many(model, paths: list[str], settings: Settings) -> list:
         return list(model.predict(
             source=paths,
             imgsz=settings.imgsz,
-            conf=settings.raw_conf_threshold,
+            # Lower of the two, so weak `ghost_net` boxes exist for the policy
+            # to consider. Every other class is re-gated back to
+            # raw_conf_threshold in apply_decision_policy, so this widens what
+            # is CONSIDERED without widening what is REPORTED.
+            conf=min(settings.raw_conf_threshold, settings.raw_conf_threshold_net),
             iou=settings.iou_threshold,
             max_det=settings.max_detections,
             device=settings.device,
@@ -476,6 +481,8 @@ def detect(
                 calibrated_confidence=round(calibrated, 4),
                 uncertainty=uncertainty,
                 bbox=item["bbox"],
+                # A candidate, not a claim -- see decision.is_review_only.
+                review_only=is_review_only(cls_out),
                 latitude=lat,
                 longitude=lon,
                 position_error_m=err,
