@@ -1,0 +1,120 @@
+{
+  "metric": "centroid detection rate (rule C: cluster into nets, match one-to-one)",
+  "reference": "GhostNetZero technical report, Sept 2025; GV7 plan 10.4",
+  "split": "test",
+  "weights": "ai/experiments/gv7d2b-netseg/weights/best.pt",
+  "tolerance_normalised": 0.1,
+  "conf": 0.25,
+  "images": 11,
+  "ground_truth_polygons": 59,
+  "ground_truth_nets": 50,
+  "prediction_polygons": 81,
+  "hits": 34,
+  "misses": 16,
+  "false_alarms": 26,
+  "centroid_detection_rate": 0.68,
+  "centroid_precision": 0.5666666666666667,
+  "per_image": [
+    {
+      "image": "quanzhou_HN_011.png",
+      "truth_polygons": 5,
+      "truth_nets": 5,
+      "prediction_polygons": 10,
+      "hits": 5,
+      "misses": 0,
+      "false_alarms": 0
+    },
+    {
+      "image": "quanzhou_HN_012.png",
+      "truth_polygons": 7,
+      "truth_nets": 7,
+      "prediction_polygons": 8,
+      "hits": 7,
+      "misses": 0,
+      "false_alarms": 0
+    },
+    {
+      "image": "quanzhou_HN_017.png",
+      "truth_polygons": 8,
+      "truth_nets": 7,
+      "prediction_polygons": 9,
+      "hits": 6,
+      "misses": 1,
+      "false_alarms": 1
+    },
+    {
+      "image": "quanzhou_HN_033.png",
+      "truth_polygons": 7,
+      "truth_nets": 3,
+      "prediction_polygons": 9,
+      "hits": 3,
+      "misses": 0,
+      "false_alarms": 3
+    },
+    {
+      "image": "quanzhou_HN_039.png",
+      "truth_polygons": 8,
+      "truth_nets": 8,
+      "prediction_polygons": 13,
+      "hits": 8,
+      "misses": 0,
+      "false_alarms": 0
+    },
+    {
+      "image": "quanzhou_HN_047.png",
+      "truth_polygons": 5,
+      "truth_nets": 3,
+      "prediction_polygons": 0,
+      "hits": 0,
+      "misses": 3,
+      "false_alarms": 0
+    },
+    {
+      "image": "quanzhou_HN_051.png",
+      "truth_polygons": 4,
+      "truth_nets": 4,
+      "prediction_polygons": 5,
+      "hits": 0,
+      "misses": 4,
+      "false_alarms": 3
+    },
+    {
+      "image": "quanzhou_HN_056.png",
+      "truth_polygons": 2,
+      "truth_nets": 2,
+      "prediction_polygons": 5,
+      "hits": 1,
+      "misses": 1,
+      "false_alarms": 1
+    },
+    {
+      "image": "quanzhou_HN_060.png",
+      "truth_polygons": 5,
+      "truth_nets": 5,
+      "prediction_polygons": 14,
+      "hits": 2,
+      "misses": 3,
+      "false_alarms": 12
+    },
+    {
+      "image": "quanzhou_HN_061.png",
+      "truth_polygons": 3,
+      "truth_nets": 3,
+      "prediction_polygons": 4,
+      "hits": 0,
+      "misses": 3,
+      "false_alarms": 4
+    },
+    {
+      "image": "yantai_HN_005.png",
+      "truth_polygons": 5,
+      "truth_nets": 3,
+      "prediction_polygons": 4,
+      "hits": 2,
+      "misses": 1,
+      "false_alarms": 2
+    }
+  ],
+  "denominator_note": "The denominator is ground-truth NETS, not polygons: single-linkage clustering at the match tolerance collapses the bead chains of one net into one object on both sides. These figures are therefore NOT on the same footing as mAP50, which counts polygons.",
+  "caveat": "n=11 chips. Upper bound only, Tier 1 review candidate per EXPERIMENT_GV7_PLAN.md 4.3 and 10.5. Not a detection claim."
+}

@@ -1,5 +1,5 @@
 {
-  "dataset_version": "netseg-51/11/11-db1888319541",
+  "dataset_version": "test11-8835e2482d97",
   "task": "segment",
   "classes": [
     "ghost_net"
@@ -13,5 +13,32 @@
   "split_inherited_from": "E:\\New folder\\ai\\data\\processed",
   "source": "E:\\New folder\\ai\\data\\annotate\\ghost_net_seg",
   "git_commit": "a9fa70c013fe5be48b5caa2c04409737615f0cf1",
-  "caveat": "test split is 11 chips; supports an upper bound only. Not comparable with gv5 mAP50 -- different task and ruler."
+  "caveat": "test split is 11 chips; supports an upper bound only. Not comparable with gv5 mAP50 -- different task and ruler.",
+  "fingerprints": {
+    "dataset_version": "test11-8835e2482d97",
+    "splits": {
+      "train": {
+        "n_images": 51,
+        "n_labels": 51,
+        "n_background": 0,
+        "image_list": "bd294dbc2f0e589d7dc7e37af4ac6cc95e6d90056cfbc10d8b0e9df97c088c16",
+        "label_content": "acd16617d881f960623e618626e07951f5011e4da925f9b4a64e0154b8490cea"
+      },
+      "val": {
+        "n_images": 11,
+        "n_labels": 11,
+        "n_background": 0,
+        "image_list": "4e5f0b9507f1cda3acf9f718d4e2a6f307140507d00692339bd6e5f936c47800",
+        "label_content": "b0cdce721ca454abd4e35607e0e993224cbcbcd155237ba6e12278c194bec167"
+      },
+      "test": {
+        "n_images": 11,
+        "n_labels": 11,
+        "n_background": 0,
+        "image_list": "8835e2482d97cf6a252671545a81843d9274e56f75fb4b594a5a2f0335b9490e",
+        "label_content": "721128be5eaba57bc1cdb65dcc78ebea140f6187126d3e2e59206444ce7b7261"
+      }
+    },
+    "note": "dataset_version is keyed on the TEST split only, because test is the ruler and train/val are allowed to grow. Compare `splits.test` digests to assert comparability with an earlier run."
+  }
 }
