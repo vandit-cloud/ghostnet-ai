@@ -1,12 +1,34 @@
 # gv7 — plan and measurement design
 
-**Status: PLAN. Nothing has been run. `gv5-yolo11s` is and remains the shipped
-model until a promotion criterion in section 6 is met on measured evidence.**
+**Status as of 2026-09-13. `gv5-yolo11s` is and remains the shipped model** —
+no §6 promotion criterion has been met, and none of the main-track runs that
+could meet one has been attempted.
+
+| run | state |
+|---|---|
+| gv7.0 — re-score gv5 on the current split | **done.** Ruler reproduces to 4 dp; noise floor ±0.002 |
+| gv7.T — test-time augmentation | **done. NEGATIVE**, rejected on its recall trade |
+| gv7.1 — label audit | not started; blocked on human labelling, no mechanical defects found |
+| gv7.2 — SSL backbone | not started; no implementation, multi-day |
+| gv7.3 — pseudo-labelling | **not startable** — no unlabelled pool exists (§2 note) |
+| Track B / Track C | not started |
+| Track D0 — real net eval set | **blocked on external data** |
+| Track D2/D3 — segmentation, despeckle | **done.** §12 and the gv7d run |
 
 This document is written to be pre-registered: the promotion criteria, the
 guardrails and the minimum detectable effects are all fixed *before* any run, so
 "it improved" is a decision rule rather than an argument after the fact. That is
 the same discipline that made `docs/EXPERIMENT_GV6.md` a usable negative result.
+Sections added after a run says so in its own heading, and amendments are dated
+in place rather than rewritten over.
+
+**gv7.3 note, 2026-09-13.** The run design assumes a pool of unlabelled sonar to
+pseudo-label. There is none: `ai/data/raw/` holds 135 images, all of them
+hand-labelled (73 net chips, 62 plane). The same pruning that blocked D1 (§10.2.2)
+took gv7.3's input with it. Sourcing that pool is a prerequisite nobody has
+costed, and gv5 is a poor teacher for it regardless — it emits zero `ghost_net`
+predictions and misclassifies 6 of 7 aircraft, so its pseudo-labels would
+reinforce precisely the two failures the cycle exists to fix.
 
 ---
 
@@ -587,11 +609,43 @@ or anywhere a number stands without a caveat — all of:
 * a bootstrap 95% CI that does not overlap gv5's, and
 * reported under **both** mAP50 and centroid detection rate (§10.4).
 
-**Until Tier 2 passes, the only public statement about `ghost_net` is the
-rule-of-three bound:** with 0 of 36 found we are 95% confident true recall is
-below 8.3%. That sentence is the deliverable. It is not a failure to report —
-it is the honest form of the result, and it is the same discipline that made
-`docs/EXPERIMENT_GV6.md` worth having.
+**Until Tier 2 passes, no `ghost_net` number may stand without its caveat.** The
+honest public statement is the deliverable — it is not a failure to report, and
+it is the same discipline that made `docs/EXPERIMENT_GV6.md` worth having.
+
+**What that statement is — AMENDED 2026-09-13.** It used to be the rule-of-three
+bound: *"with 0 of 36 found we are 95% confident true recall is below 8.3%."*
+That described the **box** model, which emitted no net predictions at all. It no
+longer describes the system and must not be quoted: the segmentation model finds
+nets, and repeating the old bound now would understate our own result.
+
+The current form, from `gv7d3` (three seeds, §12.1):
+
+> Under a segmentation formulation, `ghost_net` reaches box recall 0.49 ± 0.07
+> and a centroid detection rate of 0.61 ± 0.03 across three seeds. That is
+> measured on **11 chips from 2 sites**, which cannot support a generalisation
+> claim, so the class ships as a review candidate and not as a detection.
+
+Both sentences are bounds. The old one bounded a model that found nothing; this
+one bounds a result whose limit is the evaluation set rather than the model. The
+discipline is unchanged — what moved is which thing is uncertain.
+
+### 10.6 Tier 2 progress — 2026-09-13
+
+| condition | state |
+|---|---|
+| ≥ 300 real net boxes from ≥ 3 sites (D0) | **NOT MET** — 59 instances, 2 sites |
+| recall ≥ 0.30 at the deployed operating point | met — 0.492 |
+| three seeds, spread below the effect size | met — `gv7d3`, spread 0.074 vs effect ~0.49 |
+| bootstrap 95% CI not overlapping gv5's | not computed |
+| reported under both mAP50 and centroid rate | met — §10.4 implemented |
+
+Three of five, with a fourth cheap to compute. **The single blocker is D0, and
+it is data, not modelling.** No training run can clear it: the requirement is a
+third site, and the reason is GhostNetZero's own measured cross-region drop
+(Baltic-trained, 0.607 on Puget Sound). With two sites on one coastline,
+"the model learned nets" and "the model learned Chinese coastal seabed" predict
+identical numbers on our test split and cannot be told apart.
 
 **Why this way.** A single threshold would have forced a choice between
 shipping nothing useful and claiming something unsupported. Splitting the tiers
@@ -670,3 +724,89 @@ python ai/scripts/train_net_seg.py            # ~13 iters/epoch
 RANGE, so a rotated tile is not an image the sonar can produce. Flips stay on —
 `fliplr` is the port/starboard mirror, `flipud` is the vessel running the other
 way, and both are real surveys.
+
+---
+
+## 12. D2 RESULT — run, seeded, and what it cost to get right (2026-09-13)
+
+§11 ended at "BUILT and ready to train". It has now run four times: once as
+`gv7d2b` (the result quoted in `docs/D2_SEGMENTATION_SUMMARY.md`), and then as
+`gv7d3-netseg-s0/s1/s2`, three seeds under a corrected config.
+
+### 12.1 The headline
+
+Three seeds, 1000 epochs, early stopping off, dataset `netseg-51/11/11`, test
+split asserted `test11-8835e2482d97`:
+
+| metric | mean | sd | range |
+|---|---|---|---|
+| box recall | **0.492** | 0.074 | 0.441–0.576 |
+| box mAP50 | 0.528 | 0.018 | 0.507–0.542 |
+| mask mAP50 | 0.227 | 0.012 | 0.215–0.239 |
+| **centroid detection rate** | **0.607** | 0.031 | 0.580–0.640 |
+| centroid precision | 0.496 | 0.042 | 0.460–0.542 |
+
+Against gv5's box formulation on the same class: recall 0.000, mAP50 0.009.
+
+**The published 0.525 is superseded by 0.492 ± 0.074.** It was not wrong — it
+was one draw quoted without a spread, and slightly optimistic against the mean.
+
+### 12.2 Quote the centroid rate, not recall
+
+Recall carries by far the widest variance (sd 0.074) because it steps coarsely
+over 59 test instances — one instance found or lost moves it ~0.017. Box mAP50
+(0.018), mask mAP50 (0.012) and the centroid rate (0.031) are all substantially
+more stable.
+
+So the metric adopted in §10.4 for *operational* reasons turns out to also be
+the better-behaved one statistically. Worth stating plainly in any write-up: it
+was not chosen because it flattered the result.
+
+### 12.3 The bug the seeds found, which is the real lesson here
+
+Seeding was meant to put an error bar on 0.525. It found a training defect.
+
+Under the original `patience=60`, seed 1 scored mask mAP50 **0.004** against
+seed 0's 0.204 and seed 2's 0.153 — apparent catastrophic seed variance. It was
+not. It ran **131 epochs** where the others ran 608 and 558.
+
+On 51 images this model sits at mask mAP50 ≈ 0.000–0.002 for roughly the first
+200 epochs **in every seed** before it learns anything. That flat region is
+structural, not a plateau of convergence. Early stopping evaluates "has it
+improved lately?" inside it, where the metric is pinned near zero and moves only
+in the fourth decimal — so the decision is made on noise.
+
+Worse: both surviving seeds peaked at 586/608 and 551/558, still climbing when
+patience ended them. The old default was cutting **every** run short, including
+the one the published number came from.
+
+With patience off, seed spread on mask mAP50 falls **0.101 → 0.012**, an
+eightfold reduction, and seed 1 lands at 0.239 — the best of the three.
+
+`train_net_seg.py --patience` now defaults to 1000, with the dead zone written
+into its docstring.
+
+**The generalisable point:** early stopping assumes the metric it watches is
+informative from the start. On a dataset this small it is not, for hundreds of
+epochs. Any future small-data run in this project should treat patience as a
+parameter to justify rather than inherit — and §4.6's three-seed rule earned its
+place here by catching a config bug that a single run reported as a result.
+
+### 12.4 Two artefacts this exposed, both now fixed
+
+* `train_net_seg.py` ran a test eval but persisted only `provenance.json`. Every
+  D2 number published so far existed solely in terminal output. All runs are now
+  scored through `ai/scripts/evaluate.py`, which writes `test_metrics.json` for
+  box and mask heads.
+* `ai/data/net_seg/build_report.json` carried a `dataset_version` but no
+  fingerprint block, so the split could not be asserted. Written with
+  `verify_dataset.py --root ai/data/net_seg --write`.
+
+### 12.5 What is still not licensed
+
+Unchanged. §10.5 Tier 2 needs ≥300 real net boxes from ≥3 sites; this is 59
+instances from 2 sites across 11 chips. Three seeds satisfies §4.6, which was
+one of five conditions — see §10.6 for the full ledger.
+
+`ghost_net` stays Tier 1, review-only. Seeds agreeing with each other is not
+sites agreeing with each other.
