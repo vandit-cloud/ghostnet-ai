@@ -115,6 +115,13 @@
       "false_alarms": 3
     }
   ],
+  "bootstrap": {
+    "resamples": 1000,
+    "ci95_low": 0.4318181818181818,
+    "ci95_high": 0.7962962962962963,
+    "median": 0.6382978723404256,
+    "unit": "chip (nets on one chip are not independent draws)"
+  },
   "denominator_note": "The denominator is ground-truth NETS, not polygons: single-linkage clustering at the match tolerance collapses the bead chains of one net into one object on both sides. These figures are therefore NOT on the same footing as mAP50, which counts polygons.",
   "caveat": "n=11 chips. Upper bound only, Tier 1 review candidate per EXPERIMENT_GV7_PLAN.md 4.3 and 10.5. Not a detection claim."
 }

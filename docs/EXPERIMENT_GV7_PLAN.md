@@ -8,12 +8,13 @@ could meet one has been attempted.
 |---|---|
 | gv7.0 — re-score gv5 on the current split | **done.** Ruler reproduces to 4 dp; noise floor ±0.002 |
 | gv7.T — test-time augmentation | **done. NEGATIVE**, rejected on its recall trade |
-| gv7.1 — label audit | not started; blocked on human labelling, no mechanical defects found |
+| gv7.1 — label audit | **retired.** §13.4: the premise was wrong, see recall_by_size.py |
 | gv7.2 — SSL backbone | not started; no implementation, multi-day |
 | gv7.3 — pseudo-labelling | **not startable** — no unlabelled pool exists (§2 note) |
 | Track B / Track C | not started |
 | Track D0 — real net eval set | **blocked on external data** |
 | Track D2/D3 — segmentation, despeckle | **done.** §12 and the gv7d run |
+| D-geom rect tiling | **closed.** §13 — inapplicable, and rect costs mosaic |
 
 This document is written to be pre-registered: the promotion criteria, the
 guardrails and the minimum detectable effects are all fixed *before* any run, so
@@ -810,3 +811,92 @@ one of five conditions — see §10.6 for the full ledger.
 
 `ghost_net` stays Tier 1, review-only. Seeds agreeing with each other is not
 sites agreeing with each other.
+
+---
+
+## 13. D-geom, mosaic, and a correction — 2026-09-13
+
+### 13.1 The correction
+
+On 2026-09-13 the `rect=True` half of D-geom was described as "never tested"
+and a run was queued for it. **That was wrong, and §10.2.2 already said so on
+2026-09-05.** The tiling half of D-geom is not open:
+
+* re-tiling is impossible — `interim/` is already cut to 640×640, and the
+  sources that could be re-cut were pruned in `ad70122`;
+* more importantly it is **inapplicable to nets**. Our net images are small
+  pre-cut chips (486×373, 348×378, 359×501) handed to the detector whole.
+  Square tiling was never cutting our nets, because our nets were never tiled.
+
+§10.2.2's conclusion stands unchanged: **D-geom reduces to D2 (segmentation)**,
+which has now run and is reported in §12. What remained was the much smaller
+idea of `rect=True` so a 486×373 chip is not letterboxed — described there as
+"cheap and can ride along with D2 rather than justifying its own run".
+
+### 13.2 Why even that residual is now closed
+
+`rect=True` cannot ride along, because ultralytics couples it to mosaic:
+
+```python
+hyp.mosaic = hyp.mosaic if self.augment and not self.rect else 0.0
+```
+
+Turning rect on silently turns mosaic off. So the residual idea was priced by
+running the control alone — `gv7e-ctrl-nomosaic`, square, mosaic off, seed 0 —
+against the three-seed gv7d3 baseline:
+
+| metric | gv7d3 (mosaic on) | control (mosaic off) | delta |
+|---|---|---|---|
+| box recall | 0.492 ± 0.074 | 0.441 | −0.05 |
+| box mAP50 | 0.528 ± 0.018 | 0.423 | −0.11 |
+| **mask mAP50** | **0.227 ± 0.012** | **0.073** | **−0.15** |
+| centroid rate | 0.607 ± 0.031 | 0.560 | −0.05 |
+
+Mask mAP50 falls by two thirds. At sd 0.012 over three seeds the control sits
+roughly **13 standard deviations** below the mean — far outside anything seeds
+explain, even from one run.
+
+Recovering wasted letterbox padding cannot be worth that. **`rect=True` is
+closed for this dataset**, and the rect run was not re-attempted after the
+system killed it. Testing D-geom properly would require rect-compatible mosaic,
+i.e. patching ultralytics dataset internals, which is not a change to make five
+days from a deadline.
+
+### 13.3 The finding that came out of it, which is the useful part
+
+**Mosaic is load-bearing on 51 images, and is now measured rather than
+reasoned.** `train_net_seg.py` justified `mosaic=1.0` on the argument that with
+51 images the risk is memorisation and mosaic is the cheapest defence. That was
+a good argument with no number attached. It now has one: **−0.15 mask mAP50**.
+
+The two metrics disagree in an informative way. Mask quality collapses while
+the centroid rate barely moves (−0.05, inside its own CI). So without mosaic the
+model still finds roughly the same nets — it just draws them badly, which is
+what overfitting on 51 images should look like and where it should show first.
+It is also a reminder that the choice of headline metric would have given two
+different answers about the same run.
+
+### 13.4 `wreck` — §2's label-noise hypothesis is retired
+
+§2 ranked data-centric iteration first because "`wreck` at P 0.42 smells of
+label noise". Measured, it does not.
+
+Recall by object size (`ai/scripts/recall_by_size.py`): **0.525 on wrecks larger
+than 2% of frame**, against 0.060–0.112 below that, and 501 of 836 test boxes
+are sub-2%. The average of 0.26 is the tiling grid, not the detector.
+
+The boxes are not sloppy: AI4Shipwrecks ships pixel-wise masks and
+`masks_to_yolo.py` derives tight boxes from them, so they were never hand-drawn.
+A triage pass over train/val (`ai/scripts/rank_label_suspects.py`, 446 findings)
+has a median flagged box of 0.245% of frame — the same fragments.
+
+**So gv7.1 as specified — a human label audit — is aimed at a cause that is not
+there.** The tooling and `docs/LABEL_AUDIT_PROTOCOL.md` are kept, because the
+triage and the test-split guards are correct and reusable, but the audit itself
+should not be run on this evidence.
+
+The real question is now whether to drop sub-threshold fragments from the
+dataset. That runs straight into §3.1 — cleaning train/val while test keeps its
+fragments trains a model that is then scored on missing them — so it is an
+announced, one-time test correction with gv5 re-scored on the result. gv7.0
+exists for exactly that and has already been run once.

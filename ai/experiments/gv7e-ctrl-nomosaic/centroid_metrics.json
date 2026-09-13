@@ -2,26 +2,26 @@
   "metric": "centroid detection rate (rule C: cluster into nets, match one-to-one)",
   "reference": "GhostNetZero technical report, Sept 2025; GV7 plan 10.4",
   "split": "test",
-  "weights": "ai/experiments/gv7d3-netseg-s0/weights/best.pt",
+  "weights": "ai/experiments/gv7e-ctrl-nomosaic/weights/best.pt",
   "tolerance_normalised": 0.1,
   "conf": 0.25,
   "images": 11,
   "ground_truth_polygons": 59,
   "ground_truth_nets": 50,
-  "prediction_polygons": 76,
-  "hits": 30,
-  "misses": 20,
-  "false_alarms": 32,
-  "centroid_detection_rate": 0.6,
-  "centroid_precision": 0.4838709677419355,
+  "prediction_polygons": 77,
+  "hits": 28,
+  "misses": 22,
+  "false_alarms": 25,
+  "centroid_detection_rate": 0.56,
+  "centroid_precision": 0.5283018867924528,
   "per_image": [
     {
       "image": "quanzhou_HN_011.png",
       "truth_polygons": 5,
       "truth_nets": 5,
-      "prediction_polygons": 7,
-      "hits": 4,
-      "misses": 1,
+      "prediction_polygons": 9,
+      "hits": 5,
+      "misses": 0,
       "false_alarms": 0
     },
     {
@@ -29,35 +29,35 @@
       "truth_polygons": 7,
       "truth_nets": 7,
       "prediction_polygons": 8,
-      "hits": 6,
-      "misses": 1,
+      "hits": 3,
+      "misses": 4,
       "false_alarms": 1
     },
     {
       "image": "quanzhou_HN_017.png",
       "truth_polygons": 8,
       "truth_nets": 7,
-      "prediction_polygons": 10,
-      "hits": 5,
-      "misses": 2,
-      "false_alarms": 5
+      "prediction_polygons": 8,
+      "hits": 4,
+      "misses": 3,
+      "false_alarms": 3
     },
     {
       "image": "quanzhou_HN_033.png",
       "truth_polygons": 7,
       "truth_nets": 3,
-      "prediction_polygons": 9,
-      "hits": 3,
-      "misses": 0,
-      "false_alarms": 3
+      "prediction_polygons": 7,
+      "hits": 2,
+      "misses": 1,
+      "false_alarms": 2
     },
     {
       "image": "quanzhou_HN_039.png",
       "truth_polygons": 8,
       "truth_nets": 8,
-      "prediction_polygons": 11,
-      "hits": 7,
-      "misses": 1,
+      "prediction_polygons": 14,
+      "hits": 6,
+      "misses": 2,
       "false_alarms": 2
     },
     {
@@ -73,10 +73,10 @@
       "image": "quanzhou_HN_051.png",
       "truth_polygons": 4,
       "truth_nets": 4,
-      "prediction_polygons": 6,
-      "hits": 0,
-      "misses": 4,
-      "false_alarms": 6
+      "prediction_polygons": 2,
+      "hits": 1,
+      "misses": 3,
+      "false_alarms": 1
     },
     {
       "image": "quanzhou_HN_056.png",
@@ -85,41 +85,41 @@
       "prediction_polygons": 3,
       "hits": 2,
       "misses": 0,
-      "false_alarms": 0
+      "false_alarms": 1
     },
     {
       "image": "quanzhou_HN_060.png",
       "truth_polygons": 5,
       "truth_nets": 5,
-      "prediction_polygons": 8,
-      "hits": 1,
-      "misses": 4,
-      "false_alarms": 7
+      "prediction_polygons": 16,
+      "hits": 2,
+      "misses": 3,
+      "false_alarms": 10
     },
     {
       "image": "quanzhou_HN_061.png",
       "truth_polygons": 3,
       "truth_nets": 3,
-      "prediction_polygons": 9,
-      "hits": 0,
-      "misses": 3,
-      "false_alarms": 6
+      "prediction_polygons": 4,
+      "hits": 1,
+      "misses": 2,
+      "false_alarms": 2
     },
     {
       "image": "yantai_HN_005.png",
       "truth_polygons": 5,
       "truth_nets": 3,
-      "prediction_polygons": 4,
+      "prediction_polygons": 5,
       "hits": 2,
       "misses": 1,
-      "false_alarms": 1
+      "false_alarms": 2
     }
   ],
   "bootstrap": {
     "resamples": 1000,
-    "ci95_low": 0.358974358974359,
-    "ci95_high": 0.7796610169491526,
-    "median": 0.6,
+    "ci95_low": 0.40425531914893614,
+    "ci95_high": 0.7115384615384616,
+    "median": 0.5576923076923077,
     "unit": "chip (nets on one chip are not independent draws)"
   },
   "denominator_note": "The denominator is ground-truth NETS, not polygons: single-linkage clustering at the match tolerance collapses the bead chains of one net into one object on both sides. These figures are therefore NOT on the same footing as mAP50, which counts polygons.",

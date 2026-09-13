@@ -265,6 +265,45 @@ def load_predictions(result, conf: float, aspect: float = 1.0) -> list[Shape]:
     return shapes
 
 
+def bootstrap_ci(per_image: list[dict], resamples: int, seed: int = 0
+                 ) -> dict:
+    """95% CI on the detection rate, resampling CHIPS with replacement.
+
+    §4.5 requires every primary metric to carry a bootstrap CI over resamples
+    of the test frames, because "a point estimate that moves inside its own CI
+    has not moved".
+
+    The resampling unit is the chip, not the net. Nets on the same chip share a
+    seabed, a site and an annotator's pass, so they are not independent draws;
+    resampling nets individually would pretend they are and report a CI that is
+    too narrow. With 11 chips this produces a wide interval, which is the
+    honest answer rather than a defect to tune away.
+    """
+    import random
+
+    rng = random.Random(seed)
+    n = len(per_image)
+    rates: list[float] = []
+    for _ in range(resamples):
+        sample = [per_image[rng.randrange(n)] for _ in range(n)]
+        hits = sum(r["hits"] for r in sample)
+        total = hits + sum(r["misses"] for r in sample)
+        if total:
+            rates.append(hits / total)
+    if not rates:
+        return {}
+    rates.sort()
+    lo = rates[int(0.025 * len(rates))]
+    hi = rates[min(len(rates) - 1, int(0.975 * len(rates)))]
+    return {
+        "resamples": resamples,
+        "ci95_low": lo,
+        "ci95_high": hi,
+        "median": rates[len(rates) // 2],
+        "unit": "chip (nets on one chip are not independent draws)",
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -278,6 +317,8 @@ def main() -> int:
     ap.add_argument("--imgsz", type=int, default=640)
     ap.add_argument("--device", default="cpu",
                     help="cpu is fine: 11 chips, no training")
+    ap.add_argument("--bootstrap", type=int, default=1000,
+                    help="bootstrap resamples for the 95%% CI (0 to skip)")
     ap.add_argument("--out", default=None, help="write JSON here")
     args = ap.parse_args()
 
@@ -343,6 +384,7 @@ def main() -> int:
         "centroid_detection_rate": rate,
         "centroid_precision": precision,
         "per_image": per_image,
+        "bootstrap": bootstrap_ci(per_image, args.bootstrap) if args.bootstrap else None,
         "denominator_note": (
             "The denominator is ground-truth NETS, not polygons: single-linkage "
             "clustering at the match tolerance collapses the bead chains of one "
@@ -352,7 +394,9 @@ def main() -> int:
                    "EXPERIMENT_GV7_PLAN.md 4.3 and 10.5. Not a detection claim."),
     }
 
-    print(f"\n  centroid detection rate  {rate:.3f}   ({hits}/{total_nets} nets)")
+    bs = summary.get("bootstrap")
+    ci = f"   95% CI [{bs['ci95_low']:.3f}, {bs['ci95_high']:.3f}]" if bs else ""
+    print(f"\n  centroid detection rate  {rate:.3f}   ({hits}/{total_nets} nets){ci}")
     print(f"  centroid precision       {precision:.3f}   "
           f"({hits} hits, {false_alarms} false alarms)")
     print(f"  tolerance {args.tolerance} normalised, conf {args.conf}, "

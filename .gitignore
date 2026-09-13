@@ -84,6 +84,12 @@ ai/experiments/*/*
 # The glob covers notes.md and per-metric variants such as notes-centroid.md.
 !ai/experiments/*/notes*.md
 !ai/experiments/*/centroid_metrics.json
+!ai/experiments/*/*_by_size.json
+
+# Review renders are overlays regenerated from queue.csv by
+# rank_label_suspects.py --render. 120 of them is 69 MB, and the CSV plus the
+# script reproduce them exactly, so the evidence is the queue and not the PNGs.
+ai/data/annotate/*/_review/
 runs/
 *.log
 .env

@@ -29,6 +29,35 @@ Mosaic is ON despite the tiny dataset, and closed for the last 50 epochs. With
 51 images the risk is memorisation, and mosaic is the cheapest defence; closing
 it late lets the model finish on undistorted frames.
 
+D-geom, and the confound `--rect` hides
+---------------------------------------
+Section 10.2.1 defines D-geom as ONE hypothesis -- the target's geometry is
+wrong for our formulation -- tested by changing two things together:
+anisotropic tiles with `rect=True`, and a segmentation head. D2 only ever ran
+the second half. `args.yaml` for every gv7d2/gv7d3 run reads `imgsz: 640,
+rect: false`, so the tiling half has never been tested.
+
+`--rect` exists to test it, and it does not change one variable. Ultralytics:
+
+    hyp.mosaic = hyp.mosaic if self.augment and not self.rect else 0.0
+
+so turning rect on SILENTLY turns mosaic off. On 51 images mosaic is not
+decoration, it is the memorisation defence named above, and losing it plausibly
+costs more than anisotropic tiles gain. A rect run compared against gv7d3 would
+therefore measure tiling and mosaic-removal together and credit the result to
+whichever we had a story for.
+
+Hence `--mosaic`, which exists for the control: a square run with mosaic off,
+so the three runs separate cleanly.
+
+    gv7d3 (square, mosaic on)  vs  control (square, mosaic off)   -> mosaic
+    control (square, mosaic off) vs rect (anisotropic, mosaic off) -> tiling
+
+Section 10.2.1 argued D1 and D2 should merge because an 11-chip eval cannot
+resolve two changes. That was a cost argument -- 28 GPU-hours for two
+uninterpretable numbers -- and it no longer holds: these runs are ~75 minutes
+each, and the segmentation baseline already exists three-seeded.
+
 Why patience is effectively off -- the dead zone
 ------------------------------------------------
 `--patience` defaulted to 60 and that was a bug, found 2026-09-13 by seeding
@@ -96,6 +125,12 @@ def main() -> int:
                          "which silently aborted seed 1 at epoch 131")
     ap.add_argument("--batch", type=int, default=4, help="4 GB VRAM; 8 does not fit reliably at 640")
     ap.add_argument("--imgsz", type=int, default=640)
+    ap.add_argument("--rect", action="store_true",
+                    help="rectangular batching for anisotropic tiles (D-geom). "
+                         "NOTE: ultralytics forces mosaic=0 when this is on -- "
+                         "see the D-geom note in the docstring")
+    ap.add_argument("--mosaic", type=float, default=1.0,
+                    help="0 to disable; needed for the D-geom control run")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--device", default=None, help="default: cuda if available, else cpu")
     ap.add_argument("--resume", action="store_true")
@@ -150,6 +185,8 @@ def main() -> int:
         degrees=0.0,          # NOT a free choice -- see the module docstring
         fliplr=0.5,
         flipud=0.5,
+        rect=args.rect,
+        mosaic=args.mosaic,
         close_mosaic=50,   # last 50 epochs mosaic-free. Raised from 15 when the
                            # budget went to 1000 epochs: 15 would have been 1.5%
                            # of the run, too short to settle on undistorted frames.
@@ -171,6 +208,8 @@ def main() -> int:
         "epochs": args.epochs,
         "batch": args.batch,
         "imgsz": args.imgsz,
+        "rect": args.rect,
+        "mosaic": 0.0 if args.rect else args.mosaic,
         "device": str(device),
         "git_commit": git_commit(),
         "cli": " ".join(sys.argv),

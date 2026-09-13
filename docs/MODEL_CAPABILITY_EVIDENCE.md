@@ -38,8 +38,44 @@ of every run; gv5's is in `ai/experiments/gv5-yolo11s/`.
 | `debris` | 1,556 | 629 | **0.870** | Works, with a large caveat below |
 | `ghost_pot` | 7,434 | 567 | 0.314 | Works. The only class with enough data. |
 | `plane` | 39 | 9 | 0.293 | Recall 0.333, up from 0.000. Nine boxes: not a result. |
-| `wreck` | 1,373 | 836 | 0.279 | Weak, but tripled from gv2's 0.095 |
+| `wreck` | 1,373 | 836 | 0.279 | Weak *as averaged*. Read the size breakdown below before quoting it. |
 | `ghost_net` | 215 | 36 | **0.009** | **Does not work.** Recall 0.000. |
+
+### `wreck` 0.279 is two populations averaged together — added 2026-09-13
+
+Recall on the test split, split by how much of the frame the object occupies
+(`ai/scripts/recall_by_size.py`, deployed operating point conf 0.25, IoU 0.5):
+
+| object size | found | total | recall |
+|---|---|---|---|
+| <0.2% of frame | 16 | 143 | 0.112 |
+| 0.2–0.5% | 11 | 184 | 0.060 |
+| 0.5–2% | 13 | 174 | 0.075 |
+| **>2%** | **176** | **335** | **0.525** |
+| all | 216 | 836 | 0.258 |
+
+**On wrecks large enough to identify, recall is 0.525.** 501 of 836 test boxes
+are under 2% of frame and the model finds roughly 8% of those, which is what
+drags the average to 0.26.
+
+Those small boxes are not sloppy annotation, and it is worth being precise about
+why. AI4Shipwrecks ships **pixel-wise masks**; `masks_to_yolo.py` derives our
+boxes from them, so they are tight by construction and were never hand-drawn.
+They are **tiling debris** — a wreck spanning a 1728 × 18179 waterfall is cut by
+the 640×640 grid and each surviving sliver is boxed faithfully. The tiling
+report already records 584 fragments dropped and 109 boxes rejected as too
+small, so the threshold exists and is simply too permissive.
+
+**How to quote this.** "Recall 0.525 on wrecks larger than 2% of frame; 0.26
+averaged over a test set in which 60% of wreck boxes are sub-2% tiling
+fragments." Quoting 0.525 alone would be selecting a favourable subset after
+the fact; quoting 0.26 alone reports the tiling grid as if it were the detector.
+
+This also retires the standing hypothesis in EXPERIMENT_GV7_PLAN.md §2 that
+`wreck` precision smells of label noise and needs a human audit. A triage pass
+over train/val (`ai/scripts/rank_label_suspects.py`) flagged 446 findings whose
+median flagged box is 0.245% of frame — the same fragments. The fix is a size
+threshold at tiling time, not annotation.
 
 ### `debris` 0.870 must never be quoted bare
 
@@ -52,7 +88,19 @@ generalisation to debris elsewhere.
 The only independent debris is **14 boxes** from sonar_detect. Report both, or
 say "one held-out survey track".
 
-### `ghost_net` does not work, and that is the headline object
+### `ghost_net` does not work **as a box detector** — superseded in part, 2026-09-13
+
+Everything in this section remains true of the **box** formulation and of the
+shipped gv5 detector. It is no longer the whole story: under a *segmentation*
+formulation the class reaches box recall 0.492 ± 0.074 and a centroid detection
+rate of 0.607 ± 0.031 across three seeds (`gv7d3`, see
+`docs/D2_SEGMENTATION_SUMMARY.md` and EXPERIMENT_GV7_PLAN.md §12).
+
+That result is measured on **11 chips from 2 sites** and remains Tier 1 —
+review-queue only, never a detection claim — so this section's conclusion stands
+for anything gv5 ships. Do not quote the segmentation numbers without their
+caveat, and do not quote this section as if the segmentation result did not
+exist.
 
 mAP50 0.009, recall 0.000. Its precision reads 1.000 and means nothing -- the
 model made almost no net predictions at all. 215 training boxes over 51 images
