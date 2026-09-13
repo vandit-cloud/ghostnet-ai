@@ -888,15 +888,26 @@ are sub-2%. The average of 0.26 is the tiling grid, not the detector.
 The boxes are not sloppy: AI4Shipwrecks ships pixel-wise masks and
 `masks_to_yolo.py` derives tight boxes from them, so they were never hand-drawn.
 A triage pass over train/val (`ai/scripts/rank_label_suspects.py`, 446 findings)
-has a median flagged box of 0.245% of frame — the same fragments.
+has a median flagged box of 0.245% of frame — the same small objects.
+
+**Correction, same day.** This section first called those boxes "tiling debris"
+and proposed a size threshold. That explanation was tested and failed. A
+fragment cut by the tile grid must touch the boundary that cut it, so recall
+split by edge-contact separates the two hypotheses — and edge position makes no
+difference (>2%: 0.522 edge vs 0.533 interior; <0.5%: 0.000 vs 0.097), while
+279 of 327 small test boxes are interior. Size is the whole effect and the
+objects are real.
+
+So there is **no fragment filter to apply**, and proposing one was heading for
+the same circularity this plan warns about elsewhere: dropping boxes because the
+model misses them would delete the evidence of a real weakness. `wreck`'s gap is
+small-object detection, which is a modelling problem — input resolution or a P2
+(stride 4) head — and both are single-run experiments against a measured cause.
 
 **So gv7.1 as specified — a human label audit — is aimed at a cause that is not
 there.** The tooling and `docs/LABEL_AUDIT_PROTOCOL.md` are kept, because the
 triage and the test-split guards are correct and reusable, but the audit itself
 should not be run on this evidence.
 
-The real question is now whether to drop sub-threshold fragments from the
-dataset. That runs straight into §3.1 — cleaning train/val while test keeps its
-fragments trains a model that is then scored on missing them — so it is an
-announced, one-time test correction with gv5 re-scored on the result. gv7.0
-exists for exactly that and has already been run once.
+No test-split correction is therefore proposed. The §3.1 machinery stays unused
+here, which is the right outcome: the ruler was never broken.

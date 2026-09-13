@@ -58,24 +58,43 @@ Recall on the test split, split by how much of the frame the object occupies
 are under 2% of frame and the model finds roughly 8% of those, which is what
 drags the average to 0.26.
 
-Those small boxes are not sloppy annotation, and it is worth being precise about
-why. AI4Shipwrecks ships **pixel-wise masks**; `masks_to_yolo.py` derives our
-boxes from them, so they are tight by construction and were never hand-drawn.
-They are **tiling debris** — a wreck spanning a 1728 × 18179 waterfall is cut by
-the 640×640 grid and each surviving sliver is boxed faithfully. The tiling
-report already records 584 fragments dropped and 109 boxes rejected as too
-small, so the threshold exists and is simply too permissive.
+Those small boxes are not sloppy annotation. AI4Shipwrecks ships **pixel-wise
+masks**; `masks_to_yolo.py` derives our boxes from them, so they are tight by
+construction and were never hand-drawn.
+
+**Nor are they tiling debris — corrected 2026-09-13.** That was this document's
+first explanation and it does not survive the test. A fragment cut by the tile
+grid must touch the boundary that cut it, so splitting recall by edge-contact
+separates cut fragments from genuinely small objects:
+
+| size | at tile edge | interior |
+|---|---|---|
+| >2% | 0.522 | 0.533 |
+| 0.5–2% | 0.075 | 0.074 |
+| <0.5% | 0.000 | 0.097 |
+
+Edge position makes no difference, and **279 of 327 small test boxes are
+interior** — 85% were never cut by anything. Size is the whole effect.
+
+So this is a genuine **small-object detection gap**, not a dataset artefact.
+The boxes are real, correctly drawn, and the model cannot find them: at 0.5% of
+a 640×640 tile an object is roughly 45×45 px. Filtering them out of the dataset
+would be removing the evidence of a real weakness, not cleaning data.
 
 **How to quote this.** "Recall 0.525 on wrecks larger than 2% of frame; 0.26
 averaged over a test set in which 60% of wreck boxes are sub-2% tiling
 fragments." Quoting 0.525 alone would be selecting a favourable subset after
 the fact; quoting 0.26 alone reports the tiling grid as if it were the detector.
 
-This also retires the standing hypothesis in EXPERIMENT_GV7_PLAN.md §2 that
+This still retires the standing hypothesis in EXPERIMENT_GV7_PLAN.md §2 that
 `wreck` precision smells of label noise and needs a human audit. A triage pass
 over train/val (`ai/scripts/rank_label_suspects.py`) flagged 446 findings whose
-median flagged box is 0.245% of frame — the same fragments. The fix is a size
-threshold at tiling time, not annotation.
+median flagged box is 0.245% of frame — the same small objects. The labels are
+fine; the model cannot resolve objects that size.
+
+**The fix is therefore a modelling one, not a data one**: input resolution, or a
+higher-resolution detection head (P2, stride 4). Both are directly testable and
+target a measured cause.
 
 ### `debris` 0.870 must never be quoted bare
 
