@@ -78,6 +78,12 @@ ai/experiments/*/*
 # trainers each wrote a row for the same epoch. It is the evidence that the
 # edit to results.csv was a dedup and not a quiet correction of a metric.
 !ai/experiments/*/results.raw.csv
+# notes.md is REQUIRED by EXPERIMENT_GV7_PLAN.md 5 -- "a run with no notes.md
+# is not a result" -- and was being dropped by the rule above, which quietly
+# made every run unaccountable in the one file that says what it meant.
+# The glob covers notes.md and per-metric variants such as notes-centroid.md.
+!ai/experiments/*/notes*.md
+!ai/experiments/*/centroid_metrics.json
 runs/
 *.log
 .env
