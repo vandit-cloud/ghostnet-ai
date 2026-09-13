@@ -29,6 +29,28 @@ Mosaic is ON despite the tiny dataset, and closed for the last 50 epochs. With
 51 images the risk is memorisation, and mosaic is the cheapest defence; closing
 it late lets the model finish on undistorted frames.
 
+Why patience is effectively off -- the dead zone
+------------------------------------------------
+`--patience` defaulted to 60 and that was a bug, found 2026-09-13 by seeding
+this run three times. On 51 images the model sits at mask mAP50 ~0.000-0.002 for
+roughly the FIRST 200 EPOCHS in every seed, before it learns anything at all.
+That flat region is structural, not a plateau of convergence.
+
+Early stopping evaluates "has it improved lately?" inside that region, where the
+metric is pinned near zero and moves only in the fourth decimal -- so the
+decision is made on noise. Seed 0 and seed 2 twitched upward often enough to
+survive and ran 608 and 558 epochs. Seed 1 did not, was killed at epoch 131, and
+scored mask mAP50 0.004 against their 0.204 and 0.153. It read as catastrophic
+seed variance and was nothing of the kind.
+
+Worse, both surviving seeds peaked at 586/608 and 551/558 -- still improving
+when patience ended them. So the old default was cutting every run short, not
+just the unlucky one.
+
+Epochs here cost ~5.6 s, so a full 1000-epoch run is ~90 minutes. There is no
+budget reason to stop early and a demonstrated correctness reason not to.
+See ai/experiments/gv7d2c-netseg/notes.md.
+
 What this run can and cannot prove
 ----------------------------------
 Its test split is 11 chips. Section 4.3 of the plan is explicit: at this n the
@@ -69,7 +91,9 @@ def main() -> int:
     ap.add_argument("--data", default=str(DATA))
     ap.add_argument("--epochs", type=int, default=300,
                     help="51 images = 13 iters/epoch, so epochs are cheap; patience ends it early")
-    ap.add_argument("--patience", type=int, default=60)
+    ap.add_argument("--patience", type=int, default=1000,
+                    help="effectively off; see the dead-zone note below. Was 60, "
+                         "which silently aborted seed 1 at epoch 131")
     ap.add_argument("--batch", type=int, default=4, help="4 GB VRAM; 8 does not fit reliably at 640")
     ap.add_argument("--imgsz", type=int, default=640)
     ap.add_argument("--seed", type=int, default=0)
