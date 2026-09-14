@@ -24,6 +24,12 @@
   font-family: var(--font-ui), var(--ui);
   color: var(--ink);
   background: var(--paper);
+  /* The demo inherits `line-height: normal`; Tailwind's preflight sets
+     `html { line-height: 1.5 }`, so every element without an explicit value
+     inflates. Individually invisible, collectively not -- the nav grew 4.5px,
+     the tag pill 3px, each mono data row 3px, the page 54px overall. Scoped to
+     the landing so the console keeps Tailwind's default. */
+  line-height: normal;
 }
 
 /* -----------------------------------------------------------------------------
@@ -31,6 +37,24 @@
  * Kept here, above the copied rules, so the boundary between "ported" and
  * "written for the app" is a line in the file rather than a memory.
  * -------------------------------------------------------------------------- */
+
+/* A CSS Grid blowout that the demo does not have and the port does.
+   `1fr` is `minmax(auto, 1fr)`, and that `auto` floor is the track's min-content
+   width -- which for a replaced element is its intrinsic width. The demo's chip
+   is an <img> with no width/height attributes, so the browser gives it a zero
+   min-content contribution and the column collapses happily on a phone. The
+   port adds width={740} height={496} so the space is reserved before the image
+   decodes (no layout shift on a 740x496 chip), and that is exactly what gives
+   the element an intrinsic size the track then refuses to shrink below: 740px
+   of column inside a 375px viewport, and the whole page scrolls sideways.
+   Keeping the attributes and letting the track shrink is the better trade. */
+.landing .detect-grid > * {
+  min-width: 0;
+}
+
+.landing .chipwrap img {
+  max-width: 100%;
+}
 
 /* The demo shipped three.js and a 1.4 MB scene inline, so its first paint and
    its first rendered frame were the same moment. Next code-splits the scene and
@@ -266,4 +290,56 @@
 .landing .readout{padding:24px 20px}
 .landing .spec div{grid-template-columns:1fr;gap:4px}
 .landing .foot-grid{grid-template-columns:1fr 1fr;gap:28px}
+}
+
+/* =============================================================================
+ * CONTRAST CORRECTIONS.
+ *
+ * These come LAST on purpose. They are single-class overrides of rules copied
+ * verbatim above, at identical specificity, so order is the only thing that
+ * decides them -- written into the header instead, the demo's own declarations
+ * won and none of this applied.
+ *
+ * They are deliberate, flagged deviations from a finalised design. Each one is
+ * a place where a colour measures below WCAG AA, which is a defect in any
+ * palette, and each moves only far enough to be readable while keeping its role
+ * and its position in the hierarchy. Measured ratios are quoted so the next
+ * person can check rather than trust.
+ * ========================================================================== */
+
+/* ink-4 is 1.74:1 on paper -- the worst text contrast in the product. The demo
+   spends it on the card eyebrow ("Geometry", "Confidence", "Accountability")
+   and on both halves of the card foot, which are real content rather than the
+   faint marks ink-4 is for. */
+.landing .card .n,
+.landing .cardfoot k,
+.landing .cardfoot v s {
+  color: var(--ink-3);
+}
+
+/* The same problem on blue: onblue-2 (paper at 42%) measures 2.79:1 on the
+   atlantic band, 3.06:1 on the imperial one and 3.52:1 over the hero. It
+   carries the nav's contract tag, the hero stat captions, the instrument
+   readout, the stage numbers and every blue-band kicker -- i.e. most of the
+   small type on the page. */
+.landing .tag,
+.landing .stat span,
+.landing .stat b s,
+.landing .rdo,
+.landing .band.blue .kicker,
+.landing .cta-band .kicker,
+.landing .step span {
+  color: rgba(245, 242, 243, 0.72);
+}
+
+/* The footer sits on #01113F, where the column headings, the legal row and the
+   disclaimer all measured 3.68:1 or below. */
+.landing .foot h4,
+.landing .foot-base,
+.landing .foot-base a {
+  color: rgba(245, 242, 243, 0.78);
+}
+
+.landing .disclaimer {
+  color: rgba(245, 242, 243, 0.74);
 }

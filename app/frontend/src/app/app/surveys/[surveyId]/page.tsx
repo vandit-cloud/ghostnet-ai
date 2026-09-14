@@ -253,10 +253,15 @@ function SummaryStat({ label, value }: { label: string; value: number }) {
   );
 }
 
-const TICK_COLOR: Record<string, string> = {
-  VALID: "bg-emerald-400",
-  INVALID: "bg-alert-critical",
-  PENDING: "bg-slate-600",
+/* Shape first, colour second. These ticks were three same-sized dots separated
+ * by hue alone, with the status only in a `title` attribute -- a mouse-only
+ * tooltip, so keyboard and touch users had nothing, and anyone who cannot
+ * separate the hues had nothing either. A filled square, a hollow square and a
+ * dash now say it before the colour does. */
+const TICK_SHAPE: Record<string, string> = {
+  VALID: "bg-emerald-500",
+  INVALID: "border-2 border-alert-critical bg-transparent",
+  PENDING: "h-[3px] self-center bg-ink-4",
 };
 
 /** At-a-glance overall status before scanning the full per-file list below -
@@ -270,7 +275,8 @@ function ValidationStrip({ files }: { files: SurveyFile[] }) {
           <span
             key={f.id}
             title={`${f.filename}: ${f.validation_status}`}
-            className={clsx("h-2 w-2 rounded-full", TICK_COLOR[f.validation_status] ?? "bg-slate-600")}
+            aria-label={`${f.filename}: ${f.validation_status}`}
+            className={clsx("h-2 w-2", TICK_SHAPE[f.validation_status] ?? TICK_SHAPE.PENDING)}
           />
         ))}
       </div>

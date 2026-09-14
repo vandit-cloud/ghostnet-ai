@@ -73,9 +73,17 @@ export function KpiCard({
         </span>
       </div>
 
+      {/* 56px is right for a numeral and wrong for a word. The dashboard passes
+          the job STAGE through here ("DETECTION"), which needs 203px at that
+          size against a 174px tile in the five-column grid -- and `.panel` has
+          `overflow: hidden`, so it sheared the last letter off with no ellipsis
+          and no scrollbar. Size by what the value actually is. */}
       <p
         className={clsx(
-          "mt-2.5 font-display text-[56px] font-extrabold leading-[0.84] tabular-nums",
+          "mt-2.5 font-display font-extrabold tabular-nums",
+          typeof value === "number"
+            ? "text-[56px] leading-[0.84]"
+            : "break-words text-[30px] leading-[0.92]",
           valueTone[tone]
         )}
       >

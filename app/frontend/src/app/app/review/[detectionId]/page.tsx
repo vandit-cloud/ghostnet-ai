@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 
 import { AppShell } from "@/components/AppShell";
 import { EvidenceSummary } from "@/components/EvidenceSummary";
+import { ReviewOnlyBanner } from "@/components/ReviewOnlyBanner";
 import { ReviewPanel } from "@/components/ReviewPanel";
 import { SonarViewer } from "@/components/SonarViewer";
 import { ErrorState, LoadingSkeleton } from "@/components/States";
@@ -57,6 +58,9 @@ export default function ReviewWorkspacePage() {
 
   return (
     <AppShell title={`Review — ${detection.detection_ref}`}>
+      <div className="mb-6">
+        <ReviewOnlyBanner detection={detection} />
+      </div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div>
           <h3 className="mb-2 text-sm font-semibold text-slate-200">Sonar Image</h3>

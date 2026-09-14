@@ -47,15 +47,22 @@ export function ReviewStatusBadge({ status }: { status: ReviewStatus }) {
   return <span className={clsx(BADGE_BASE, REVIEW_STYLES[status])}>{REVIEW_LABELS[status]}</span>;
 }
 
+/* Uncertainty carries NO hue, deliberately.
+ *
+ * It is a magnitude, not a status, and the reference encodes it in one ink
+ * colour plus a bar length. Giving it three hue families -- green/amber/crimson
+ * on the most-repeated element in the console -- spends the whole alert palette
+ * on a value that is already written out in words beside it, and leaves nothing
+ * left to mean "this failed". Weight separates the levels instead. */
 const UNCERTAINTY_STYLES: Record<Uncertainty, string> = {
-  low: "text-emerald-500",
-  medium: "text-alert-high",
-  high: "text-alert-critical",
+  low: "font-normal text-ink-3",
+  medium: "font-medium text-ink-2",
+  high: "font-semibold text-ink",
 };
 
 export function UncertaintyLabel({ level }: { level: Uncertainty | null }) {
   if (!level) return <span className="text-ink-4">—</span>;
-  return <span className={clsx("font-medium capitalize", UNCERTAINTY_STYLES[level])}>{level}</span>;
+  return <span className={clsx("capitalize", UNCERTAINTY_STYLES[level])}>{level}</span>;
 }
 
 const SURVEY_STATUS_STYLES: Record<SurveyStatus, string> = {

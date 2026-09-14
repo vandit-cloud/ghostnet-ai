@@ -1,5 +1,3 @@
-import Image from "next/image";
-
 import { D2Polygons } from "./D2Polygons";
 
 /* =============================================================================

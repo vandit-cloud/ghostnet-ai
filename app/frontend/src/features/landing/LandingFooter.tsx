@@ -11,7 +11,11 @@ const PRODUCT = [
   ["Outputs", "#outputs"],
   ["Survey console", "/app/dashboard"],
   ["Review queue", "/app/review"],
-  ["Detection map", "/app/map"],
+  // The reference lists GeoJSON export here, and the 05 spec table two
+  // screens above still promises "GeoJSON polygons and CSV". Dropping it from
+  // the footer to gain a link that resolves was the wrong trade; exports live
+  // on the reports screen, so it can be both.
+  ["GeoJSON export", "/app/reports"],
 ];
 
 const METHOD = [

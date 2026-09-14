@@ -91,7 +91,7 @@ export default function DashboardPage() {
                       <SurveyStatusBadge status={data.current_survey.status} />
                       {data.active_job ? <JobStatusBadge status={data.active_job.status} /> : null}
                       {data.active_job ? (
-                        <span className="rounded-full border border-cyan-accent/30 bg-cyan-accent/10 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-cyan-accent">
+                        <span className="border border-cyan-accent/30 bg-cyan-accent/10 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-cyan-accent">
                           {data.active_job.stage}
                         </span>
                       ) : null}
@@ -121,19 +121,19 @@ export default function DashboardPage() {
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link
                     href="/app/map"
-                    className="rounded-full border border-imperial bg-imperial px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-paper transition hover:bg-imperial-deep"
+                    className="border border-imperial bg-imperial px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-paper transition hover:bg-imperial-deep"
                   >
                     Open GIS Map
                   </Link>
                   <Link
                     href="/app/review"
-                    className="rounded-full border border-abyss-600/80 px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-slate-200 transition hover:border-cyan-accent/35 hover:text-cyan-accent"
+                    className="border border-abyss-600/80 px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-slate-200 transition hover:border-cyan-accent/35 hover:text-cyan-accent"
                   >
                     Review Queue
                   </Link>
                   <Link
                     href="/app/reports"
-                    className="rounded-full border border-abyss-600/80 px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-slate-200 transition hover:border-cyan-accent/35 hover:text-cyan-accent"
+                    className="border border-abyss-600/80 px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-slate-200 transition hover:border-cyan-accent/35 hover:text-cyan-accent"
                   >
                     Generate Reports
                   </Link>
@@ -161,9 +161,9 @@ export default function DashboardPage() {
                   </div>
                   {data.active_job ? <JobStatusBadge status={data.active_job.status} /> : null}
                 </div>
-                <div className="mt-4 h-2 rounded-full bg-abyss-700/80">
+                <div className="mt-4 h-2 bg-abyss-700/80">
                   <div
-                    className="h-2 rounded-full bg-gradient-to-r from-cyan-dim via-cyan-accent to-foam-500"
+                    className="h-2 bg-imperial"
                     style={{ width: `${Math.max(data.active_job?.progress ?? 0, data.active_job ? 6 : 0)}%` }}
                   />
                 </div>
@@ -233,7 +233,7 @@ export default function DashboardPage() {
                   <h3 className="mt-2 text-lg font-semibold text-slate-100">Class Distribution</h3>
                 </div>
                 {topClass ? (
-                  <span className="rounded-full border border-abyss-600/80 px-3 py-1 text-xs text-slate-300">
+                  <span className="border border-abyss-600/80 px-3 py-1 text-xs text-slate-300">
                     Lead: {formatDetectionClass(topClass.detection_class)}
                   </span>
                 ) : null}
@@ -287,7 +287,7 @@ export default function DashboardPage() {
             </div>
             <Link
               href="/app/detections"
-              className="rounded-full border border-abyss-600/80 px-3 py-1.5 text-xs font-medium uppercase tracking-[0.22em] text-slate-300 transition hover:border-cyan-accent/35 hover:text-cyan-accent"
+              className="border border-abyss-600/80 px-3 py-1.5 text-xs font-medium uppercase tracking-[0.22em] text-slate-300 transition hover:border-cyan-accent/35 hover:text-cyan-accent"
             >
               View All
             </Link>

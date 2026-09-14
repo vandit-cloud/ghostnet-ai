@@ -49,9 +49,9 @@ export function ProcessingProgress({ job }: { job: ProcessingJob }) {
         </span>
       </div>
 
-      <div className="h-2 w-full overflow-hidden rounded-full bg-abyss-700">
+      <div className="h-2 w-full overflow-hidden bg-abyss-700">
         <div
-          className="h-2 rounded-full bg-cyan-accent transition-all duration-300"
+          className="h-2 bg-cyan-accent transition-all duration-300"
           style={{ width: `${job.progress}%` }}
         />
       </div>
@@ -68,7 +68,7 @@ export function ProcessingProgress({ job }: { job: ProcessingJob }) {
                 <span
                   className={clsx(
                     "absolute right-1/2 top-[9px] h-0.5 w-full",
-                    i <= currentIndex ? "bg-cyan-accent/70" : "bg-abyss-700"
+                    i <= currentIndex ? "bg-imperial" : "bg-rule"
                   )}
                 />
               )}
@@ -76,21 +76,25 @@ export function ProcessingProgress({ job }: { job: ProcessingJob }) {
                 {state === "current" && (
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-accent/60" />
                 )}
+                {/* Done and pending were identical circles separated only by
+                    hue, and on paper both hues were nearly invisible. Filled
+                    square = done, hollow square = pending, and the current step
+                    keeps its ping ring -- three distinguishable shapes. */}
                 <span
                   className={clsx(
-                    "relative h-2.5 w-2.5 rounded-full border-2",
-                    state === "done" && "border-emerald-400 bg-emerald-400",
-                    state === "current" && "border-cyan-accent bg-cyan-accent",
-                    state === "pending" && "border-abyss-600 bg-abyss-800"
+                    "relative h-2.5 w-2.5 border-2",
+                    state === "done" && "border-imperial bg-imperial",
+                    state === "current" && "rounded-full border-imperial bg-imperial",
+                    state === "pending" && "border-ink-4 bg-transparent"
                   )}
                 />
               </span>
               <span
                 className={clsx(
                   "text-center text-[10px] font-medium uppercase tracking-wide",
-                  state === "done" && "text-emerald-300",
+                  state === "done" && "text-ink-2",
                   state === "current" && "text-cyan-accent",
-                  state === "pending" && "text-slate-500"
+                  state === "pending" && "text-ink-3"
                 )}
               >
                 {stage}
@@ -128,7 +132,7 @@ function FrameBreakdownBar({ job }: { job: ProcessingJob }) {
 
   return (
     <div>
-      <div className="flex h-2 w-full overflow-hidden rounded-full bg-abyss-700">
+      <div className="flex h-2 w-full overflow-hidden bg-abyss-700">
         <div className="h-full bg-cyan-accent transition-all duration-300" style={{ width: `${processedPct}%` }} />
         <div className="h-full bg-alert-critical transition-all duration-300" style={{ width: `${failedPct}%` }} />
       </div>

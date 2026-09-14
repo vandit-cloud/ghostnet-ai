@@ -113,7 +113,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={login.isPending}
-                className="relative w-full rounded-full border border-imperial bg-imperial py-3 text-sm font-medium uppercase tracking-[0.22em] text-paper transition hover:bg-imperial-deep disabled:opacity-60"
+                className="relative w-full border border-imperial bg-imperial py-3 text-sm font-medium uppercase tracking-[0.22em] text-paper transition hover:bg-imperial-deep disabled:opacity-60"
               >
                 {login.isPending ? "Signing In..." : "Enter Console"}
               </button>

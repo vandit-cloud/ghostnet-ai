@@ -70,6 +70,25 @@ body = re.sub(
 )
 
 # ---- 3. lifecycle -----------------------------------------------------------
+# A GLB is fetched and Draco-decoded asynchronously. If the component unmounts
+# while that is in flight -- a route change, or the reduced-motion toggle -- the
+# callback still fires and adds a fresh scene graph into one that has already
+# been traversed and disposed, along with its textures and materials. Nothing
+# throws; the resources are simply never freed. Guard both loads with the same
+# `disposed` flag the dispose function sets.
+for _var, _grp, _mat in (("VESSEL_URL", "vesselGroup", "MAT.vessel"),
+                         ("TOWFISH_URL", "fishScale", "MAT.towfish")):
+    _old = "gltf.load(%s,(r)=>{%s.add(r.scene);collect(r.scene,%s,%s);});" % (
+        _var, _grp, "false" if _var == "VESSEL_URL" else "true", _mat)
+    assert _old in body, "GLTF load call shape changed for %s" % _var
+    _new = (
+        "gltf.load(%s,(r)=>{ if (disposed) { "
+        "r.scene.traverse(o=>{o.geometry?.dispose?.(); const m=o.material; "
+        "Array.isArray(m)?m.forEach(x=>x?.dispose?.()):m?.dispose?.();}); return; } "
+        "%s.add(r.scene);collect(r.scene,%s,%s);});"
+    ) % (_var, _grp, "false" if _var == "VESSEL_URL" else "true", _mat)
+    body = body.replace(_old, _new)
+
 # The render loop re-arms itself; capture the handle so it can be cancelled.
 assert body.count("requestAnimationFrame(frame);") == 1, "render loop shape changed"
 body = body.replace("requestAnimationFrame(frame);", "rafId = requestAnimationFrame(frame);")
@@ -153,6 +172,10 @@ FOOTER = '''
     ENV_AIR?.dispose?.();
     ENV_WATER?.dispose?.();
     pmrem?.dispose?.();
+    // DRACOLoader spins up WASM decoder workers -- two per mount, since both
+    // GLBs are Draco-compressed -- and they outlive the page unless told to
+    // stop. Measured before this line existed: {made: 2, killed: 0}.
+    draco.dispose();
     renderer.dispose();
     renderer.forceContextLoss?.();
   };

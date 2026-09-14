@@ -66,13 +66,13 @@ export default function SurveysPage() {
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 href="/app/surveys/new"
-                className="rounded-full border border-imperial bg-imperial px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-paper transition hover:bg-imperial-deep"
+                className="border border-imperial bg-imperial px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-paper transition hover:bg-imperial-deep"
               >
                 New Survey
               </Link>
               <Link
                 href="/app/map"
-                className="rounded-full border border-abyss-600/80 px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-slate-200 transition hover:border-cyan-accent/35 hover:text-cyan-accent"
+                className="border border-abyss-600/80 px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-slate-200 transition hover:border-cyan-accent/35 hover:text-cyan-accent"
               >
                 Open GIS Map
               </Link>
@@ -111,7 +111,7 @@ export default function SurveysPage() {
         ) : data && data.items.length === 0 ? (
           <EmptyState title="No surveys found." description="Create a survey to begin uploading sonar data." />
         ) : (
-          <Panel className="overflow-hidden p-0">
+          <Panel className="overflow-hidden !p-0">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-abyss-600/70 px-5 py-4">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.28em] text-cyan-accent/80">Mission Registry</p>
@@ -171,7 +171,7 @@ export default function SurveysPage() {
             <button
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="rounded-full border border-abyss-600/80 px-4 py-2 transition hover:border-cyan-accent/35 hover:text-cyan-accent disabled:opacity-40"
+              className="border border-abyss-600/80 px-4 py-2 transition hover:border-cyan-accent/35 hover:text-cyan-accent disabled:opacity-40"
             >
               Previous
             </button>
@@ -179,7 +179,7 @@ export default function SurveysPage() {
             <button
               disabled={page * data.page_size >= data.total}
               onClick={() => setPage((p) => p + 1)}
-              className="rounded-full border border-abyss-600/80 px-4 py-2 transition hover:border-cyan-accent/35 hover:text-cyan-accent disabled:opacity-40"
+              className="border border-abyss-600/80 px-4 py-2 transition hover:border-cyan-accent/35 hover:text-cyan-accent disabled:opacity-40"
             >
               Next
             </button>

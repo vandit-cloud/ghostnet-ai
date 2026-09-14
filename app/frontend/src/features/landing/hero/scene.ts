@@ -601,8 +601,8 @@ export function initHero(): () => void {
     o.material.color.setScalar(m.gain);
     o.material.needsUpdate = true;
     MATS.push(o.material);} }); }
-  gltf.load(VESSEL_URL,(r)=>{vesselGroup.add(r.scene);collect(r.scene,false,MAT.vessel);});
-  gltf.load(TOWFISH_URL,(r)=>{fishScale.add(r.scene);collect(r.scene,true,MAT.towfish);});
+  gltf.load(VESSEL_URL,(r)=>{ if (disposed) { r.scene.traverse(o=>{o.geometry?.dispose?.(); const m=o.material; Array.isArray(m)?m.forEach(x=>x?.dispose?.()):m?.dispose?.();}); return; } vesselGroup.add(r.scene);collect(r.scene,false,MAT.vessel);});
+  gltf.load(TOWFISH_URL,(r)=>{ if (disposed) { r.scene.traverse(o=>{o.geometry?.dispose?.(); const m=o.material; Array.isArray(m)?m.forEach(x=>x?.dispose?.()):m?.dispose?.();}); return; } fishScale.add(r.scene);collect(r.scene,true,MAT.towfish);});
 
   const CSEG=30;
   const cableGeo=new THREE.BufferGeometry();
@@ -1029,6 +1029,10 @@ export function initHero(): () => void {
     ENV_AIR?.dispose?.();
     ENV_WATER?.dispose?.();
     pmrem?.dispose?.();
+    // DRACOLoader spins up WASM decoder workers -- two per mount, since both
+    // GLBs are Draco-compressed -- and they outlive the page unless told to
+    // stop. Measured before this line existed: {made: 2, killed: 0}.
+    draco.dispose();
     renderer.dispose();
     renderer.forceContextLoss?.();
   };

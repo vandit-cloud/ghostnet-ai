@@ -47,6 +47,11 @@ export function HeroSection() {
     return () => {
       cancelled = true;
       dispose?.();
+      /* Put the static plate back. Without this, flipping reduced-motion after
+         the scene has painted leaves `ready` true while the canvas has already
+         lost its context: the hero becomes a near-white ground with the
+         paper-coloured headline and lede on top of it, i.e. invisible. */
+      setReady(false);
     };
   }, [reducedMotion]);
 

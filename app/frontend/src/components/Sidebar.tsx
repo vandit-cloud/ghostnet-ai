@@ -22,19 +22,19 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <nav className="hidden w-[264px] shrink-0 flex-col overflow-y-auto bg-atlantic md:flex">
+    <nav className="on-blue hidden w-[264px] shrink-0 flex-col overflow-y-auto bg-atlantic md:flex">
       <div className="px-6 pb-6 pt-7">
         <p className="font-display text-[27px] font-black uppercase leading-none text-paper">
           Ghost
           <i className="not-italic text-transparent [-webkit-text-stroke:1.2px_theme(colors.skytint.DEFAULT)]">Net</i>
           -AI
         </p>
-        <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.18em] text-paper/40">
+        <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.18em] text-paper/74">
           Marine sonar intelligence
         </p>
       </div>
 
-      <p className="px-6 pb-2 pt-3 font-mono text-[10px] uppercase tracking-[0.18em] text-paper/40">
+      <p className="px-6 pb-2 pt-3 font-mono text-[10px] uppercase tracking-[0.18em] text-paper/74">
         Operations
       </p>
 
@@ -60,7 +60,7 @@ export function Sidebar() {
                   <span
                     className={clsx(
                       "font-mono text-[11px]",
-                      active ? "text-skytint" : "text-paper/40"
+                      active ? "text-skytint" : "text-paper/74"
                     )}
                   >
                     {item.index}
@@ -69,7 +69,7 @@ export function Sidebar() {
                 <p
                   className={clsx(
                     "mt-1 text-xs leading-5",
-                    active ? "text-paper/74" : "text-paper/40"
+                    active ? "text-paper" : "text-paper/74"
                   )}
                 >
                   {item.detail}
@@ -81,7 +81,7 @@ export function Sidebar() {
       </ul>
 
       <div className="mt-auto px-6 pb-6 pt-8">
-        <div className="border-t border-skytint/22 pt-3 font-mono text-[10.5px] leading-[1.9] tracking-[0.06em] text-paper/40">
+        <div className="border-t border-skytint/22 pt-3 font-mono text-[10.5px] leading-[1.9] tracking-[0.06em] text-paper/74">
           <p>SIH26057 · contract v1.2.0</p>
           <p>All detections review_only</p>
         </div>

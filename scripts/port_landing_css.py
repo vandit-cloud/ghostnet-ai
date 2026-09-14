@@ -52,6 +52,13 @@ def split_rules(text):
         if j < 0:
             break
         sel = text[i:j].strip()
+        # A STATEMENT at-rule (@import, @charset) ends at its semicolon and has
+        # no block. Left alone it would be absorbed into the NEXT rule's
+        # selector, that rule would be treated as an at-rule, and its
+        # declarations would be dropped without a word.
+        if sel.startswith("@") and ";" in sel:
+            i += sel.rindex(";") + 1
+            continue
         depth, k = 1, j + 1
         while k < n and depth:
             if text[k] == "{":
@@ -79,10 +86,43 @@ def split_comments(sel):
     return notes, COMMENT.sub(" ", sel).strip()
 
 
+def split_top_level(sel):
+    """Split a selector list on commas that are NOT inside () or [].
+
+    A bare `sel.split(",")` breaks the moment the demo grows a `:not(.btn, .tag)`
+    or an `[data-x="a,b"]`: it would emit two malformed selectors and the rule
+    would silently stop applying. Nothing in the demo needs this today; it is
+    here so the next edit to the demo cannot quietly unstyle the page.
+    """
+    out, depth, buf = [], 0, ""
+    for ch in sel:
+        if ch in "([":
+            depth += 1
+        elif ch in ")]":
+            depth -= 1
+        if ch == "," and depth == 0:
+            out.append(buf)
+            buf = ""
+        else:
+            buf += ch
+    out.append(buf)
+    return out
+
+
+def is_dropped(sel):
+    """True if globals.css already owns this rule.
+
+    Matches the whole first COMPOUND selector rather than a prefix: keyed on a
+    prefix, `.grain` would also swallow `.grain .child`.
+    """
+    head = sel.split()[0] if sel.split() else ""
+    return any(sel.strip() == d or head == d for d in DROP_PREFIXES)
+
+
 def prefix(sel):
     """Scope one selector list under .landing."""
     parts = []
-    for s in sel.split(","):
+    for s in split_top_level(sel):
         s = s.strip()
         if not s:
             continue
@@ -105,12 +145,14 @@ for sel, block, is_at in split_rules(css):
             inner = "\n".join(
                 "%s{%s}" % (prefix(split_comments(s2)[1]), b2)
                 for s2, b2, _ in split_rules(block)
-                if split_comments(s2)[1]
+                # The drop list has to apply inside @media too; a `body{}` or
+                # `:root{}` nested in a breakpoint was not being checked at all
+                # and would have become `.landing body{}`.
+                if split_comments(s2)[1] and not is_dropped(split_comments(s2)[1])
             )
             chunks.append("%s{\n%s\n}" % (sel, inner))
         continue
-    head = sel.split()[0] if sel.split() else ""
-    if any(sel.strip() == d or head == d for d in DROP_PREFIXES):
+    if is_dropped(sel):
         continue
     chunks.append("%s{%s}" % (prefix(sel), block))
 
@@ -147,6 +189,12 @@ HEADER = """/* =================================================================
   font-family: var(--font-ui), var(--ui);
   color: var(--ink);
   background: var(--paper);
+  /* The demo inherits `line-height: normal`; Tailwind's preflight sets
+     `html { line-height: 1.5 }`, so every element without an explicit value
+     inflates. Individually invisible, collectively not -- the nav grew 4.5px,
+     the tag pill 3px, each mono data row 3px, the page 54px overall. Scoped to
+     the landing so the console keeps Tailwind's default. */
+  line-height: normal;
 }
 
 /* -----------------------------------------------------------------------------
@@ -154,6 +202,24 @@ HEADER = """/* =================================================================
  * Kept here, above the copied rules, so the boundary between "ported" and
  * "written for the app" is a line in the file rather than a memory.
  * -------------------------------------------------------------------------- */
+
+/* A CSS Grid blowout that the demo does not have and the port does.
+   `1fr` is `minmax(auto, 1fr)`, and that `auto` floor is the track's min-content
+   width -- which for a replaced element is its intrinsic width. The demo's chip
+   is an <img> with no width/height attributes, so the browser gives it a zero
+   min-content contribution and the column collapses happily on a phone. The
+   port adds width={740} height={496} so the space is reserved before the image
+   decodes (no layout shift on a 740x496 chip), and that is exactly what gives
+   the element an intrinsic size the track then refuses to shrink below: 740px
+   of column inside a 375px viewport, and the whole page scrolls sideways.
+   Keeping the attributes and letting the track shrink is the better trade. */
+.landing .detect-grid > * {
+  min-width: 0;
+}
+
+.landing .chipwrap img {
+  max-width: 100%;
+}
 
 /* The demo shipped three.js and a 1.4 MB scene inline, so its first paint and
    its first rendered frame were the same moment. Next code-splits the scene and
@@ -181,6 +247,61 @@ HEADER = """/* =================================================================
 
 """
 
+FOOTER = """
+
+/* =============================================================================
+ * CONTRAST CORRECTIONS.
+ *
+ * These come LAST on purpose. They are single-class overrides of rules copied
+ * verbatim above, at identical specificity, so order is the only thing that
+ * decides them -- written into the header instead, the demo's own declarations
+ * won and none of this applied.
+ *
+ * They are deliberate, flagged deviations from a finalised design. Each one is
+ * a place where a colour measures below WCAG AA, which is a defect in any
+ * palette, and each moves only far enough to be readable while keeping its role
+ * and its position in the hierarchy. Measured ratios are quoted so the next
+ * person can check rather than trust.
+ * ========================================================================== */
+
+/* ink-4 is 1.74:1 on paper -- the worst text contrast in the product. The demo
+   spends it on the card eyebrow ("Geometry", "Confidence", "Accountability")
+   and on both halves of the card foot, which are real content rather than the
+   faint marks ink-4 is for. */
+.landing .card .n,
+.landing .cardfoot k,
+.landing .cardfoot v s {
+  color: var(--ink-3);
+}
+
+/* The same problem on blue: onblue-2 (paper at 42%) measures 2.79:1 on the
+   atlantic band, 3.06:1 on the imperial one and 3.52:1 over the hero. It
+   carries the nav's contract tag, the hero stat captions, the instrument
+   readout, the stage numbers and every blue-band kicker -- i.e. most of the
+   small type on the page. */
+.landing .tag,
+.landing .stat span,
+.landing .stat b s,
+.landing .rdo,
+.landing .band.blue .kicker,
+.landing .cta-band .kicker,
+.landing .step span {
+  color: rgba(245, 242, 243, 0.72);
+}
+
+/* The footer sits on #01113F, where the column headings, the legal row and the
+   disclaimer all measured 3.68:1 or below. */
+.landing .foot h4,
+.landing .foot-base,
+.landing .foot-base a {
+  color: rgba(245, 242, 243, 0.78);
+}
+
+.landing .disclaimer {
+  color: rgba(245, 242, 243, 0.74);
+}
+"""
+
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
-io.open(OUT, "w", encoding="utf-8", newline="\n").write(HEADER + out + "\n")
+io.open(OUT, "w", encoding="utf-8", newline="\n").write(HEADER + out + FOOTER)
 print("wrote %s  (%d rules)" % (OUT, len(chunks)))

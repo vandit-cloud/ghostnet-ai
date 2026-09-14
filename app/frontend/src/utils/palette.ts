@@ -19,10 +19,12 @@ export const SKY = "#C4F8FF";
 export const IMPERIAL = "#021F94";
 export const PAPER = "#F5F2F3";
 
-/** The alpha ladder, flattened over paper. */
+/** The alpha ladder, flattened over paper. The mid steps are darkened from
+ *  the mockup's alphas so they clear WCAG AA on the light canvas -- see the
+ *  note in tailwind.config.ts. INK_4 is for marks, never for text. */
 export const INK = "#15309C";
-export const INK_2 = "#3D6C8A";
-export const INK_3 = "#7696AB";
+export const INK_2 = "#265C7D";
+export const INK_3 = "#3D6C8A";
 export const INK_4 = "#ABBDC9";
 export const RULE = "#C7D1D9";
 
@@ -46,7 +48,7 @@ export const PAPER_HEX = 0xf5f2f3;
  */
 export const ALERT = {
   critical: "#B3123C",
-  high: "#B85C00",
+  high: "#AE5400",
   medium: "#8A6A00",
   low: INK_3,
   unknown: "#5B3FA8",

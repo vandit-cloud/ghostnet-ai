@@ -28,10 +28,20 @@ const SKY = "#C4F8FF";
 const IMPERIAL = "#021F94";
 const PAPER = "#F5F2F3";
 
-const INK = "#15309C";    // imperial @ .92 over paper — body ink
-const INK_2 = "#3D6C8A";  // atlantic @ .80 — secondary copy
-const INK_3 = "#7696AB";  // atlantic @ .55 — labels, captions
-const INK_4 = "#ABBDC9";  // atlantic @ .32 — disabled, faint marks
+/* The ink ladder, flattened over paper, with the CONTRAST RATIO each step
+ * actually measures. The ladder originally followed the mockup's alphas
+ * (.92/.80/.55/.32) and two of those steps do not survive the inversion: at
+ * .55, ink-3 measures 2.81:1 on paper, and it is the colour of every table
+ * header, timestamp and field label in the console -- 513 text nodes below AA.
+ * On the old black ground the same alphas were fine; lightening the canvas
+ * without re-deriving them is the trap. The two mid steps are darkened until
+ * they pass, and the gap between them is kept wide enough to still read as a
+ * hierarchy. ink-4 stays faint and is NON-TEXT ONLY -- rules, dashes and
+ * disabled marks; anything that has to be read uses ink-3 or darker. */
+const INK = "#15309C";    // imperial @ .92 — 9.76:1
+const INK_2 = "#265C7D";  // atlantic @ .90 — 6.49:1, secondary copy
+const INK_3 = "#3D6C8A";  // atlantic @ .80 — 5.09:1, labels and captions
+const INK_4 = "#ABBDC9";  // atlantic @ .32 — 1.74:1, NON-TEXT marks only
 const RULE = "#C7D1D9";   // atlantic @ .20 — the standard 1px rule
 const RULE_2 = "#DEE1E6"; // atlantic @ .10 — the quiet divider inside a panel
 
@@ -56,6 +66,7 @@ const config: Config = {
           800: "#EFEBED",
           700: "#E4E7EB",
           600: RULE,
+          500: RULE_2,
         },
         // trench was the chrome (sidebar, top bar). Atlantic keeps the sidebar
         // blue, so this stays blue; the top bar is rewritten to paper by hand.
@@ -66,8 +77,29 @@ const config: Config = {
           700: "#16608F",
         },
         teal: { glass: ATLANTIC, deep: "#0C3A57" },
-        // cyan-accent was THE accent (211 uses) and imperial is its replacement.
-        cyan: { accent: IMPERIAL, dim: ATLANTIC, 50: SKY, 600: IMPERIAL, 700: IMPERIAL },
+        /* cyan-accent was THE accent (211 uses) and imperial is its replacement.
+         *
+         * THE WHOLE RAMP IS LISTED, not just the keys in use. `theme.extend`
+         * MERGES with Tailwind's stock palette, so any step left out keeps its
+         * stock value -- and `accent-cyan-500` on the map's replay scrubber was
+         * therefore still painting Tailwind's #06b6d4 on a page that has no
+         * cyan in it. A remap that only covers today's call sites leaks the old
+         * accent the moment someone adds a shade nobody happened to use. */
+        cyan: {
+          50: SKY,
+          100: SKY,
+          200: "#A9EEF8",
+          300: "#A9EEF8",
+          400: ATLANTIC,
+          500: IMPERIAL,
+          600: IMPERIAL,
+          700: IMPERIAL,
+          800: "#01166B",
+          900: "#01166B",
+          950: "#01166B",
+          accent: IMPERIAL,
+          dim: ATLANTIC,
+        },
         foam: { 500: ATLANTIC, 300: SKY },
         // Inverted ink ramp: slate-50 was the brightest text on black, so it is
         // now the darkest ink on paper. 311 of the 331 slate uses are text.
@@ -94,15 +126,27 @@ const config: Config = {
          * (filled / outlined / dashed); colour is the secondary cue. */
         alert: {
           critical: "#B3123C",
-          high: "#B85C00",
+          high: "#AE5400",   // 4.64:1 on paper; #B85C00 measured 4.13
           medium: "#8A6A00",
           low: INK_3,
           unknown: "#5B3FA8",
         },
-        // Same reasoning for the one "good" state the app already used.
+        /* The one "good" state the app already used. Same reasoning as `alert`,
+         * and the same whole-ramp rule as cyan above: emerald-400 was left to
+         * stock and was painting #34d399 -- a mint green that belongs to no
+         * part of this system -- on four screens. */
         emerald: {
+          50: "#E3F0EC",
+          100: "#C7E1D9",
+          200: "#8FC3B3",
           300: "#16705A",
+          400: "#16705A",
           500: "#16705A",
+          600: "#125B49",
+          700: "#0E4839",
+          800: "#0B3729",
+          900: "#08281E",
+          950: "#051912",
         },
       },
       /* Atlantic's alpha ladder, as opacity STEPS.

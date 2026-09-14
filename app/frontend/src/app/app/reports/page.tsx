@@ -135,7 +135,7 @@ function ReportsPageContent() {
               <button
                 onClick={handleGenerate}
                 disabled={createReport.isPending}
-                className="w-full rounded-full border border-imperial bg-imperial px-4 py-2.5 text-sm font-medium uppercase tracking-[0.2em] text-paper transition hover:bg-imperial-deep disabled:opacity-50"
+                className="w-full border border-imperial bg-imperial px-4 py-2.5 text-sm font-medium uppercase tracking-[0.2em] text-paper transition hover:bg-imperial-deep disabled:opacity-50"
               >
                 {createReport.isPending ? "Starting..." : "Generate Report"}
               </button>

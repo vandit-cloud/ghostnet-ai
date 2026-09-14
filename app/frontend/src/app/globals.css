@@ -20,10 +20,13 @@
   --imperial: #021f94;
   --paper: #f5f2f3;
 
-  --ink: rgba(2, 31, 148, 0.92);
-  --ink-2: rgba(15, 75, 112, 0.8);
-  --ink-3: rgba(15, 75, 112, 0.55);
-  --ink-4: rgba(15, 75, 112, 0.32);
+  /* See the ladder note in tailwind.config.ts: the mockup's .80/.55 mid steps
+     measure 5.09:1 and 2.81:1 on paper, and ink-3 carries most of the console's
+     secondary text. Darkened until they pass AA. ink-4 is NON-TEXT only. */
+  --ink: rgba(2, 31, 148, 0.92);   /* 9.76:1 */
+  --ink-2: rgba(15, 75, 112, 0.9); /* 6.49:1 */
+  --ink-3: rgba(15, 75, 112, 0.8); /* 5.09:1 */
+  --ink-4: rgba(15, 75, 112, 0.32);/* 1.74:1 - marks, never text */
   --rule: rgba(15, 75, 112, 0.2);
   --rule-2: rgba(15, 75, 112, 0.1);
   --onblue: rgba(245, 242, 243, 0.74);
@@ -34,6 +37,7 @@
      tailwind.config.ts. The console has to distinguish a FAILED job from a
      COMPLETED one, and the Atlantic mockup has no failure state to copy. */
   --alert-critical: #b3123c;
+  --alert-high: #ae5400;
   --alert-unknown: #5b3fa8;
 
   color-scheme: light;
@@ -171,12 +175,12 @@ body {
 /* Contents of an accent card inherit paper, so the usual ink utilities inside
    it would fight the ground. Overriding here means a caller can drop an
    ordinary card's children into an accent one without restyling each. */
-.panel.panel-accent h1,
-.panel.panel-accent h2,
-.panel.panel-accent h3,
-.panel.panel-accent p,
-.panel.panel-accent span,
-.panel.panel-accent b {
+/* :where() so this contributes ZERO specificity. Written as a plain descendant
+   list it scored (0,2,1) and beat every colour utility inside the card: the KPI
+   tile's label (`text-skytint/75`), badge (`text-skytint`) and hint
+   (`text-paper/74`) all collapsed to flat paper, flattening the hierarchy this
+   rule exists to protect. It only needs to be a DEFAULT. */
+.panel.panel-accent :where(h1, h2, h3, p, span, b) {
   color: var(--paper);
 }
 
@@ -215,6 +219,19 @@ body {
   background: var(--paper);
   color: var(--ink);
   box-shadow: 0 0 0 1px var(--rule);
+}
+
+/* Leaflet ships its attribution links at #0078A8, which measures 3.50:1 on the
+   control's own ground. It is third-party chrome, but it is still the only link
+   on that edge of the map. */
+.leaflet-control-attribution {
+  background: rgba(245, 242, 243, 0.92);
+  color: var(--ink-2);
+  font-family: inherit;
+}
+
+.leaflet-control-attribution a {
+  color: var(--imperial);
 }
 
 .leaflet-bar a,
@@ -268,4 +285,20 @@ button:focus-visible,
 a:focus-visible {
   outline: 2px solid var(--imperial);
   outline-offset: 1px;
+}
+
+/* THE FOCUS RING HAS TO CHANGE COLOUR ON BLUE.
+ *
+ * Imperial on paper is 11.6:1 and unmistakable. Imperial on the atlantic rail
+ * is 1.39:1, and on an active nav item (imperial at 55% over atlantic) it is
+ * 1.12:1 -- which means a keyboard user tabbing the console's main navigation
+ * sees nothing at all. Sky is the palette's designated bright ink on blue, so
+ * the ring flips with the ground. `.on-blue` marks any surface painted
+ * atlantic or imperial. */
+.on-blue :focus-visible,
+.on-blue input:focus,
+.on-blue select:focus,
+.on-blue textarea:focus {
+  outline-color: var(--sky);
+  outline-offset: 2px;
 }

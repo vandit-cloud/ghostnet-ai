@@ -11,6 +11,7 @@ import { ErrorState, LoadingSkeleton } from "@/components/States";
 import { SonarViewer } from "@/components/SonarViewer";
 import { useDetection, useDetectionReviews } from "@/features/detections/hooks";
 import { formatConfidence, formatCoordinate, formatDateTime, formatDetectionClassWithDetector } from "@/utils/format";
+import { ReviewOnlyBanner } from "@/components/ReviewOnlyBanner";
 
 export default function DetectionDetailPage() {
   const params = useParams<{ detectionId: string }>();
@@ -35,6 +36,11 @@ export default function DetectionDetailPage() {
 
   return (
     <AppShell title={detection.detection_ref}>
+      {/* This screen shows the raw score and the calibrated confidence next to
+          each other, so it needs the same framing as the review workspace. */}
+      <div className="mb-4">
+        <ReviewOnlyBanner detection={detection} />
+      </div>
       {/* primary focus: what / confidence / priority, immediately visible */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <span className="text-xl font-semibold capitalize text-slate-100">

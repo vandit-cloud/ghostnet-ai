@@ -23,6 +23,7 @@ import type { MapMarker as MapMarkerType, Priority, TrackPoint } from "@/types";
 import { formatConfidence, formatCoordinate, formatDateTime } from "@/utils/format";
 import { bearingDeg, destinationPoint, haversineMeters } from "@/utils/geo";
 import { ALERT, ATLANTIC, IMPERIAL, PAPER } from "@/utils/palette";
+import clsx from "clsx";
 
 const PRIORITY_COLORS: Record<Priority, string> = {
   critical: ALERT.critical,
@@ -126,7 +127,7 @@ function clusterIcon(cluster: { getChildCount: () => number }) {
     className: "",
     html: `<div style="
       width:${size}px;height:${size}px;border-radius:50%;
-      background:rgba(2,31,148,0.14);
+      background:${PAPER};
       border:2px solid ${IMPERIAL};
       display:flex;align-items:center;justify-content:center;
       font:700 13px ui-sans-serif,system-ui;color:${IMPERIAL};
@@ -389,12 +390,17 @@ export function MapView({
     ));
 
   return (
-    <div className="relative h-full w-full">
+    /* The dark-basemap class lives on this WRAPPER, not on MapContainer.
+       react-leaflet passes `className` to Leaflet only when the map is first
+       created, so switching basemap after mount never applied it: picking
+       "Dark" left the tile filter in globals.css as dead code and rendered
+       identically to Standard. The filter targets `.leaflet-tile-pane`, which
+       is a descendant either way. */
+    <div className={clsx("relative h-full w-full", basemap === "dark" && "map-dark-mode")}>
       <MapContainer
         center={center}
         zoom={markers.length || trackLine.length ? 12 : 4}
         style={{ height: "100%", width: "100%" }}
-        className={basemap === "dark" ? "map-dark-mode" : undefined}
         scrollWheelZoom
       >
         {BASEMAPS[basemap].layers.map((layer, index) => (

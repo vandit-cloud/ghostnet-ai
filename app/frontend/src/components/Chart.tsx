@@ -22,9 +22,9 @@ export function BarListChart({
             <span className="truncate text-slate-300">{row[labelKey]}</span>
             <span className="shrink-0 font-mono text-xs tabular-nums text-slate-400">{row[valueKey]}</span>
           </div>
-          <div className="h-2.5 rounded-full bg-abyss-700/80">
+          <div className="h-2.5 bg-abyss-700/80">
             <div
-              className="h-2.5 rounded-full bg-gradient-to-r from-cyan-dim via-cyan-accent to-foam-500"
+              className="h-2.5 bg-imperial"
               style={{ width: `${(Number(row[valueKey]) / max) * 100}%` }}
             />
           </div>

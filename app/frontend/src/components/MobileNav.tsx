@@ -18,12 +18,24 @@ export function MobileNav({ open, onClose }: { open: boolean; onClose: () => voi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
+  /* The close button is labelled ESC, so Escape has to actually close it --
+     the label was changed from a glyph during the restyle and promised a
+     keyboard affordance that did not exist. */
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex md:hidden" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-imperial/50" onClick={onClose} />
-      <nav className="relative flex w-[264px] max-w-[84vw] flex-col overflow-y-auto bg-atlantic">
+      <nav className="on-blue relative flex w-[264px] max-w-[84vw] flex-col overflow-y-auto bg-atlantic">
         <div className="flex items-start justify-between gap-3 px-6 pb-6 pt-7">
           <div>
             <p className="font-display text-[27px] font-black uppercase leading-none text-paper">
@@ -31,7 +43,7 @@ export function MobileNav({ open, onClose }: { open: boolean; onClose: () => voi
               <i className="not-italic text-transparent [-webkit-text-stroke:1.2px_theme(colors.skytint.DEFAULT)]">Net</i>
               -AI
             </p>
-            <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.18em] text-paper/40">
+            <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.18em] text-paper/74">
               Marine sonar intelligence
             </p>
           </div>
@@ -64,7 +76,7 @@ export function MobileNav({ open, onClose }: { open: boolean; onClose: () => voi
                       {item.label}
                     </span>
                     <span
-                      className={clsx("font-mono text-[11px]", active ? "text-skytint" : "text-paper/40")}
+                      className={clsx("font-mono text-[11px]", active ? "text-skytint" : "text-paper/74")}
                     >
                       {item.index}
                     </span>
@@ -72,7 +84,7 @@ export function MobileNav({ open, onClose }: { open: boolean; onClose: () => voi
                   <p
                     className={clsx(
                       "mt-1 text-xs leading-5",
-                      active ? "text-paper/74" : "text-paper/40"
+                      active ? "text-paper" : "text-paper/74"
                     )}
                   >
                     {item.detail}
