@@ -76,6 +76,9 @@ def main() -> int:
     # bottleneck, not image decoding. On Linux, raise it.
     ap.add_argument("--workers", type=int, default=0,
                     help="dataloader workers. 0 on Windows: worker processes die at scale")
+    ap.add_argument("--init-weights", default=None,
+                    help="warm-start a .yaml architecture from these weights; "
+                         "only matching layers transfer")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--device", default=None)
     ap.add_argument("--resume", action="store_true")
@@ -101,7 +104,15 @@ def main() -> int:
         print("  If this machine has an RTX 3050, the torch install is broken -- see ai/requirements.txt.")
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
-    weights = args.model if args.model.endswith(".pt") else str(PRETRAINED / f"{args.model}.pt")
+    # A .yaml is an ARCHITECTURE, not weights: it builds a fresh model whose
+    # backbone is then warm-started from --init-weights. That is how the P2 head
+    # runs (ai/models/configs/yolo11s-p2.yaml) -- the stride-4 layers have no
+    # pretrained counterpart, so only the backbone transfers, and the run must
+    # say so in its provenance rather than look like a normal fine-tune.
+    if args.model.endswith((".pt", ".yaml")):
+        weights = args.model
+    else:
+        weights = str(PRETRAINED / f"{args.model}.pt")
     name = args.name or f"{Path(weights).stem}-{stamp}"
     EXPERIMENTS.mkdir(parents=True, exist_ok=True)
 
@@ -227,6 +238,10 @@ def main() -> int:
     (out_dir / "provenance.json").write_text(json.dumps(provenance, indent=2), encoding="utf-8")
 
     model = YOLO(weights)
+    if args.init_weights:
+        # Reports "Transferred N/M items" -- N < M is expected and is the point:
+        # the new head is randomly initialised, the backbone is not.
+        model.load(args.init_weights)
     model.train(
         data=str(data_path),
         epochs=args.epochs,
