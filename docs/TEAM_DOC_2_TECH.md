@@ -203,9 +203,7 @@ E:\New folder\
 │   ├── reports/            Generated CSV and JSON from a real survey
 │   └── showcase/           Prepared demo material
 ├── docs/                   This document and everything else
-├── scripts/                Demo seeding, demo XTF construction
-├── weights/                Shipped model weights
-└── runs/                   Ultralytics scratch output
+└── scripts/                Demo seeding, demo XTF construction
 ```
 
 ### The 13 AI modules
