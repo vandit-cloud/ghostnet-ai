@@ -153,3 +153,12 @@ ai/data/processed_despeckled/
 ai/data/net_seg/*
 !ai/data/net_seg/data.yaml
 !ai/data/net_seg/build_report.json
+
+# --- visual reference plates -----------------------------------------------
+# The underwater and sea-surface photographs the water/sky labs were built to
+# reproduce are WATERMARKED ADOBE STOCK COMPS (516851283, 236122432, 76278833).
+# They are unlicensed source material, not our work and not a deliverable, and
+# this repository has just finished saying it does not redistribute third-party
+# imagery it cannot account for -- see docs/DATA.md. They stay on local disk.
+# What ships is the reproduction: docs/WATER_LAB.md and the shader it describes.
+docs/WhatsApp*
