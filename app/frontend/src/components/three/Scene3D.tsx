@@ -1,3 +1,7 @@
+/* Colours here are the Atlantic palette in its ON-BLUE form: the ground is
+ * atlantic/deep water and the accent is sky, because sky is what the palette
+ * defines as bright ink on blue. See src/utils/palette.ts.
+ */
 "use client";
 
 import { useRef } from "react";
@@ -111,11 +115,11 @@ function SceneContents(props: Scene3DProps) {
 
   return (
     <>
-      <color attach="background" args={["#040a12"]} />
-      <fog attach="fog" args={["#040a12", extent * 0.25, extent * 2.2]} />
-      <ambientLight intensity={0.45} color="#0d2430" />
-      <directionalLight position={[120, 180, 80]} intensity={0.65} color="#bfe9f5" />
-      <pointLight position={[0, 60, 0]} intensity={0.3} color="#22d3ee" distance={Math.max(400, extent)} decay={2} />
+      <color attach="background" args={["#072639"]} />
+      <fog attach="fog" args={["#072639", extent * 0.25, extent * 2.2]} />
+      <ambientLight intensity={0.45} color="#0F4B70" />
+      <directionalLight position={[120, 180, 80]} intensity={0.65} color="#C4F8FF" />
+      <pointLight position={[0, 60, 0]} intensity={0.3} color="#C4F8FF" distance={Math.max(400, extent)} decay={2} />
 
       <OceanSurface paused={paused} />
       <CoverageSwath points={track} />

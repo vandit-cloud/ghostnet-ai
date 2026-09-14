@@ -50,15 +50,15 @@ export default function LoginPage() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-abyss-600/70 bg-black/10 p-4">
+            <div className="rounded-2xl border border-abyss-600/70 bg-skytint/42 p-4">
               <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Realtime</p>
               <p className="mt-2 text-sm text-slate-200">Processing stages and survey progress stay visible during ingestion.</p>
             </div>
-            <div className="rounded-2xl border border-abyss-600/70 bg-black/10 p-4">
+            <div className="rounded-2xl border border-abyss-600/70 bg-skytint/42 p-4">
               <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">GIS</p>
               <p className="mt-2 text-sm text-slate-200">Map detections against tracks, uncertainty rings, and vessel playback.</p>
             </div>
-            <div className="rounded-2xl border border-abyss-600/70 bg-black/10 p-4">
+            <div className="rounded-2xl border border-abyss-600/70 bg-skytint/42 p-4">
               <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Reports</p>
               <p className="mt-2 text-sm text-slate-200">Export operational artifacts for downstream analysis and compliance review.</p>
             </div>
@@ -83,7 +83,7 @@ export default function LoginPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 autoComplete="username"
-                className="w-full rounded-2xl border border-abyss-600/80 bg-black/20 px-3 py-3 text-sm text-slate-100 outline-none focus:border-cyan-accent focus:shadow-glow-cyan"
+                className="w-full rounded-2xl border border-abyss-600/80 bg-skytint/42 px-3 py-3 text-sm text-slate-100 outline-none focus:border-cyan-accent focus:shadow-glow-cyan"
               />
             </div>
             <div>
@@ -97,7 +97,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoComplete="current-password"
-                className="w-full rounded-2xl border border-abyss-600/80 bg-black/20 px-3 py-3 text-sm text-slate-100 outline-none focus:border-cyan-accent focus:shadow-glow-cyan"
+                className="w-full rounded-2xl border border-abyss-600/80 bg-skytint/42 px-3 py-3 text-sm text-slate-100 outline-none focus:border-cyan-accent focus:shadow-glow-cyan"
               />
             </div>
 
@@ -113,14 +113,14 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={login.isPending}
-                className="relative w-full rounded-full border border-cyan-accent/35 bg-cyan-accent/10 py-3 text-sm font-medium uppercase tracking-[0.22em] text-cyan-accent transition hover:bg-cyan-accent/15 disabled:opacity-60"
+                className="relative w-full rounded-full border border-imperial bg-imperial py-3 text-sm font-medium uppercase tracking-[0.22em] text-paper transition hover:bg-imperial-deep disabled:opacity-60"
               >
                 {login.isPending ? "Signing In..." : "Enter Console"}
               </button>
             </div>
           </form>
 
-          <div className="mt-6 rounded-2xl border border-abyss-600/70 bg-black/10 px-4 py-3 text-xs leading-6 text-slate-500">
+          <div className="mt-6 rounded-2xl border border-abyss-600/70 bg-skytint/42 px-4 py-3 text-xs leading-6 text-slate-500">
             Self-service password recovery is not available in this build. Contact your system administrator if you need access recovery.
           </div>
         </section>

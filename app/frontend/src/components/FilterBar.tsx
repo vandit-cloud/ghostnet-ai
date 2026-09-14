@@ -20,7 +20,7 @@ export function FilterSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-2xl border border-abyss-600/80 bg-black/20 px-3 py-2.5 text-sm text-slate-200 outline-none transition focus:border-cyan-accent focus:shadow-glow-cyan"
+        className="w-full rounded-2xl border border-abyss-600/80 bg-skytint/42 px-3 py-2.5 text-sm text-slate-200 outline-none transition focus:border-cyan-accent focus:shadow-glow-cyan"
       >
         <option value="">All</option>
         {options.map((opt) => (

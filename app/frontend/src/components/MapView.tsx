@@ -22,12 +22,13 @@ import { MAP_CLUSTER_DISABLED_KEY } from "@/utils/settings";
 import type { MapMarker as MapMarkerType, Priority, TrackPoint } from "@/types";
 import { formatConfidence, formatCoordinate, formatDateTime } from "@/utils/format";
 import { bearingDeg, destinationPoint, haversineMeters } from "@/utils/geo";
+import { ALERT, ATLANTIC, IMPERIAL, PAPER } from "@/utils/palette";
 
 const PRIORITY_COLORS: Record<Priority, string> = {
-  critical: "#f87171",
-  high: "#fb923c",
-  medium: "#facc15",
-  low: "#94a3b8",
+  critical: ALERT.critical,
+  high: ALERT.high,
+  medium: ALERT.medium,
+  low: ALERT.low,
 };
 
 const CLASS_LABELS: Record<string, string> = {
@@ -98,11 +99,11 @@ function markerIcon(detectionClass: string, priority: Priority, selected: boolea
         <div style="
           width:${size}px;height:${size}px;border-radius:50%;
           background:${color};
-          border:2px solid ${selected ? "#22d3ee" : "#05131f"};
+          border:2px solid ${selected ? IMPERIAL : ATLANTIC};
           box-shadow:0 1px 4px rgba(0,0,0,0.6);
           display:flex;align-items:center;justify-content:center;
           font:700 ${Math.round(size * 0.46)}px/1 ui-sans-serif,system-ui;
-          color:#05131f;
+          color:${PAPER};
         ">${label}</div>
       </div>
       <style>
@@ -125,10 +126,10 @@ function clusterIcon(cluster: { getChildCount: () => number }) {
     className: "",
     html: `<div style="
       width:${size}px;height:${size}px;border-radius:50%;
-      background:rgba(34,211,238,0.18);
-      border:2px solid #22d3ee;
+      background:rgba(2,31,148,0.14);
+      border:2px solid ${IMPERIAL};
       display:flex;align-items:center;justify-content:center;
-      font:700 13px ui-sans-serif,system-ui;color:#e2f8fc;
+      font:700 13px ui-sans-serif,system-ui;color:${IMPERIAL};
       backdrop-filter:blur(1px);
     ">${count}</div>`,
     iconSize: [size, size],
@@ -142,7 +143,7 @@ function vesselIcon(headingDeg: number) {
     html: `
       <div style="transform: rotate(${headingDeg}deg); width:22px; height:22px;">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-          <path d="M12 2 L19 20 L12 16 L5 20 Z" fill="#22d3ee" stroke="#05131f" stroke-width="1.2" />
+          <path d="M12 2 L19 20 L12 16 L5 20 Z" fill="${IMPERIAL}" stroke="${PAPER}" stroke-width="1.4" />
         </svg>
       </div>
     `,
@@ -175,7 +176,7 @@ function NorthArrow() {
   return (
     <div className="pointer-events-none absolute right-3 top-3 z-[1000] flex h-9 w-9 items-center justify-center rounded-full border border-abyss-600 bg-abyss-900/85 backdrop-blur">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-        <path d="M12 2 L17 22 L12 17 L7 22 Z" fill="#e2f8fc" />
+        <path d="M12 2 L17 22 L12 17 L7 22 Z" fill={IMPERIAL} />
       </svg>
     </div>
   );
@@ -361,7 +362,7 @@ export function MapView({
             <p className="text-[10px] text-slate-500">{formatDateTime(marker.created_at)}</p>
             <Link
               href={`/app/detections/${marker.detection_id}`}
-              className="mt-2 inline-block rounded bg-cyan-700 px-2 py-1 text-[11px] font-medium text-white hover:bg-cyan-600"
+              className="mt-2 inline-block rounded bg-cyan-700 px-2 py-1 text-[11px] font-medium text-paper hover:bg-cyan-600"
             >
               View Detail -&gt;
             </Link>
@@ -413,19 +414,19 @@ export function MapView({
         {leafletBounds && (
           <Rectangle
             bounds={leafletBounds}
-            pathOptions={{ color: "#22d3ee", weight: 1, fillOpacity: 0.02, dashArray: "6 6" }}
+            pathOptions={{ color: IMPERIAL, weight: 1, fillOpacity: 0.02, dashArray: "6 6" }}
           />
         )}
 
         {corridor && (
           <Polygon
             positions={corridor}
-            pathOptions={{ color: "#38bdf8", weight: 1, opacity: 0.22, fillOpacity: 0.08 }}
+            pathOptions={{ color: ATLANTIC, weight: 1, opacity: 0.35, fillOpacity: 0.1 }}
           />
         )}
 
         {trackLine.length > 1 && (
-          <Polyline positions={trackLine} pathOptions={{ color: "#0f9bd7", weight: 2.5, opacity: 0.72 }} />
+          <Polyline positions={trackLine} pathOptions={{ color: IMPERIAL, weight: 2.5, opacity: 0.8 }} />
         )}
 
         {uncertaintyCircles}

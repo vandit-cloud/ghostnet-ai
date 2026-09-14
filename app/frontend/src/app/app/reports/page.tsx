@@ -69,19 +69,19 @@ function ReportsPageContent() {
           <Panel className="p-6">
             <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-accent/80">Output Snapshot</p>
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="rounded-2xl border border-abyss-600/70 bg-black/10 p-4">
+              <div className="rounded-2xl border border-abyss-600/70 bg-skytint/42 p-4">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Reports</p>
                 <p className="mt-2 font-mono text-3xl text-slate-100">{reports?.length ?? 0}</p>
               </div>
-              <div className="rounded-2xl border border-abyss-600/70 bg-black/10 p-4">
+              <div className="rounded-2xl border border-abyss-600/70 bg-skytint/42 p-4">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Active survey</p>
                 <p className="mt-2 text-sm text-slate-200">{surveyId ? "Selected" : "Not set"}</p>
               </div>
-              <div className="rounded-2xl border border-abyss-600/70 bg-black/10 p-4">
+              <div className="rounded-2xl border border-abyss-600/70 bg-skytint/42 p-4">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Format</p>
                 <p className="mt-2 font-mono text-2xl text-cyan-accent">{format.toUpperCase()}</p>
               </div>
-              <div className="rounded-2xl border border-abyss-600/70 bg-black/10 p-4">
+              <div className="rounded-2xl border border-abyss-600/70 bg-skytint/42 p-4">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Scope</p>
                 <p className="mt-2 text-sm capitalize text-slate-200">{type.replace("_", " ")}</p>
               </div>
@@ -96,7 +96,7 @@ function ReportsPageContent() {
               <select
                 value={surveyId}
                 onChange={(e) => setSurveyId(e.target.value)}
-                className="w-full rounded-2xl border border-abyss-600/80 bg-black/20 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-cyan-accent focus:shadow-glow-cyan"
+                className="w-full rounded-2xl border border-abyss-600/80 bg-skytint/42 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-cyan-accent focus:shadow-glow-cyan"
               >
                 <option value="">Select survey</option>
                 {surveys?.items.map((s) => (
@@ -111,7 +111,7 @@ function ReportsPageContent() {
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as ReportType)}
-                className="w-full rounded-2xl border border-abyss-600/80 bg-black/20 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-cyan-accent focus:shadow-glow-cyan"
+                className="w-full rounded-2xl border border-abyss-600/80 bg-skytint/42 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-cyan-accent focus:shadow-glow-cyan"
               >
                 <option value="full_survey">Full Survey</option>
                 <option value="filtered_detections">Filtered Detections</option>
@@ -125,7 +125,7 @@ function ReportsPageContent() {
               <select
                 value={format}
                 onChange={(e) => setFormat(e.target.value as ReportFormat)}
-                className="w-full rounded-2xl border border-abyss-600/80 bg-black/20 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-cyan-accent focus:shadow-glow-cyan"
+                className="w-full rounded-2xl border border-abyss-600/80 bg-skytint/42 px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-cyan-accent focus:shadow-glow-cyan"
               >
                 <option value="csv">CSV</option>
                 <option value="json">JSON</option>
@@ -135,7 +135,7 @@ function ReportsPageContent() {
               <button
                 onClick={handleGenerate}
                 disabled={createReport.isPending}
-                className="w-full rounded-full border border-cyan-accent/35 bg-cyan-accent/10 px-4 py-2.5 text-sm font-medium uppercase tracking-[0.2em] text-cyan-accent transition hover:bg-cyan-accent/15 disabled:opacity-50"
+                className="w-full rounded-full border border-imperial bg-imperial px-4 py-2.5 text-sm font-medium uppercase tracking-[0.2em] text-paper transition hover:bg-imperial-deep disabled:opacity-50"
               >
                 {createReport.isPending ? "Starting..." : "Generate Report"}
               </button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useSurveyMap } from "@/features/map/hooks";
+import { ATLANTIC } from "@/utils/palette";
 
 const WIDTH = 64;
 const HEIGHT = 28;
@@ -40,7 +41,7 @@ export function RouteSparkline({ surveyId }: { surveyId: string }) {
 
   return (
     <svg width={WIDTH} height={HEIGHT} viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="opacity-80">
-      <polyline points={points} fill="none" stroke="#38bdf8" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
+      <polyline points={points} fill="none" stroke={ATLANTIC} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

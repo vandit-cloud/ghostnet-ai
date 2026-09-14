@@ -102,19 +102,19 @@ function DetectionsPageContent() {
           <Panel className="p-6">
             <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-accent/80">Queue Snapshot</p>
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="rounded-2xl border border-abyss-600/70 bg-black/10 p-4">
+              <div className="rounded-2xl border border-abyss-600/70 bg-skytint/42 p-4">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Visible</p>
                 <p className="mt-2 font-mono text-3xl text-slate-100">{data?.items.length ?? 0}</p>
               </div>
-              <div className="rounded-2xl border border-abyss-600/70 bg-black/10 p-4">
+              <div className="rounded-2xl border border-abyss-600/70 bg-skytint/42 p-4">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Critical</p>
                 <p className="mt-2 font-mono text-3xl text-alert-critical">{summary.critical}</p>
               </div>
-              <div className="rounded-2xl border border-abyss-600/70 bg-black/10 p-4">
+              <div className="rounded-2xl border border-abyss-600/70 bg-skytint/42 p-4">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Pending</p>
                 <p className="mt-2 font-mono text-3xl text-cyan-accent">{summary.pending}</p>
               </div>
-              <div className="rounded-2xl border border-abyss-600/70 bg-black/10 p-4">
+              <div className="rounded-2xl border border-abyss-600/70 bg-skytint/42 p-4">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Accepted</p>
                 <p className="mt-2 font-mono text-3xl text-emerald-300">{summary.accepted}</p>
               </div>

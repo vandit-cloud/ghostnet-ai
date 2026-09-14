@@ -33,11 +33,11 @@ export function SonarSweep({ active, paused }: { active: boolean; paused: boolea
     <group rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 6]}>
       <mesh position={[-1.5, 0, 0]}>
         <shapeGeometry args={[shape]} />
-        <meshBasicMaterial ref={leftMat} color="#22d3ee" transparent opacity={0.06} side={THREE.DoubleSide} depthWrite={false} />
+        <meshBasicMaterial ref={leftMat} color="#C4F8FF" transparent opacity={0.06} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
       <mesh position={[1.5, 0, 0]} scale={[-1, 1, 1]}>
         <shapeGeometry args={[shape]} />
-        <meshBasicMaterial ref={rightMat} color="#22d3ee" transparent opacity={0.06} side={THREE.DoubleSide} depthWrite={false} />
+        <meshBasicMaterial ref={rightMat} color="#C4F8FF" transparent opacity={0.06} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
     </group>
   );

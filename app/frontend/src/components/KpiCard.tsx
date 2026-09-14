@@ -2,6 +2,17 @@ import clsx from "clsx";
 
 import { Panel } from "@/components/Panel";
 
+/* The KPI tile, in Atlantic.
+ *
+ * The number is the element. It is set in the display face at 56px in atlantic
+ * blue -- not in the mono face at 30px as before -- because on a paper ground a
+ * big quiet numeral carries further than a small bright one, and because this
+ * is the same treatment the landing page gives its four hero statistics. The
+ * label above and the hint below both recede to mono and ink-3.
+ *
+ * Only a tone that genuinely means something changes the ground: `critical`
+ * takes the imperial fill so a priority tile is unmistakable in a row of five.
+ * The rest stay paper and carry their tone in the badge alone. */
 export function KpiCard({
   label,
   value,
@@ -15,38 +26,72 @@ export function KpiCard({
   live?: boolean;
   hint?: string;
 }) {
-  const toneStyles: Record<string, string> = {
-    neutral: "text-slate-100",
-    critical: "text-alert-critical",
+  const valueTone: Record<string, string> = {
+    neutral: "text-atlantic",
+    critical: "text-paper",
     high: "text-alert-high",
-    positive: "text-emerald-300",
+    positive: "text-emerald-500",
   };
-  const badgeStyles: Record<string, string> = {
-    neutral: "border-abyss-600/80 text-slate-400",
-    critical: "border-alert-critical/35 bg-alert-critical/10 text-alert-critical",
-    high: "border-alert-high/35 bg-alert-high/10 text-alert-high",
-    positive: "border-emerald-500/35 bg-emerald-500/10 text-emerald-300",
+
+  const badgeTone: Record<string, string> = {
+    neutral: "border-rule text-ink-3",
+    critical: "border-skytint/40 bg-skytint/20 text-skytint",
+    high: "border-alert-high/50 text-alert-high",
+    positive: "border-emerald-500/50 text-emerald-500",
   };
-  const badgeLabel =
-    live ? "Live" : tone === "neutral" ? "Stable" : tone === "critical" ? "Priority" : tone === "high" ? "Elevated" : "Verified";
+
+  const badgeLabel = live
+    ? "Live"
+    : tone === "neutral"
+      ? "Stable"
+      : tone === "critical"
+        ? "Priority"
+        : tone === "high"
+          ? "Elevated"
+          : "Verified";
+
+  const accent = tone === "critical";
 
   return (
-    <Panel glow={tone === "critical" ? "critical" : live ? "cyan" : "none"} className="min-h-[148px] p-5">
+    <Panel tone={accent ? "accent" : live ? "tint" : "none"} className="min-h-[148px] p-[18px]">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-[0.28em] text-slate-400">{label}</p>
-          <p className={clsx("mt-3 font-mono text-3xl font-semibold tabular-nums", toneStyles[tone])}>{value}</p>
-        </div>
+        <p
+          className={clsx(
+            "font-mono text-[10.5px] uppercase tracking-[0.13em]",
+            accent ? "text-skytint/75" : "text-ink-3"
+          )}
+        >
+          {label}
+        </p>
         <span
           className={clsx(
-            "rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.24em]",
-            live ? "border-cyan-accent/35 bg-cyan-accent/10 text-cyan-accent" : badgeStyles[tone]
+            "shrink-0 border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em]",
+            live && !accent ? "border-imperial bg-imperial text-paper" : badgeTone[tone]
           )}
         >
           {badgeLabel}
         </span>
       </div>
-      {hint ? <p className="mt-4 max-w-[24ch] text-sm leading-6 text-slate-400">{hint}</p> : null}
+
+      <p
+        className={clsx(
+          "mt-2.5 font-display text-[56px] font-extrabold leading-[0.84] tabular-nums",
+          valueTone[tone]
+        )}
+      >
+        {value}
+      </p>
+
+      {hint ? (
+        <p
+          className={clsx(
+            "mt-2 max-w-[28ch] text-[12.5px] font-light leading-[1.55]",
+            accent ? "text-paper/74" : "text-ink-3"
+          )}
+        >
+          {hint}
+        </p>
+      ) : null}
     </Panel>
   );
 }

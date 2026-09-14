@@ -16,7 +16,7 @@ export function Modal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-imperial/50 p-4" role="dialog" aria-modal="true">
       <div className="w-full max-w-lg rounded-lg border border-abyss-600 bg-abyss-900 p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-100">{title}</h2>

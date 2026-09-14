@@ -66,13 +66,13 @@ export default function SurveysPage() {
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 href="/app/surveys/new"
-                className="rounded-full border border-cyan-accent/35 bg-cyan-accent/10 px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-cyan-accent transition hover:bg-cyan-accent/15"
+                className="rounded-full border border-imperial bg-imperial px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-paper transition hover:bg-imperial-deep"
               >
                 New Survey
               </Link>
               <Link
                 href="/app/map"
-                className="rounded-full border border-abyss-600/80 bg-white/[0.03] px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-slate-200 transition hover:border-cyan-accent/35 hover:text-cyan-accent"
+                className="rounded-full border border-abyss-600/80 px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-slate-200 transition hover:border-cyan-accent/35 hover:text-cyan-accent"
               >
                 Open GIS Map
               </Link>
@@ -82,19 +82,19 @@ export default function SurveysPage() {
           <Panel className="p-6">
             <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-accent/80">Mission Snapshot</p>
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="rounded-2xl border border-abyss-600/70 bg-black/10 p-4">
+              <div className="rounded-2xl border border-abyss-600/70 bg-skytint/42 p-4">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Total surveys</p>
                 <p className="mt-2 font-mono text-3xl text-slate-100">{stats.totalSurveys}</p>
               </div>
-              <div className="rounded-2xl border border-abyss-600/70 bg-black/10 p-4">
+              <div className="rounded-2xl border border-abyss-600/70 bg-skytint/42 p-4">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Active</p>
                 <p className="mt-2 font-mono text-3xl text-cyan-accent">{stats.activeSurveys}</p>
               </div>
-              <div className="rounded-2xl border border-abyss-600/70 bg-black/10 p-4">
+              <div className="rounded-2xl border border-abyss-600/70 bg-skytint/42 p-4">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Completed</p>
                 <p className="mt-2 font-mono text-3xl text-emerald-300">{stats.completedSurveys}</p>
               </div>
-              <div className="rounded-2xl border border-abyss-600/70 bg-black/10 p-4">
+              <div className="rounded-2xl border border-abyss-600/70 bg-skytint/42 p-4">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Detections</p>
                 <p className="mt-2 font-mono text-3xl text-slate-100">{stats.totalDetections}</p>
               </div>
@@ -136,7 +136,7 @@ export default function SurveysPage() {
                 </thead>
                 <tbody>
                   {data?.items.map((survey) => (
-                    <tr key={survey.id} className="border-t border-abyss-700/80 text-slate-300 transition hover:bg-white/[0.03]">
+                    <tr key={survey.id} className="border-t border-abyss-700/80 text-slate-300 transition hover:bg-skytint/42">
                       <td className="px-5 py-4">
                         <Link href={`/app/surveys/${survey.id}`} className="font-medium text-cyan-accent hover:underline">
                           {survey.name}
@@ -171,7 +171,7 @@ export default function SurveysPage() {
             <button
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="rounded-full border border-abyss-600/80 bg-white/[0.03] px-4 py-2 transition hover:border-cyan-accent/35 hover:text-cyan-accent disabled:opacity-40"
+              className="rounded-full border border-abyss-600/80 px-4 py-2 transition hover:border-cyan-accent/35 hover:text-cyan-accent disabled:opacity-40"
             >
               Previous
             </button>
@@ -179,7 +179,7 @@ export default function SurveysPage() {
             <button
               disabled={page * data.page_size >= data.total}
               onClick={() => setPage((p) => p + 1)}
-              className="rounded-full border border-abyss-600/80 bg-white/[0.03] px-4 py-2 transition hover:border-cyan-accent/35 hover:text-cyan-accent disabled:opacity-40"
+              className="rounded-full border border-abyss-600/80 px-4 py-2 transition hover:border-cyan-accent/35 hover:text-cyan-accent disabled:opacity-40"
             >
               Next
             </button>

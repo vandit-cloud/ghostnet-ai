@@ -55,7 +55,7 @@ export function CoverageSwath({ points }: { points: SwathPoint[] }) {
 
   return (
     <mesh geometry={geometry}>
-      <meshBasicMaterial color="#22d3ee" transparent opacity={0.07} side={THREE.DoubleSide} depthWrite={false} />
+      <meshBasicMaterial color="#C4F8FF" transparent opacity={0.07} side={THREE.DoubleSide} depthWrite={false} />
     </mesh>
   );
 }

@@ -1,28 +1,49 @@
 import clsx from "clsx";
 import type { HTMLAttributes, ReactNode } from "react";
 
-type Glow = "none" | "cyan" | "critical" | "unknown";
+type Tone = "none" | "accent" | "tint" | "critical" | "unknown" | "blue";
 
-const GLOW_CLASSES: Record<Glow, string> = {
+/* Atlantic has no glass and no glow, so "emphasis" cannot be a halo any more.
+ * Each tone is a change of GROUND instead -- which is what the mockup does, and
+ * which survives the greyscale test a coloured shadow does not. */
+const TONE_CLASSES: Record<Tone, string> = {
   none: "",
-  cyan: "shadow-glow-cyan border-cyan-accent/50",
-  critical: "shadow-glow-critical border-alert-critical/50",
-  unknown: "shadow-glow-unknown border-alert-unknown/50",
+  // The one loud card on a screen: imperial fill, paper contents.
+  accent: "panel-accent",
+  // The quiet pick-out: a sky wash, still dark ink.
+  tint: "panel-tint",
+  // Chrome that shows water rather than data.
+  blue: "panel-blue",
+  critical: "panel-critical",
+  unknown: "panel-unknown",
 };
 
-/** Shared surface for every card/panel in the app (spec: avoid the "generic
- * SaaS admin panel" flat-box look). A subtle top-edge highlight + gradient
- * surface instead of a plain border-everywhere box. `glow` is opt-in and
- * reserved for the spec's explicit glow list (selected / critical / live
- * system state) — never the default. */
+/**
+ * The shared surface for every card in the console.
+ *
+ * `.panel` in globals.css carries the geometry (1px rule, paper ground, square
+ * corners); this adds the tone. `glow` is kept as an alias for `tone` because
+ * roughly thirty call sites pass it, and renaming them all in the same change
+ * as the retheme would make both harder to review.
+ */
 export function Panel({
   children,
   className,
-  glow = "none",
+  tone,
+  glow,
   ...rest
-}: { children: ReactNode; className?: string; glow?: Glow } & HTMLAttributes<HTMLDivElement>) {
+}: {
+  children: ReactNode;
+  className?: string;
+  tone?: Tone;
+  /** @deprecated Alias for `tone`, kept for the existing call sites. */
+  glow?: "none" | "cyan" | "critical" | "unknown";
+} & HTMLAttributes<HTMLDivElement>) {
+  // "cyan" was the old accent's name; in Atlantic that emphasis is the sky tint.
+  const resolved: Tone = tone ?? (glow === "cyan" ? "tint" : (glow as Tone) ?? "none");
+
   return (
-    <div className={clsx("panel p-4 transition-shadow", GLOW_CLASSES[glow], className)} {...rest}>
+    <div className={clsx("panel p-4", TONE_CLASSES[resolved], className)} {...rest}>
       {children}
     </div>
   );

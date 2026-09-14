@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { ALERT } from "@/utils/palette";
 
 const PRIORITY_ITEMS: { label: string; color: string }[] = [
-  { label: "Critical", color: "#f87171" },
-  { label: "High", color: "#fb923c" },
-  { label: "Medium", color: "#facc15" },
-  { label: "Low", color: "#94a3b8" },
+  { label: "Critical", color: ALERT.critical },
+  { label: "High", color: ALERT.high },
+  { label: "Medium", color: ALERT.medium },
+  { label: "Low", color: ALERT.low },
 ];
 
 const CLASS_ITEMS: { label: string; code: string }[] = [
@@ -71,7 +72,7 @@ export function MapLegend() {
         </div>
       </div>
       <div className="flex items-center gap-2 border-t border-abyss-700 pt-2">
-        <span className="h-0.5 w-4 border-t-2 border-dashed border-sky-400" />
+        <span className="h-0.5 w-4 border-t-2 border-dashed border-imperial" />
         Survey track
       </div>
       <div className="flex items-center gap-2">
@@ -79,7 +80,7 @@ export function MapLegend() {
         Position uncertainty
       </div>
       <div className="flex items-center gap-2">
-        <span className="h-2 w-4 rounded-sm bg-sky-400/20" />
+        <span className="h-2 w-4 rounded-sm bg-imperial/20" />
         Sonar coverage
       </div>
     </div>

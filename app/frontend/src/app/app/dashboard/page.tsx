@@ -99,19 +99,19 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="grid min-w-[260px] grid-cols-2 gap-3">
-                    <div className="rounded-2xl border border-abyss-600/70 bg-black/10 px-3 py-3">
+                    <div className="rounded-2xl border border-abyss-600/70 bg-skytint/42 px-3 py-3">
                       <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Last Sync</p>
                       <p className="mt-2 text-sm text-slate-200">{formatDateTime(data.last_updated)}</p>
                     </div>
-                    <div className="rounded-2xl border border-abyss-600/70 bg-black/10 px-3 py-3">
+                    <div className="rounded-2xl border border-abyss-600/70 bg-skytint/42 px-3 py-3">
                       <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Review Load</p>
                       <p className="mt-2 text-sm text-slate-200">{reviewRatio}% queued</p>
                     </div>
-                    <div className="rounded-2xl border border-abyss-600/70 bg-black/10 px-3 py-3">
+                    <div className="rounded-2xl border border-abyss-600/70 bg-skytint/42 px-3 py-3">
                       <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Lead Signal</p>
                       <p className="mt-2 text-sm text-slate-200">{topClass ? formatDetectionClass(topClass.detection_class) : "Awaiting detections"}</p>
                     </div>
-                    <div className="rounded-2xl border border-abyss-600/70 bg-black/10 px-3 py-3">
+                    <div className="rounded-2xl border border-abyss-600/70 bg-skytint/42 px-3 py-3">
                       <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Confirm Rate</p>
                       <p className="mt-2 text-sm text-slate-200">{confirmationRatio}% analyst-verified</p>
                     </div>
@@ -121,19 +121,19 @@ export default function DashboardPage() {
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link
                     href="/app/map"
-                    className="rounded-full border border-cyan-accent/35 bg-cyan-accent/10 px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-cyan-accent transition hover:bg-cyan-accent/15"
+                    className="rounded-full border border-imperial bg-imperial px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-paper transition hover:bg-imperial-deep"
                   >
                     Open GIS Map
                   </Link>
                   <Link
                     href="/app/review"
-                    className="rounded-full border border-abyss-600/80 bg-white/[0.03] px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-slate-200 transition hover:border-cyan-accent/35 hover:text-cyan-accent"
+                    className="rounded-full border border-abyss-600/80 px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-slate-200 transition hover:border-cyan-accent/35 hover:text-cyan-accent"
                   >
                     Review Queue
                   </Link>
                   <Link
                     href="/app/reports"
-                    className="rounded-full border border-abyss-600/80 bg-white/[0.03] px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-slate-200 transition hover:border-cyan-accent/35 hover:text-cyan-accent"
+                    className="rounded-full border border-abyss-600/80 px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-slate-200 transition hover:border-cyan-accent/35 hover:text-cyan-accent"
                   >
                     Generate Reports
                   </Link>
@@ -170,17 +170,17 @@ export default function DashboardPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-2xl border border-abyss-600/70 bg-black/10 p-4">
+                <div className="rounded-2xl border border-abyss-600/70 bg-skytint/42 p-4">
                   <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Confirmed</p>
                   <p className="mt-2 font-mono text-2xl text-emerald-300">{data.confirmed_artificial}</p>
                 </div>
-                <div className="rounded-2xl border border-abyss-600/70 bg-black/10 p-4">
+                <div className="rounded-2xl border border-abyss-600/70 bg-skytint/42 p-4">
                   <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Rejected</p>
                   <p className="mt-2 font-mono text-2xl text-slate-200">{data.rejected_natural}</p>
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-abyss-600/70 bg-black/10 p-4">
+              <div className="rounded-2xl border border-abyss-600/70 bg-skytint/42 p-4">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Operator Focus</p>
                 <p className="mt-2 text-sm leading-6 text-slate-300">
                   Prioritize {data.high_priority} high-priority detections and clear the {data.needs_review} items waiting on analyst judgement.
@@ -233,7 +233,7 @@ export default function DashboardPage() {
                   <h3 className="mt-2 text-lg font-semibold text-slate-100">Class Distribution</h3>
                 </div>
                 {topClass ? (
-                  <span className="rounded-full border border-abyss-600/80 bg-white/[0.03] px-3 py-1 text-xs text-slate-300">
+                  <span className="rounded-full border border-abyss-600/80 px-3 py-1 text-xs text-slate-300">
                     Lead: {formatDetectionClass(topClass.detection_class)}
                   </span>
                 ) : null}
@@ -250,7 +250,7 @@ export default function DashboardPage() {
             <Panel className="p-5">
               <p className="text-[11px] uppercase tracking-[0.28em] text-cyan-accent/80">Decision Pulse</p>
               <h3 className="mt-2 text-lg font-semibold text-slate-100">Detection Trend (14 days)</h3>
-              <div className="mt-4 rounded-2xl border border-abyss-600/70 bg-black/10 px-3 py-4">
+              <div className="mt-4 rounded-2xl border border-abyss-600/70 bg-skytint/42 px-3 py-4">
                 <TrendSparkline data={data.detection_trend} />
               </div>
             </Panel>
@@ -264,7 +264,7 @@ export default function DashboardPage() {
                 {recentDetection ? <PriorityBadge priority={recentDetection.priority} /> : null}
               </div>
               {recentDetection ? (
-                <div className="mt-4 rounded-2xl border border-abyss-600/70 bg-black/10 p-4">
+                <div className="mt-4 rounded-2xl border border-abyss-600/70 bg-skytint/42 p-4">
                   <Link href={`/app/detections/${recentDetection.id}`} className="text-lg font-semibold text-cyan-accent hover:underline">
                     {recentDetection.detection_ref}
                   </Link>
@@ -287,7 +287,7 @@ export default function DashboardPage() {
             </div>
             <Link
               href="/app/detections"
-              className="rounded-full border border-abyss-600/80 bg-white/[0.03] px-3 py-1.5 text-xs font-medium uppercase tracking-[0.22em] text-slate-300 transition hover:border-cyan-accent/35 hover:text-cyan-accent"
+              className="rounded-full border border-abyss-600/80 px-3 py-1.5 text-xs font-medium uppercase tracking-[0.22em] text-slate-300 transition hover:border-cyan-accent/35 hover:text-cyan-accent"
             >
               View All
             </Link>
@@ -308,7 +308,7 @@ export default function DashboardPage() {
                 </thead>
                 <tbody>
                   {data.recent_detections.map((d) => (
-                    <tr key={d.id} className="border-t border-abyss-700/80 text-slate-300 transition hover:bg-white/[0.03]">
+                    <tr key={d.id} className="border-t border-abyss-700/80 text-slate-300 transition hover:bg-skytint/42">
                       <td className="py-3 pr-4">
                         <Link href={`/app/detections/${d.id}`} className="font-medium text-cyan-accent hover:underline">
                           {d.detection_ref}

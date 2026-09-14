@@ -3,12 +3,13 @@
 import { useRef } from "react";
 import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import * as THREE from "three";
+import { ALERT } from "@/utils/palette";
 
 const PRIORITY_COLORS: Record<string, string> = {
-  critical: "#f87171",
-  high: "#fb923c",
-  medium: "#facc15",
-  low: "#94a3b8",
+  critical: ALERT.critical,
+  high: ALERT.high,
+  medium: ALERT.medium,
+  low: ALERT.low,
 };
 
 function ShapeForClass({ detectionClass }: { detectionClass: string }) {

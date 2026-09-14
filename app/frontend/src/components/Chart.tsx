@@ -1,3 +1,5 @@
+import { ATLANTIC, IMPERIAL } from "@/utils/palette";
+
 export function BarListChart({
   data,
   labelKey,
@@ -15,7 +17,7 @@ export function BarListChart({
   return (
     <div className="space-y-2">
       {data.map((row, i) => (
-        <div key={i} className="rounded-2xl border border-abyss-600/60 bg-black/10 px-3 py-3">
+        <div key={i} className="rounded-2xl border border-abyss-600/60 bg-skytint/42 px-3 py-3">
           <div className="mb-2 flex items-center justify-between gap-3 text-sm">
             <span className="truncate text-slate-300">{row[labelKey]}</span>
             <span className="shrink-0 font-mono text-xs tabular-nums text-slate-400">{row[valueKey]}</span>
@@ -55,14 +57,14 @@ export function TrendSparkline({ data }: { data: { date: string; count: number }
     <svg viewBox={`0 0 ${width} ${height}`} className="h-16 w-full" preserveAspectRatio="none">
       <defs>
         <linearGradient id="trend-fill" x1="0%" x2="0%" y1="0%" y2="100%">
-          <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.28" />
-          <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
+          <stop offset="0%" stopColor={IMPERIAL} stopOpacity="0.18" />
+          <stop offset="100%" stopColor={IMPERIAL} stopOpacity="0" />
         </linearGradient>
       </defs>
       <path d={areaPath} fill="url(#trend-fill)" />
-      {coords.length > 1 ? <polyline points={points} fill="none" stroke="#8ddff2" strokeWidth={2.25} /> : null}
+      {coords.length > 1 ? <polyline points={points} fill="none" stroke={IMPERIAL} strokeWidth={2} /> : null}
       {coords.map((c, i) => (
-        <circle key={i} cx={c.x} cy={c.y} r={coords.length === 1 ? 3 : 2.4} fill="#d7f7ff" />
+        <circle key={i} cx={c.x} cy={c.y} r={coords.length === 1 ? 3 : 2.4} fill={ATLANTIC} />
       ))}
     </svg>
   );

@@ -157,10 +157,10 @@ function CompletionPanel({
   return (
     <div
       className={`mt-6 rounded-md border p-5 ${
-        partial ? "border-amber-400/40 bg-amber-400/5" : "border-emerald-400/40 bg-emerald-400/5"
+        partial ? "border-alert-high/40 bg-alert-high/10" : "border-emerald-500/40 bg-emerald-400/5"
       }`}
     >
-      <p className={`text-sm font-medium ${partial ? "text-amber-300" : "text-emerald-300"}`}>
+      <p className={`text-sm font-medium ${partial ? "text-alert-high" : "text-emerald-300"}`}>
         {partial ? "Processing finished with errors" : "Processing complete"}
       </p>
       <p className="mt-1 text-sm text-slate-300">

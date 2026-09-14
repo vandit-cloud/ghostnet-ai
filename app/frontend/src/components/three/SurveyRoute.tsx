@@ -8,7 +8,7 @@ export function SurveyRoute({ points }: { points: [number, number, number][] }) 
   return (
     <Line
       points={points}
-      color="#38bdf8"
+      color="#C4F8FF"
       lineWidth={1.6}
       dashed
       dashSize={2}
