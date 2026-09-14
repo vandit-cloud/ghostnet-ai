@@ -170,6 +170,39 @@ For a hackathon submission this is workable, but **record the provenance and cit
 every source** — that is what the `provenance/` directory is for, and it is why
 it is the one directory under `ai/data/` that git tracks.
 
+### The ghost_net chips: an open provenance question
+
+The 73 real net chips (`ai/data/annotate/ghost_net_seg/images/`, named
+`quanzhou_HN_*` and `yantai_HN_*`) are **third-party side-scan imagery whose
+origin we have not been able to document.** They pre-date the provenance
+discipline described above: `ai/data/provenance/data_inventory.csv` has no row
+for them, they are not listed in `dataset_candidates.csv`, and the raw source
+directory they came from was pruned in commit `ad70122`. We are working to
+re-establish where they came from.
+
+What that means in practice, stated plainly rather than left implicit:
+
+- **The chips themselves are not published in this repository.** They are
+  gitignored and exist on local disk only.
+- **What is published is our own work over them:** 425 polygon annotations, the
+  labelling convention in `HOW_TO_LABEL.md`, and the dataset-build and training
+  scripts. Annotations are separable from the imagery they describe — the same
+  split COCO and Open Images use, where images keep their original terms and
+  the annotations carry their own licence.
+- **A small number of annotated crops are published**, under
+  `ai/data/annotate/*/_guide/`, because a labelling convention cannot be taught
+  without showing examples. These are low-resolution excerpts used to
+  illustrate method.
+- **We make no ownership claim over the underlying imagery**, and we will
+  remove any of it on request from a rights holder. Contact via the repository
+  owner.
+
+Until the origin is established, these chips are **not offered for
+redistribution to third parties**, including data platforms that would
+incorporate them into a trained model. See
+`docs/OUTREACH_GN0_REPLY.md` for how this constrains the GhostNetZero
+conversation.
+
 ---
 
 ## Sources

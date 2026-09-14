@@ -24,11 +24,27 @@ halves.
 | Path | Owner | Contents |
 |---|---|---|
 | `ai/` | Member 1 | Sonar preprocessing, detection, geotagging, the output contract |
-| `backend/` | Member 2 | FastAPI, database, GIS |
-| `frontend/` | Member 2 | Dashboard, map, review UI |
+| `app/backend/` | Member 2 | FastAPI, database, GIS |
+| `app/frontend/` | Member 2 | Dashboard, map, review UI |
+| `app/docker-compose.yml` | shared | Compose setup for the single-machine demo |
 | `contracts/` | **shared, generated** | JSON Schemas both sides validate against |
+| `demo/` | shared | Per-class demo sonar files, reports and showcase material |
 | `docs/` | shared | Build plans and the handoff document |
-| `docker/` | shared | Compose setup for the final single-machine demo |
+
+## Data, provenance and attribution
+
+Training data is not published here — it is large and often licence-restricted,
+so acquisition is scripted in `ai/scripts/` and documented in
+[`docs/DATA.md`](docs/DATA.md), which records every source and its terms.
+
+One source is unresolved and we would rather say so than leave it implicit: the
+73 `ghost_net` chips are third-party side-scan imagery whose origin we have not
+been able to document. The chips are not published in this repository. What is
+published is our own work over them — 425 polygon annotations, the labelling
+convention, and the build scripts — plus a small number of low-resolution
+annotated crops used to illustrate that convention. We make no ownership claim
+over the underlying imagery and will remove any of it on request from a rights
+holder. See [`docs/DATA.md`](docs/DATA.md#the-ghost_net-chips-an-open-provenance-question).
 
 ## Start here
 
