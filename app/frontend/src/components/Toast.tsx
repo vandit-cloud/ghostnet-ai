@@ -28,11 +28,19 @@ export const useToastStore = create<ToastState>((set) => ({
   dismiss: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 }));
 
-const TONE_STYLES: Record<ToastItem["tone"], string> = {
-  info: "border-cyan-accent/40 bg-abyss-800 text-slate-100",
-  error: "border-alert-critical/40 bg-abyss-800 text-alert-critical",
-  success: "border-emerald-500/40 bg-abyss-800 text-emerald-300",
+/* Toasts are one of the surfaces the retheme could not be screenshotted
+ * against, because nothing in a static fixture raises one. They were still
+ * dressed for the dark console -- `bg-abyss-800` now resolves to a near-paper
+ * grey, so an error toast was crimson text on off-white with a soft drop
+ * shadow. On a light canvas a transient message has to be the DARKEST thing on
+ * screen to be noticed at all, so each tone is a solid fill. */
+const TONE_STYLES: Record<ItemTone, string> = {
+  info: "border-imperial bg-imperial text-paper",
+  error: "border-alert-critical bg-alert-critical text-paper",
+  success: "border-emerald-500 bg-emerald-500 text-paper",
 };
+
+type ItemTone = ToastItem["tone"];
 
 export function ToastViewport() {
   const toasts = useToastStore((s) => s.toasts);
@@ -43,7 +51,7 @@ export function ToastViewport() {
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className={`pointer-events-auto min-w-[240px] rounded-md border px-4 py-2 text-sm shadow-lg ${TONE_STYLES[toast.tone]}`}
+          className={`pointer-events-auto min-w-[240px] cursor-pointer border px-4 py-2.5 text-sm ${TONE_STYLES[toast.tone]}`}
           onClick={() => dismiss(toast.id)}
           role="status"
         >
