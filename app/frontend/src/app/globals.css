@@ -6,14 +6,43 @@
 @import "leaflet.markercluster/dist/MarkerCluster.css";
 @import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 
+/* =============================================================================
+ * Atlantic — the four hexes and the alpha ladder derived from them.
+ *
+ * These are the TRUE rgba values. tailwind.config.ts carries the same ladder
+ * flattened to solid hex, because Tailwind's `/40` modifier cannot apply to an
+ * rgba token. Hand-written CSS (the landing page, the textures below) uses
+ * these; utility classes use the flattened twins. They must stay in step.
+ * ========================================================================== */
 :root {
-  color-scheme: dark;
+  --atlantic: #0f4b70;
+  --sky: #c4f8ff;
+  --imperial: #021f94;
+  --paper: #f5f2f3;
+
+  --ink: rgba(2, 31, 148, 0.92);
+  --ink-2: rgba(15, 75, 112, 0.8);
+  --ink-3: rgba(15, 75, 112, 0.55);
+  --ink-4: rgba(15, 75, 112, 0.32);
+  --rule: rgba(15, 75, 112, 0.2);
+  --rule-2: rgba(15, 75, 112, 0.1);
+  --onblue: rgba(245, 242, 243, 0.74);
+  --onblue-2: rgba(245, 242, 243, 0.42);
+  --blue-rule: rgba(196, 248, 255, 0.22);
+
+  /* Outside the four hexes, and deliberately so -- see the `alert` note in
+     tailwind.config.ts. The console has to distinguish a FAILED job from a
+     COMPLETED one, and the Atlantic mockup has no failure state to copy. */
+  --alert-critical: #b3123c;
+  --alert-unknown: #5b3fa8;
+
+  color-scheme: light;
 }
 
 html,
 body {
-  background-color: #050b14;
-  color: #e2e8f0;
+  background-color: var(--paper);
+  color: var(--ink);
 }
 
 html {
@@ -22,33 +51,21 @@ html {
 
 body {
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top left, rgba(34, 211, 238, 0.12), transparent 28%),
-    radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 24%),
-    linear-gradient(180deg, #07111b 0%, #030810 100%);
+  background: var(--paper);
+  /* Tabular figures: every score, coordinate and error radius in this app is a
+     number in a column, and proportional digits make them jitter between
+     renders. */
   font-feature-settings: "tnum" 1;
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(141, 223, 242, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(141, 223, 242, 0.035) 1px, transparent 1px);
-  background-size: 72px 72px;
-  mask-image: radial-gradient(circle at center, black 35%, transparent 85%);
-  opacity: 0.35;
+  -webkit-font-smoothing: antialiased;
 }
 
 * {
-  border-color: #1f3a52;
+  border-color: var(--rule);
 }
 
 ::selection {
-  background: rgba(34, 211, 238, 0.22);
-  color: #f8fafc;
+  background: var(--sky);
+  color: var(--imperial);
 }
 
 ::-webkit-scrollbar {
@@ -57,63 +74,198 @@ body::before {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0a1420;
+  background: var(--paper);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1f3a52;
-  border-radius: 6px;
+  background: rgba(15, 75, 112, 0.28);
 }
 
-.leaflet-container {
-  background: #0a1420;
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 75, 112, 0.45);
 }
 
-/* Dark-mode raster tiles via CSS filter (no third-party dark-tile API key
-   required). Scoped to the tile pane only (not the whole map container) so
-   markers/popups/legend keep their real colors instead of inverting too. */
-.map-dark-mode .leaflet-tile-pane {
-  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.6);
+/* =============================================================================
+ * TEXTURE
+ * Atlantic is a printed direction, not a glass one. The grain is SVG turbulence
+ * multiplied over the surface — no asset, no network request, and it survives
+ * any background colour underneath it. Applied to a positioned parent.
+ * ========================================================================== */
+.grain {
+  position: relative;
 }
 
-.sonar-grid-bg {
-  background-image:
-    radial-gradient(circle at top, rgba(34, 211, 238, 0.12), transparent 34%),
-    linear-gradient(180deg, rgba(8, 19, 31, 0.72), rgba(3, 8, 16, 0.94)),
-    repeating-linear-gradient(0deg, rgba(34, 211, 238, 0.05) 0, rgba(34, 211, 238, 0.05) 1px, transparent 1px, transparent 48px),
-    repeating-linear-gradient(90deg, rgba(34, 211, 238, 0.05) 0, rgba(34, 211, 238, 0.05) 1px, transparent 1px, transparent 48px);
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 8;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='260' height='260' filter='url(%23g)' opacity='0.5'/></svg>");
+  mix-blend-mode: multiply;
+  opacity: 0.13;
 }
 
+.grain-lite::after {
+  opacity: 0.08;
+}
+
+.halftone {
+  background-image: radial-gradient(rgba(2, 31, 148, 0.2) 1px, transparent 1.15px);
+  background-size: 5px 5px;
+}
+
+/* The blue water fill used behind sonar imagery, the sidebar and map panels. */
+.water {
+  background:
+    radial-gradient(120% 90% at 18% 6%, rgba(196, 248, 255, 0.22), transparent 62%),
+    linear-gradient(160deg, var(--atlantic) 0%, #0d4368 46%, var(--imperial) 130%);
+}
+
+/* =============================================================================
+ * SURFACES
+ * `.panel` is the single shared surface for every card in the console, which is
+ * why the whole retheme turns on this one rule. It was a blurred glass slab
+ * with a cyan top-edge highlight and a radial bloom; Atlantic is a flat paper
+ * card inside a 1px rule. Both pseudo-elements are removed rather than restyled
+ * — there is nothing in this direction for them to be.
+ * ========================================================================== */
 .panel {
   position: relative;
   overflow: hidden;
-  border-radius: 1.25rem;
-  border: 1px solid rgba(38, 74, 101, 0.72);
-  background:
-    radial-gradient(circle at top right, rgba(34, 211, 238, 0.1), transparent 30%),
-    linear-gradient(180deg, rgba(15, 30, 46, 0.88), rgba(6, 13, 22, 0.92));
-  box-shadow:
-    0 28px 60px rgba(2, 8, 15, 0.34),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(18px);
+  border: 1px solid var(--rule);
+  background: var(--paper);
 }
 
-.panel::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.34), transparent);
-  pointer-events: none;
+/* THE TONES ARE WRITTEN AS `.panel.panel-x` ON PURPOSE.
+ *
+ * `.panel` above sets a background, and this file is loaded AFTER Tailwind's
+ * utilities layer. Both are single-class selectors, so `.panel` wins every
+ * conflict with a `bg-*` utility on the same element. That is not theoretical:
+ * the first version of this put `bg-imperial` on the accent card as a utility,
+ * `.panel` overrode it, and the card rendered paper text on a paper ground --
+ * invisible, with nothing in the build to show for it. Two classes out-specify
+ * one, so the tone always wins and the component never fights the cascade.
+ */
+
+/* Chrome that shows water rather than data: sonar, the map, the 3D replay. */
+.panel.panel-blue {
+  border-color: rgba(196, 248, 255, 0.22);
+  background: var(--atlantic);
+  color: var(--paper);
 }
 
-.panel::after {
-  content: "";
-  position: absolute;
-  inset: auto -20% -45% auto;
-  width: 16rem;
-  height: 16rem;
-  border-radius: 9999px;
-  background: radial-gradient(circle, rgba(34, 211, 238, 0.12), transparent 72%);
-  pointer-events: none;
+/* The quiet pick-out -- the mockup's `.card.tint`. Still dark ink. */
+.panel.panel-tint {
+  border-color: rgba(2, 31, 148, 0.14);
+  background: var(--sky);
+}
+
+/* The one loud card on a screen: imperial ground, paper contents. */
+.panel.panel-accent {
+  border-color: var(--imperial);
+  background: var(--imperial);
+  color: var(--paper);
+}
+
+/* Contents of an accent card inherit paper, so the usual ink utilities inside
+   it would fight the ground. Overriding here means a caller can drop an
+   ordinary card's children into an accent one without restyling each. */
+.panel.panel-accent h1,
+.panel.panel-accent h2,
+.panel.panel-accent h3,
+.panel.panel-accent p,
+.panel.panel-accent span,
+.panel.panel-accent b {
+  color: var(--paper);
+}
+
+/* The two states that are not part of the four-hex system. They are tinted
+   grounds rather than fills, because an error card still has to be read. */
+.panel.panel-critical {
+  border-color: var(--alert-critical);
+  background: rgba(179, 18, 60, 0.06);
+}
+
+.panel.panel-unknown {
+  border-color: var(--alert-unknown);
+  background: rgba(91, 63, 168, 0.06);
+}
+
+/* =============================================================================
+ * MAP AND SONAR
+ * ========================================================================== */
+.leaflet-container {
+  background: var(--atlantic);
+  font-family: inherit;
+}
+
+/* Raster tiles are photographic and fight a four-colour system. Rather than
+   invert them to a fake dark mode as before, they are desaturated and pushed
+   toward the atlantic blue so the basemap reads as water under the detections
+   instead of competing with them. Scoped to the tile pane so markers, popups
+   and the legend keep their real colours. */
+.map-dark-mode .leaflet-tile-pane {
+  filter: grayscale(1) brightness(0.72) contrast(0.92) sepia(0.45) hue-rotate(165deg) saturate(2.6);
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px var(--rule);
+}
+
+.leaflet-bar a,
+.leaflet-bar a:hover {
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--imperial);
+  border-color: var(--rule);
+}
+
+/* The waterfall backdrop. Same construction as before — a lit top edge over a
+   deep field with a survey grid — rebuilt on atlantic/sky instead of cyan. */
+.sonar-grid-bg {
+  background-image:
+    radial-gradient(circle at top, rgba(196, 248, 255, 0.14), transparent 34%),
+    linear-gradient(180deg, rgba(15, 75, 112, 0.96), rgba(2, 31, 148, 0.98)),
+    repeating-linear-gradient(0deg, rgba(196, 248, 255, 0.07) 0, rgba(196, 248, 255, 0.07) 1px, transparent 1px, transparent 48px),
+    repeating-linear-gradient(90deg, rgba(196, 248, 255, 0.07) 0, rgba(196, 248, 255, 0.07) 1px, transparent 1px, transparent 48px);
+}
+
+/* The console canvas itself. The old app painted the main scroll area with
+   sonar-grid-bg; on paper that surface is the page, and the grid moves to the
+   panels that actually show sonar. */
+.console-canvas {
+  background: var(--paper);
+}
+
+/* =============================================================================
+ * FORM CONTROLS
+ * Tailwind's preflight leaves inputs transparent, which was invisible against
+ * the old dark panels and is invisible against paper too. Given once here so
+ * no screen has to restate it.
+ * ========================================================================== */
+input,
+select,
+textarea {
+  background: rgba(196, 248, 255, 0.38);
+  border: 1px solid var(--rule);
+  color: var(--ink);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--ink-3);
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--imperial);
+  outline-offset: 1px;
 }
