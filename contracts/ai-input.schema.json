@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ghostnet-ai/contracts/ai-input.schema.json",
+  "title": "GhostNet-AI inference request",
+  "type": "object",
+  "properties": {
+    "survey_id": {
+      "type": "string",
+      "description": "Survey this frame belongs to."
+    },
+    "frame_id": {
+      "type": "string",
+      "description": "Frame identifier. Defaults to the image filename stem."
+    },
+    "image": {
+      "type": "string",
+      "description": "The frame itself: a multipart file part, or a URL the AI service can fetch. NOT a local filesystem path. When the backend and the AI run on different machines, a path valid on one is meaningless on the other."
+    },
+    "latitude": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "GPS latitude of the towfish at this ping."
+    },
+    "longitude": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "GPS longitude of the towfish at this ping."
+    },
+    "heading_deg": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Course over ground in degrees, 0 = north."
+    },
+    "altitude_m": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Towfish height above the seabed. Required for slant-range correction."
+    },
+    "nadir_col": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Image column directly beneath the towfish."
+    },
+    "range_resolution_m": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Metres of SLANT range per pixel, across-track."
+    },
+    "along_track_res_m": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Metres per pixel row. Without it there is no length estimate."
+    },
+    "layback_m": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Horizontal tow-cable offset behind the GPS antenna."
+    },
+    "nadir_row": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Reference row for along-track offsets."
+    }
+  },
+  "required": [
+    "image"
+  ],
+  "additionalProperties": true,
+  "x-notes": [
+    "Coordinates are emitted only when latitude, longitude, heading_deg, altitude_m, nadir_col and range_resolution_m are ALL present. Otherwise localization is 'none' and a warning explains why."
+  ]
+}

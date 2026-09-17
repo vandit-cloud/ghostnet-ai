@@ -1,0 +1,164 @@
+# --- environments ----------------------------------------------------------
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# --- data: never in git ----------------------------------------------------
+# Raw sonar is large and often licence-restricted. Acquisition is scripted in
+# ai/scripts/ and documented in docs/DATA.md so a clone can rebuild it.
+# Ignore contents, keep the directory itself so a fresh clone has the tree.
+ai/data/raw/*
+ai/data/interim/*
+ai/data/processed/*
+ai/data/hard_negatives/*
+ai/data/metadata/raw/*
+ai/data/metadata/normalized/*
+ai/data/annotations/raw/*
+ai/data/annotations/normalized/*
+
+# ai/data/provenance/ is NOT ignored, on purpose. dataset_candidates.csv and
+# data_inventory.csv are small text records of where data came from, what
+# licence it carries and what is actually on disk. They are the audit trail the
+# plan's provenance requirement asks for -- losing them costs more than the few
+# kilobytes they take.
+*.xtf
+*.jsf
+*.sdf
+
+# ai/data/annotate/ holds hand-drawn ground truth: the ONLY labels in this
+# project that were produced here rather than inherited, and the only ones no
+# download can replace. The labels are committed. The image copies beside them
+# are not -- they are re-fetchable from China-Offshore-SSS-AI and KLSG, and
+# they are 29 MB.
+#
+# _guide/ IS committed: it is the worked examples that define the annotation
+# convention, and taxonomy.py points a reader at it to explain what a
+# ghost_net box means. A convention nobody can see is a convention nobody can
+# reproduce. Recompressed to 1.4 MB for that reason.
+ai/data/annotate/*/images/
+# Transient overlays from check_annotations.py --render. Regenerated on demand.
+ai/data/annotate/*/review_*.png
+
+# --- model weights ---------------------------------------------------------
+# Pretrained weights are re-downloadable (ai/scripts/fetch_weights.py).
+# Training artefacts stay out -- every run produces a set and they are large.
+*.pt
+*.pth
+*.onnx
+*.engine
+ai/models/pretrained/*
+ai/models/trained/*
+
+# ...except the deployed model. 18 MB, and without it the backend silently
+# falls back to MockAIAdapter, so a fresh clone would show invented detections.
+# Shipping it is what lets anyone do a real end-to-end run. See docs/SETUP.md.
+!ai/models/trained/ghostnet.pt
+!ai/models/trained/ghostnet.json
+
+# --- runtime ---------------------------------------------------------------
+ai/experiments/*
+# ...but keep the RESULTS. Weights and plots are large and regenerable; these
+# are small JSON records of what a run actually scored and what it was trained
+# on. Losing them means a metric nobody can trace back to a dataset or commit.
+# Re-enter the run directories, re-exclude everything inside them, then
+# whitelist the few small files. Un-ignoring the directory alone lets every
+# plot and sample batch back in -- 8.7 MB on the first run.
+!ai/experiments/*/
+ai/experiments/*/*
+!ai/experiments/*/test_metrics.json
+!ai/experiments/*/background_metrics.json
+!ai/experiments/*/provenance.json
+!ai/experiments/*/results.csv
+# results.raw.csv is the pre-deduplication original, kept when two resumed
+# trainers each wrote a row for the same epoch. It is the evidence that the
+# edit to results.csv was a dedup and not a quiet correction of a metric.
+!ai/experiments/*/results.raw.csv
+# notes.md is REQUIRED by EXPERIMENT_GV7_PLAN.md 5 -- "a run with no notes.md
+# is not a result" -- and was being dropped by the rule above, which quietly
+# made every run unaccountable in the one file that says what it meant.
+# The glob covers notes.md and per-metric variants such as notes-centroid.md.
+!ai/experiments/*/notes*.md
+!ai/experiments/*/centroid_metrics.json
+!ai/experiments/*/*_by_size.json
+
+# Review renders are overlays regenerated from queue.csv by
+# rank_label_suspects.py --render. 120 of them is 69 MB, and the CSV plus the
+# script reproduce them exactly, so the evidence is the queue and not the PNGs.
+ai/data/annotate/*/_review/
+runs/
+*.log
+.env
+.env.local
+
+# --- os / editor -----------------------------------------------------------
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ...but always keep the directory markers.
+!**/.gitkeep
+
+# Demo assets. The sonar input and the reference reports ship, so a clone can
+# reproduce the exact run the docs describe (see demo/RAW_DATA.md). Everything
+# else in here is per-machine or per-run and goes stale: the survey id, the
+# table dumps, the extracted frames keyed by detection ref.
+demo/*
+!demo/RAW_DATA.md
+!demo/NBP0505_line01B_demo.xtf
+!demo/reports/
+demo/reports/*
+!demo/reports/NBP0505_line01B_full_survey.csv
+!demo/reports/NBP0505_line01B_full_survey.json
+
+# The showcase fixture DOES ship. It is 14 small frames plus a manifest, and
+# without them scripts/showcase_seed.py cannot run on a fresh clone -- the
+# frames are drawn from ai/data/processed/, which is rebuilt rather than
+# committed, so "re-stage it yourself" would mean downloading eight datasets
+# first. The manifest records the original filename and source dataset of every
+# frame, which is the provenance the plan's licensing section asks for.
+!demo/showcase/
+!demo/showcase/manifest.json
+!demo/showcase/frames/
+!demo/showcase/frames/**
+
+# The per-class .xtf containers themselves stay out -- `*.xtf` above already
+# ignores them and they are 6.4 MB each. They are generated from the showcase
+# frames, which DO ship, so `scripts/build_demo_xtf.py` rebuilds them on a
+# clone in about half a minute. The README explaining that does ship.
+!demo/xtf/
+!demo/xtf/README.md
+
+# Local rollback snapshots: a 19 MB copy of weights git already tracks.
+# Safety net for a bad promotion, not history.
+ai/models/_rollback/
+
+# Despeckled dataset copy, built by ai/scripts/build_despeckled.py.
+# Derived from processed/, ~4 GB, rebuildable in minutes.
+ai/data/processed_despeckled/
+
+# --- derived segmentation dataset ------------------------------------------
+# ai/data/net_seg/ is BUILT, not authored: build_net_seg_dataset.py copies the
+# 73 chips out of ai/data/processed/ and converts the labelme polygons in
+# ai/data/annotate/ghost_net_seg/labels/ into YOLO-seg txt. Both inputs are in
+# git, so the 24 MB of images and their derived labels are reproducible and
+# stay out. The two small records that say WHICH build this was -- the split
+# counts and the dataset_version hash the runs assert against -- are kept, for
+# the same reason ai/experiments/ keeps provenance.json.
+ai/data/net_seg/*
+!ai/data/net_seg/data.yaml
+!ai/data/net_seg/build_report.json
+
+# --- visual reference plates -----------------------------------------------
+# The underwater and sea-surface photographs the water/sky labs were built to
+# reproduce are WATERMARKED ADOBE STOCK COMPS (516851283, 236122432, 76278833).
+# They are unlicensed source material, not our work and not a deliverable, and
+# this repository has just finished saying it does not redistribute third-party
+# imagery it cannot account for -- see docs/DATA.md. They stay on local disk.
+# What ships is the reproduction: docs/WATER_LAB.md and the shader it describes.
+docs/WhatsApp*

@@ -1,0 +1,14 @@
+# Normalise line endings in the repo to LF, regardless of which PC committed.
+# Without this, one member's editor rewrites every line of a file and the diff
+# becomes unreviewable -- a real problem when two machines share a branch.
+* text=auto eol=lf
+
+# Binary-ish assets git should never try to diff or convert.
+*.png binary
+*.jpg binary
+*.pt  binary
+*.onnx binary
+*.xtf binary
+
+# Generated. Collapsed in diffs; regenerate with ai/scripts/export_schemas.py.
+contracts/*.schema.json linguist-generated=true

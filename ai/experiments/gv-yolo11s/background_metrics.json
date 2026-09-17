@@ -1,0 +1,57 @@
+{
+  "weights": "E:\\New folder\\ai\\experiments\\gv-yolo11s\\weights\\best.pt",
+  "split": "test",
+  "background_tiles": 2620,
+  "curve": [
+    {
+      "threshold": 0.1,
+      "frames_flagged": 1266,
+      "rate": 0.483206106870229,
+      "total_boxes": 6387
+    },
+    {
+      "threshold": 0.2,
+      "frames_flagged": 898,
+      "rate": 0.3427480916030534,
+      "total_boxes": 5739
+    },
+    {
+      "threshold": 0.25,
+      "frames_flagged": 757,
+      "rate": 0.28893129770992365,
+      "total_boxes": 5302
+    },
+    {
+      "threshold": 0.3,
+      "frames_flagged": 633,
+      "rate": 0.2416030534351145,
+      "total_boxes": 4795
+    },
+    {
+      "threshold": 0.4,
+      "frames_flagged": 362,
+      "rate": 0.13816793893129772,
+      "total_boxes": 3252
+    },
+    {
+      "threshold": 0.5,
+      "frames_flagged": 148,
+      "rate": 0.05648854961832061,
+      "total_boxes": 1323
+    },
+    {
+      "threshold": 0.6,
+      "frames_flagged": 57,
+      "rate": 0.021755725190839695,
+      "total_boxes": 485
+    },
+    {
+      "threshold": 0.7,
+      "frames_flagged": 19,
+      "rate": 0.007251908396946565,
+      "total_boxes": 103
+    }
+  ],
+  "note": "False-positive rate on tiles CARRYING NO ANNOTATION -- real side-scan seabed that nobody drew a box on. This is NOT the same as seabed verified to contain nothing: roughly half these tiles come from survey lines the source dataset left entirely unannotated, so every rate here is an UPPER BOUND. This is how the artificial-vs-natural requirement is scored: there is no natural class, because nobody draws boxes around rocks.",
+  "scale_warning": "`threshold` is a RAW detector score; the review floor is applied to CALIBRATED confidence. Different scales -- do not compare a row here with a row in review_floor.json. Which one is deployed depends on whether the raw gate (config.raw_conf_threshold) or the calibrated floor binds, and that depends on this run's calibration temperature. Worked out for gv5 in its own file."
+}

@@ -1,0 +1,57 @@
+{
+  "weights": "E:\\New folder\\ai\\experiments\\gv5-yolo11s\\weights\\best.pt",
+  "split": "test",
+  "background_tiles": 2930,
+  "curve": [
+    {
+      "threshold": 0.1,
+      "frames_flagged": 229,
+      "rate": 0.07815699658703072,
+      "total_boxes": 385
+    },
+    {
+      "threshold": 0.2,
+      "frames_flagged": 119,
+      "rate": 0.04061433447098976,
+      "total_boxes": 229
+    },
+    {
+      "threshold": 0.25,
+      "frames_flagged": 86,
+      "rate": 0.029351535836177476,
+      "total_boxes": 152
+    },
+    {
+      "threshold": 0.3,
+      "frames_flagged": 63,
+      "rate": 0.021501706484641638,
+      "total_boxes": 111
+    },
+    {
+      "threshold": 0.4,
+      "frames_flagged": 37,
+      "rate": 0.012627986348122866,
+      "total_boxes": 60
+    },
+    {
+      "threshold": 0.5,
+      "frames_flagged": 22,
+      "rate": 0.007508532423208191,
+      "total_boxes": 35
+    },
+    {
+      "threshold": 0.6,
+      "frames_flagged": 13,
+      "rate": 0.004436860068259386,
+      "total_boxes": 21
+    },
+    {
+      "threshold": 0.7,
+      "frames_flagged": 9,
+      "rate": 0.0030716723549488053,
+      "total_boxes": 15
+    }
+  ],
+  "note": "False-positive rate on tiles CARRYING NO ANNOTATION -- real side-scan seabed that nobody drew a box on. This is NOT the same as seabed verified to contain nothing: roughly half these tiles come from survey lines the source dataset left entirely unannotated, so every rate here is an UPPER BOUND. This is how the artificial-vs-natural requirement is scored: there is no natural class, because nobody draws boxes around rocks.",
+  "scale_warning": "`threshold` is a RAW detector score, and the review floor is applied to CALIBRATED confidence -- different scales, so do not compare a row here with a row in review_floor.json. WHICH ROW IS THE DEPLOYED ONE: the shipped detector gate is config.raw_conf_threshold = 0.10, and the shipped review floor is 0.20 calibrated, which corresponds to a raw score of about 0.02 (measured at T=2.722: calibrate(0.02)=0.1931, calibrate(0.10)=0.3085). 0.02 < 0.10, so the RAW GATE IS THE BINDING CONSTRAINT and the review floor rejects nothing that survived it -- the floor is inert in the shipped configuration. The deployed false-alarm rate is therefore the row at raw threshold 0.10 in THIS file: 7.82%. review_floor.json's false_alarm_rate column is measured with the detector opened to raw 0.02 (derive_review_floor.py --raw-conf), deliberate so the calibrated sweep is not truncated, but it is not the shipped gate."
+}

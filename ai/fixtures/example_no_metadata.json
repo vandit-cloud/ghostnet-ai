@@ -1,0 +1,44 @@
+{
+  "survey_id": "SURVEY-002",
+  "frame_id": "frame_0007",
+  "detections": [
+    {
+      "detection_id": "D-00031CC0",
+      "raw_score": 0.47,
+      "calibrated_confidence": 0.39,
+      "uncertainty": "high",
+      "bbox": [
+        600,
+        210,
+        70,
+        55
+      ],
+      "mask": null,
+      "latitude": null,
+      "longitude": null,
+      "position_error_m": null,
+      "localization": "none",
+      "dimensions": {
+        "width": null,
+        "length": null,
+        "status": "unavailable"
+      },
+      "review_status": "pending",
+      "model_version": "v0-stub",
+      "evidence_summary": {
+        "artificial_verification": "not_run",
+        "shadow_context": "not_evaluated",
+        "notes": ""
+      },
+      "class": "debris"
+    }
+  ],
+  "provenance": {
+    "model_id": "ghostnet-yolo11s",
+    "model_version": "v0-stub"
+  },
+  "warnings": [
+    "incomplete sonar geometry; detections reported without coordinates"
+  ],
+  "contract_version": "1.0.0"
+}

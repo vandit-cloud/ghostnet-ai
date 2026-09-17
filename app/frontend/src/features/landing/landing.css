@@ -1,0 +1,345 @@
+/* =============================================================================
+ * GENERATED FILE -- DO NOT EDIT BY HAND.
+ *
+ * Ported from the standalone landing demo by `scripts/port_landing_css.py`.
+ * Edit `ghostnet-demo/demo.src.html` and re-run the port; editing here means
+ * the next port silently reverts it.
+ *
+ * Every rule is scoped under `.landing` so these generic names -- .nav, .card,
+ * .btn, .stat -- cannot reach the console, which shares the app but not the
+ * design. The palette variables, the reset and .grain live in globals.css and
+ * are deliberately absent here.
+ * ========================================================================== */
+.landing {
+  /* The display face is set at very large sizes with a tight line-height, and
+     the demo relies on the three stacks being available on the element itself
+     rather than inherited from <body>. */
+  /* Height of the fixed nav. The hero copy and the instrument marquee are both
+     positioned off it, so it has to travel with this stylesheet rather than
+     sitting in globals.css where only the landing would ever read it. */
+  --nav: 66px;
+  --display: 'Monigue', 'Glinken', 'Big Shoulders Display', 'Oswald', sans-serif;
+  --ui: 'Epoch', 'Jost', 'Archivo', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  font-family: var(--font-ui), var(--ui);
+  color: var(--ink);
+  background: var(--paper);
+  /* The demo inherits `line-height: normal`; Tailwind's preflight sets
+     `html { line-height: 1.5 }`, so every element without an explicit value
+     inflates. Individually invisible, collectively not -- the nav grew 4.5px,
+     the tag pill 3px, each mono data row 3px, the page 54px overall. Scoped to
+     the landing so the console keeps Tailwind's default. */
+  line-height: normal;
+}
+
+/* -----------------------------------------------------------------------------
+ * ADDITIONS THE APP NEEDS AND THE DEMO DID NOT.
+ * Kept here, above the copied rules, so the boundary between "ported" and
+ * "written for the app" is a line in the file rather than a memory.
+ * -------------------------------------------------------------------------- */
+
+/* A CSS Grid blowout that the demo does not have and the port does.
+   `1fr` is `minmax(auto, 1fr)`, and that `auto` floor is the track's min-content
+   width -- which for a replaced element is its intrinsic width. The demo's chip
+   is an <img> with no width/height attributes, so the browser gives it a zero
+   min-content contribution and the column collapses happily on a phone. The
+   port adds width={740} height={496} so the space is reserved before the image
+   decodes (no layout shift on a 740x496 chip), and that is exactly what gives
+   the element an intrinsic size the track then refuses to shrink below: 740px
+   of column inside a 375px viewport, and the whole page scrolls sideways.
+   Keeping the attributes and letting the track shrink is the better trade. */
+.landing .detect-grid > * {
+  min-width: 0;
+}
+
+.landing .chipwrap img {
+  max-width: 100%;
+}
+
+/* The demo shipped three.js and a 1.4 MB scene inline, so its first paint and
+   its first rendered frame were the same moment. Next code-splits the scene and
+   fetches it after mount, which leaves a window -- longer on a cold cache or a
+   slow device -- where #gl is an empty transparent canvas over the pane's flat
+   fill. This is that same water read as a static gradient: sky at the top, the
+   waterline, then depth. It cross-fades out on the scene's first frame, and it
+   is also what a reduced-motion visitor sees for good. */
+.landing .hero-plate {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  transition: opacity .6s ease;
+  background:
+    linear-gradient(180deg,
+      #7fb4d8 0%,
+      #a9d4ea 11%,
+      #5e9dc4 12.5%,
+      #12547e 26%,
+      #0f4b70 52%,
+      #0a3552 78%,
+      #072639 100%);
+}
+
+/* ============================= NAV ============================= */
+.landing .nav{position:fixed;top:0;left:0;right:0;z-index:40;display:flex;align-items:center;gap:32px;
+  padding:17px 48px;border-bottom:1px solid rgba(196,248,255,.16);
+  background:linear-gradient(180deg,rgba(2,31,148,.40),rgba(2,31,148,0));
+  transition:background .35s ease,border-color .35s ease}
+.landing .nav.solid{background:rgba(245,242,243,.92);-webkit-backdrop-filter:blur(14px);
+  backdrop-filter:blur(14px);border-bottom-color:var(--rule)}
+.landing .logo{font-family:var(--font-display),var(--display);font-weight:900;font-size:28px;text-transform:uppercase;
+  color:var(--paper);line-height:1;transition:color .35s}
+.landing .logo i{font-style:normal;-webkit-text-stroke:1.2px var(--sky);color:transparent}
+.landing .nav.solid .logo{color:var(--imperial)}
+.landing .nav.solid .logo i{-webkit-text-stroke-color:var(--imperial)}
+/* :not(.btn) matters. `.nav a` and `.nav.solid a` both out-specify
+   `.btn-primary`, so without it the nav's Open console button takes the link
+   colour instead of its own -- which over the imperial fill is ink-2 on
+   imperial, about 1.3:1, i.e. unreadable the moment the nav goes solid. The
+   button carries its own colour in both nav states. */
+.landing .nav a:not(.btn){font-size:12.5px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--onblue);text-decoration:none;transition:color .35s}
+.landing .nav a{text-decoration:none}
+.landing .nav.solid a:not(.btn){color:var(--ink-2)}
+.landing .nav .sp{margin-left:auto}
+.landing .tag{font-family:var(--font-mono),var(--mono);font-size:11px;letter-spacing:.06em;color:var(--onblue-2);
+  border:1px solid var(--blue-rule);border-radius:100px;padding:6px 12px;transition:.35s}
+.landing .nav.solid .tag{color:var(--ink-3);border-color:var(--rule)}
+/* ============================= HERO ============================= */
+.landing .hero-track{position:relative;height:360vh}
+.landing .hero-pane{position:sticky;top:0;height:100vh;overflow:hidden;background:#0a2a44}
+.landing #gl{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0}
+.landing .scrim{position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:linear-gradient(180deg,rgba(2,31,148,.42) 0%,rgba(2,31,148,.05) 30%,rgba(2,31,148,0) 52%),
+             linear-gradient(0deg,rgba(2,31,148,.70) 0%,rgba(2,31,148,.14) 32%,rgba(2,31,148,0) 54%)}
+/* Left-aligned column. The headline sets in three lines against the left edge
+   and the vessel sails in the clear right-hand two thirds, so type and subject
+   never fight for the same pixels - which is what the centred version did. */
+.landing .hero-copy{position:absolute;z-index:5;left:0;top:calc(var(--nav) + 6vh);
+  max-width:min(54vw,860px);display:flex;flex-direction:column;align-items:flex-start;
+  text-align:left;padding:0 0 0 52px;will-change:opacity,transform}
+.landing .hero-foot{position:absolute;z-index:5;left:0;bottom:150px;max-width:min(48vw,660px);
+  display:flex;flex-direction:column;align-items:flex-start;text-align:left;padding:0 0 0 52px}
+.landing .eyebrow{display:flex;align-items:center;gap:12px;font-family:var(--font-mono),var(--mono);font-size:11.5px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--sky)}
+.landing .eyebrow u{width:52px;height:1px;background:var(--sky);opacity:.6;display:inline-block}
+.landing .hero-t{font-family:var(--font-display),var(--display);font-weight:900;text-transform:uppercase;
+  font-size:clamp(40px,5.6vw,104px);line-height:.86;color:var(--paper);margin-top:16px;
+  text-shadow:0 2px 34px rgba(2,31,148,.5)}
+.landing .hero-t em{font-style:normal;background:var(--sky);color:var(--imperial);padding:0 14px}
+.landing .hero-t .out{-webkit-text-stroke:2px var(--sky);color:transparent}
+.landing .hero-p{max-width:660px;font-size:16.5px;line-height:1.62;color:rgba(245,242,243,.88);font-weight:300}
+.landing .hero-p b{font-weight:500;color:var(--sky)}
+.landing .cta{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;justify-content:flex-start}
+.landing .btn{display:inline-flex;align-items:center;gap:10px;text-decoration:none;cursor:pointer;
+  font-family:var(--font-display),var(--display);font-weight:700;text-transform:uppercase;font-size:18px;
+  letter-spacing:.03em;padding:14px 26px 11px;border:1px solid transparent}
+.landing .btn-primary{background:var(--imperial);color:var(--paper)}
+.landing .btn-sky{background:var(--sky);color:var(--imperial)}
+.landing .btn-line{background:transparent;color:var(--sky);border-color:var(--sky)}
+.landing .stats{position:absolute;z-index:5;left:48px;right:48px;bottom:26px;display:flex;
+  border-top:1px solid var(--blue-rule);padding-top:16px}
+.landing .stat{padding:0 30px;border-right:1px solid var(--blue-rule);flex:1}
+.landing .stat:first-child{padding-left:0}
+.landing .stat:last-child{border-right:0}
+.landing .stat b{display:block;font-family:var(--font-display),var(--display);font-weight:800;font-size:42px;line-height:.9;color:var(--sky)}
+.landing .stat b s{text-decoration:none;font-size:19px;color:var(--onblue-2)}
+.landing .stat span{display:block;margin-top:5px;font-family:var(--font-mono),var(--mono);font-size:10.5px;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--onblue-2)}
+.landing #instruments{opacity:0;transition:opacity .3s linear}
+.landing .marq{position:absolute;z-index:6;top:var(--nav);left:0;right:0;display:flex;gap:32px;
+  padding:12px 48px;background:rgba(2,31,148,.5);border-bottom:1px solid var(--blue-rule);
+  font-family:var(--font-mono),var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--sky);white-space:nowrap;overflow:hidden}
+.landing .marq em{font-style:normal}
+.landing .rdo{position:absolute;z-index:6;right:48px;top:calc(var(--nav) + 54px);font-family:var(--font-mono),var(--mono);
+  font-size:10.5px;letter-spacing:.1em;color:var(--onblue-2);text-transform:uppercase;
+  text-align:right;line-height:2}
+.landing .rdo em{font-style:normal;color:var(--sky)}
+.landing .hud{position:absolute;z-index:6;left:48px;bottom:104px;right:48px;display:flex;
+  justify-content:space-between;align-items:flex-end;gap:20px}
+.landing .hud p{font-family:var(--font-mono),var(--mono);font-size:11px;letter-spacing:.08em;color:var(--onblue);
+  text-transform:uppercase;line-height:1.8;text-align:right}
+.landing .swap{position:relative;flex:none;min-width:280px;height:112px}
+.landing .swap b{position:absolute;left:0;bottom:0;white-space:nowrap;font-family:var(--font-display),var(--display);
+  font-weight:800;font-size:clamp(38px,4.4vw,72px);line-height:.8;color:var(--sky);
+  text-transform:uppercase;opacity:0;transform:translateY(10px);
+  transition:opacity .45s ease,transform .45s ease}
+.landing .swap b.on{opacity:1;transform:none}
+.landing .cue{position:absolute;z-index:7;left:52px;bottom:104px;
+  font-family:var(--font-mono),var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--sky);display:flex;align-items:center;gap:10px;transition:opacity .4s}
+.landing .cue u{display:inline-block;width:46px;height:1px;background:var(--sky);animation:cue 1.9s ease-in-out infinite}
+@keyframes cue{0%,100%{transform:scaleX(.3);transform-origin:left}50%{transform:scaleX(1);transform-origin:left}}
+/* ============================= SECTIONS ============================= */
+.landing .band{position:relative;padding:104px 52px;border-top:1px solid var(--rule);background:var(--paper)}
+.landing .band.blue{background:var(--atlantic);color:var(--paper);border-top:14px solid var(--imperial)}
+.landing .kicker{font-family:var(--font-mono),var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3)}
+.landing .band.blue .kicker{color:var(--onblue-2)}
+.landing .h2{font-family:var(--font-display),var(--display);font-weight:900;text-transform:uppercase;
+  font-size:clamp(38px,5vw,80px);line-height:.92;color:var(--imperial);margin-top:16px;max-width:17ch}
+.landing .band.blue .h2{color:var(--sky)}
+.landing .lede{margin-top:22px;max-width:640px;font-size:16.5px;line-height:1.64;font-weight:300;color:var(--ink-2)}
+.landing .band.blue .lede{color:var(--onblue)}
+.landing .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1px;
+  margin-top:56px;background:var(--rule);border:1px solid var(--rule)}
+.landing .card{background:var(--paper);padding:32px 28px 36px}
+.landing .card h3{font-family:var(--font-display),var(--display);font-weight:800;text-transform:uppercase;font-size:27px;
+  line-height:.94;color:var(--imperial)}
+.landing .card p{margin-top:14px;font-size:14.5px;line-height:1.66;color:var(--ink-2);font-weight:300}
+.landing .card .n{font-family:var(--font-mono),var(--mono);font-size:10.5px;letter-spacing:.16em;color:var(--ink-4);
+  text-transform:uppercase;display:block;margin-bottom:16px}
+.landing .cardfoot{margin-top:22px;padding-top:12px;border-top:1px solid var(--rule);display:flex;
+  justify-content:space-between;align-items:baseline;gap:12px;font-family:var(--font-mono),var(--mono);
+  font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+.landing .cardfoot k{color:var(--ink-4);font-style:normal}
+.landing .cardfoot v{color:var(--imperial);font-style:normal}
+.landing .cardfoot v s{text-decoration:none;color:var(--ink-4)}
+.landing .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1px;margin-top:56px;
+  background:var(--blue-rule);border:1px solid var(--blue-rule)}
+.landing .step{background:var(--atlantic);padding:26px 22px 30px}
+.landing .step b{font-family:var(--font-display),var(--display);font-weight:800;font-size:21px;text-transform:uppercase;color:var(--sky);display:block}
+.landing .step span{font-family:var(--font-mono),var(--mono);font-size:10px;letter-spacing:.16em;color:var(--onblue-2);
+  text-transform:uppercase;display:block;margin-bottom:12px}
+.landing .step p{margin-top:10px;font-size:13.5px;line-height:1.6;color:var(--onblue);font-weight:300}
+.landing .quote{margin-top:56px;border-left:3px solid var(--imperial);padding:6px 0 6px 26px;max-width:760px}
+.landing .quote p{font-size:19px;line-height:1.58;color:var(--ink);font-weight:300}
+.landing .quote cite{display:block;margin-top:14px;font-family:var(--font-mono),var(--mono);font-size:10.5px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-style:normal}
+/* detection band */
+.landing .detect-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:0;margin-top:52px;border:1px solid var(--rule)}
+.landing .chipwrap{position:relative;background:#061b2e;border-right:1px solid var(--rule)}
+.landing .chipwrap img{display:block;width:100%;height:auto}
+.landing .chip-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.landing .chip-svg path{fill:rgba(196,248,255,.12);stroke:var(--sky);stroke-width:1.6;vector-effect:non-scaling-stroke}
+.landing .chiptag{position:absolute;left:14px;top:12px;z-index:3;font-family:var(--font-mono),var(--mono);font-size:10px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--sky);background:rgba(2,31,148,.62);padding:5px 9px}
+.landing .chipcap{padding:12px 16px;font-family:var(--font-mono),var(--mono);font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-3);border-top:1px solid var(--rule)}
+.landing .readout{padding:30px 30px 26px;display:flex;flex-direction:column}
+.landing .rrow{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:11px 0;
+  border-bottom:1px solid var(--rule-2);font-family:var(--font-mono),var(--mono);font-size:11.5px;
+  letter-spacing:.08em;text-transform:uppercase}
+.landing .rrow k{color:var(--ink-3);font-style:normal}
+.landing .rrow v{color:var(--imperial);font-style:normal;text-align:right}
+.landing .rrow.big v{font-family:var(--font-display),var(--display);font-size:30px;line-height:1;letter-spacing:0}
+.landing .rnote{margin-top:22px;font-size:14px;line-height:1.62;color:var(--ink-2);font-weight:300}
+.landing .gate{margin-top:auto;padding-top:24px;border-top:1px solid var(--rule)}
+.landing .gate p{font-size:13.5px;line-height:1.6;color:var(--ink-2);font-weight:300;margin-bottom:14px}
+.landing .gate .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.landing .gate .btn-line{color:var(--imperial);border-color:var(--imperial)}
+.landing .gate .link{font-family:var(--font-display),var(--display);font-weight:700;text-transform:uppercase;font-size:16px;
+  color:var(--ink-3);text-decoration:none;padding:6px 2px}
+/* spec table */
+.landing .spec{margin-top:52px;border-top:1px solid var(--rule)}
+.landing .spec div{display:grid;grid-template-columns:240px 1fr;gap:20px;padding:13px 0;
+  border-bottom:1px solid var(--rule-2);font-size:14px}
+.landing .spec k{font-family:var(--font-mono),var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink-3);font-style:normal;padding-top:3px}
+.landing .spec v{color:var(--ink-2);font-weight:300;font-style:normal}
+/* ============================= FOOTER ============================= */
+.landing .cta-band{background:var(--imperial);color:var(--paper);padding:86px 52px}
+.landing .cta-band .h2{color:var(--paper)}
+.landing .cta-band .row{display:flex;flex-wrap:wrap;gap:14px;margin-top:32px;align-items:center}
+.landing .foot{background:#01113f;color:var(--paper);padding:64px 52px 34px}
+.landing .foot-grid{display:grid;grid-template-columns:1.6fr repeat(4,1fr);gap:40px;
+  padding-bottom:44px;border-bottom:1px solid rgba(196,248,255,.14)}
+.landing .foot-brand .logo{color:var(--paper);font-size:30px}
+.landing .foot-brand p{margin-top:16px;max-width:34ch;font-size:14px;line-height:1.65;
+  color:var(--onblue);font-weight:300}
+.landing .foot-brand .badge{display:inline-block;margin-top:18px;font-family:var(--font-mono),var(--mono);font-size:10px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--sky);
+  border:1px solid rgba(196,248,255,.3);padding:6px 10px}
+.landing .foot h4{font-family:var(--font-mono),var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--onblue-2);margin-bottom:16px}
+.landing .foot ul{list-style:none}
+.landing .foot li{margin:9px 0}
+.landing .foot li a{color:var(--onblue);text-decoration:none;font-size:14px;font-weight:300}
+.landing .foot li a:hover{color:var(--sky)}
+.landing .foot-base{display:flex;flex-wrap:wrap;gap:18px;align-items:center;padding-top:26px;
+  font-family:var(--font-mono),var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--onblue-2)}
+.landing .foot-base .sp{margin-left:auto}
+.landing .foot-base a{color:var(--onblue-2);text-decoration:none}
+.landing .foot-base a:hover{color:var(--sky)}
+.landing .disclaimer{margin-top:22px;font-size:12.5px;line-height:1.7;color:rgba(245,242,243,.5);
+  max-width:96ch;font-weight:300}
+@media (max-width:1000px){
+.landing .nav{gap:14px;padding:12px 20px}
+.landing .nav .tag,
+.landing .nav a:not(.btn){display:none}
+.landing .logo{font-size:22px;white-space:nowrap}
+.landing .nav .btn{margin-left:auto}
+.landing .hero-copy{padding:0 22px;top:calc(var(--nav) + 4vh)}
+.landing .hero-t{font-size:clamp(40px,11.5vw,62px)}
+.landing .hero-foot{padding:0 22px;bottom:172px}
+.landing .stats{left:22px;right:22px;flex-wrap:wrap;gap:10px 0}
+.landing .stat{flex:1 0 45%;padding:0 14px;border-right:0}
+.landing .stat b{font-size:30px}
+.landing .hud,
+.landing .rdo,
+.landing .cue{display:none}
+.landing .marq{padding:10px 22px}
+.landing .band,
+.landing .cta-band,
+.landing .foot{padding-left:24px;padding-right:24px}
+.landing .band{padding-top:72px;padding-bottom:72px}
+.landing .h2{max-width:none}
+.landing .detect-grid{grid-template-columns:1fr}
+.landing .chipwrap{border-right:0;border-bottom:1px solid var(--rule)}
+.landing .readout{padding:24px 20px}
+.landing .spec div{grid-template-columns:1fr;gap:4px}
+.landing .foot-grid{grid-template-columns:1fr 1fr;gap:28px}
+}
+
+/* =============================================================================
+ * CONTRAST CORRECTIONS.
+ *
+ * These come LAST on purpose. They are single-class overrides of rules copied
+ * verbatim above, at identical specificity, so order is the only thing that
+ * decides them -- written into the header instead, the demo's own declarations
+ * won and none of this applied.
+ *
+ * They are deliberate, flagged deviations from a finalised design. Each one is
+ * a place where a colour measures below WCAG AA, which is a defect in any
+ * palette, and each moves only far enough to be readable while keeping its role
+ * and its position in the hierarchy. Measured ratios are quoted so the next
+ * person can check rather than trust.
+ * ========================================================================== */
+
+/* ink-4 is 1.74:1 on paper -- the worst text contrast in the product. The demo
+   spends it on the card eyebrow ("Geometry", "Confidence", "Accountability")
+   and on both halves of the card foot, which are real content rather than the
+   faint marks ink-4 is for. */
+.landing .card .n,
+.landing .cardfoot k,
+.landing .cardfoot v s {
+  color: var(--ink-3);
+}
+
+/* The same problem on blue: onblue-2 (paper at 42%) measures 2.79:1 on the
+   atlantic band, 3.06:1 on the imperial one and 3.52:1 over the hero. It
+   carries the nav's contract tag, the hero stat captions, the instrument
+   readout, the stage numbers and every blue-band kicker -- i.e. most of the
+   small type on the page. */
+.landing .tag,
+.landing .stat span,
+.landing .stat b s,
+.landing .rdo,
+.landing .band.blue .kicker,
+.landing .cta-band .kicker,
+.landing .step span {
+  color: rgba(245, 242, 243, 0.72);
+}
+
+/* The footer sits on #01113F, where the column headings, the legal row and the
+   disclaimer all measured 3.68:1 or below. */
+.landing .foot h4,
+.landing .foot-base,
+.landing .foot-base a {
+  color: rgba(245, 242, 243, 0.78);
+}
+
+.landing .disclaimer {
+  color: rgba(245, 242, 243, 0.74);
+}

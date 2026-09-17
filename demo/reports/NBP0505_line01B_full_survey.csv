@@ -1,0 +1,3 @@
+detection_id,survey_id,frame_id,classification,confidence,uncertainty,latitude,longitude,position_error_m,width,length,priority,review_status,model_version,timestamp
+D-2F811B25,b183a189-907c-4260-8795-6699523a4bab,48d262d9-7365-4af7-acca-609523bd8c16,debris,0.3185,high,-46.346100814019806,-73.7273604582446,3.18,12.93,150.17,low,pending,gv5-yolo11s,2026-09-05T13:43:24.684097+05:30
+D-76EF0D98,b183a189-907c-4260-8795-6699523a4bab,3b624209-4f6d-4029-885e-68af4c7e15f9,debris,0.3736,high,-46.34628604826851,-73.72667374196891,3.76,13.8,113.84,low,pending,gv5-yolo11s,2026-09-05T13:43:25.292535+05:30

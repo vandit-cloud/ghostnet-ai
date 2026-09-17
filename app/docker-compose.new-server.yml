@@ -1,0 +1,56 @@
+# Standalone compose file for a second, isolated instance of this stack,
+# running alongside the existing `app` project on different host ports.
+#
+# Usage:
+#   docker compose -p ghostnet-new -f docker-compose.new-server.yml up -d --build
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ghostnet
+      POSTGRES_PASSWORD: ghostnet
+      POSTGRES_DB: ghostnet
+    ports:
+      - "5443:5432"
+    volumes:
+      - ghostnet_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ghostnet"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://ghostnet:ghostnet@db:5432/ghostnet
+      JWT_SECRET: change-me-in-production
+      SEED_ADMIN_USERNAME: operator
+      SEED_ADMIN_PASSWORD: operator123
+      STORAGE_ROOT: /app/uploads
+      CORS_ORIGINS: '["http://localhost:3010"]'
+    ports:
+      - "8010:8000"
+    volumes:
+      - ghostnet_uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:8010/api/v1
+        NEXT_PUBLIC_WS_BASE_URL: ws://localhost:8010/api/v1
+    restart: unless-stopped
+    ports:
+      - "3010:3000"
+    depends_on:
+      - backend
+
+volumes:
+  ghostnet_pgdata:
+  ghostnet_uploads:

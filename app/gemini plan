@@ -1,0 +1,63 @@
+# GhostNet-AI: Strategic Additions & Winning Innovations
+
+> **Scope:** High-impact technical and operational modules to append to the master architecture for SIH26057.
+
+---
+
+## 1. Robotics & AUV Middleware Bridge (ROS 2 / MAVLink)
+
+*   **ROS 2 Humble / Iron Node (`sonar_anomaly_detector`):**
+    *   **Subscriber:** Ingests raw sonar ping streams directly from topics like `/sensors/sonar/sidescan` or offline replay from ROS 2 `.db3` / `.mcap` bags.
+    *   **Publisher:** Emits structured hazard coordinate topics (`/marine_debris/detected_hazard`) containing GPS coordinates, target bounding dimensions, estimated height, and confidence.
+*   **MAVLink Integration for Drone/AUV Waypoint Correction:**
+    *   Emits `STATUSTEXT` or custom MAVLink mission messages (`MISSION_ITEM_INT`) to enable an autonomous surface vehicle (ASV) or AUV to execute a dynamic loiter or re-scan pattern over suspected ghost nets.
+
+---
+
+## 2. Advanced Low-Power Quantization (INT8 PTQ Pipeline)
+
+*   **Post-Training Quantization (PTQ) Workflow:**
+    *   Generate a representative calibration cache (100–200 diverse SSS frames covering rock clusters, sand ripples, and debris).
+    *   Quantize YOLO-seg from FP32 to INT8 precision using ONNX Runtime / TensorRT INT8 calibrator.
+*   **Target Edge Metrics Dashboard:**
+    *   Track and display real-time **FPS/Watt**, latency per frame (targeting `< 30 ms` on 15W edge compute), and peak VRAM consumption (`< 1.8 GB`) to prove true offline autonomous drone viability.
+
+---
+
+## 3. Marine Operations UX: Deck / High-Contrast Sunlight Mode
+
+*   **Dual UI Profiles:**
+    *   **Ops Lab Mode (Default):** Deep oceanic dark palette for low-light control rooms and night shifts.
+    *   **Deck / Sunlight Mode:** High-contrast, anti-glare monochrome/amber theme optimized for marine crew tablets and rugged field laptops under direct, harsh sunlight on open water.
+*   **Offline Tile Caching (OpenSeaMap / Local MBTiles):**
+    *   Pre-package nautical charts (bathymetry, navigational buoys, shipping lanes) via offline `.mbtiles` so GIS functionality does not break when operating out-of-range of coastal 4G/5G.
+
+---
+
+## 4. Ecological & Economic Impact Evaluation Engine
+
+*   **Automated Risk Valuation:**
+    *   Translate raw bounding boxes into quantifiable conservation and financial metrics in the generated JSON/CSV report:
+        *   **Ghost Gear Entanglement Risk Index:** Estimated risk score based on detected net area ($m^2$) and local benthic biodiversity data.
+        *   **Propeller Hazard Prevention Index:** Estimated commercial vessel repair costs avoided ($USD/INR) based on depth and proximity to shipping channels.
+        *   **Coral Reef Smothering Area:** Bounding polygon coverage mapped against marine protected area (MPA) polygons.
+
+---
+
+## 5. Raw Sonar Binary Parsers (XTF / JSF Ingestion)
+
+*   **Native File Format Support:**
+    *   **eXtended Triton Format (`.xtf`):** Direct binary parsing of sonar packet headers (sensor altitude, pitch, roll, heave, heading, slant range).
+    *   **EdgeTech JSF (`.jsf`):** Direct stream extraction for high-frequency side-scan sonar logs.
+*   **Slant-Range Correction (SRC):**
+    *   Convert non-linear slant-range acoustic pixels to linear ground-range coordinates using towfish altitude metadata prior to inference.
+
+---
+
+## 6. Zero-Touch Offline Deployment Architecture
+
+*   **Single-Command Stack (`docker-compose.edge.yml`):**
+    *   Bundles FastAPI backend, React UI, PostGIS, and ONNX Runtime CPU/GPU engine into a self-contained container environment.
+    *   Includes a warm-start model cache containing baseline weights and calibration profiles.
+*   **Air-Gapped Golden Path Validation:**
+    *   Includes an automated self-test script (`run_offline_check.sh`) that disconnects networking interfaces, executes an inference run on a 50-frame sample survey, and verifies report generation in under 60 seconds.

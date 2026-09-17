@@ -1,0 +1,58 @@
+{
+  "survey_id": "b183a189-907c-4260-8795-6699523a4bab",
+  "generated_at": "2026-09-05T08:13:29.645257+00:00",
+  "report_type": "full_survey",
+  "filters": {},
+  "detections": [
+    {
+      "detection_id": "D-2F811B25",
+      "frame_id": "48d262d9-7365-4af7-acca-609523bd8c16",
+      "class": "debris",
+      "raw_score": 0.112,
+      "calibrated_confidence": 0.3185,
+      "uncertainty": "high",
+      "latitude": -46.346100814019806,
+      "longitude": -73.7273604582446,
+      "position_error_m": 3.18,
+      "dimensions": {
+        "width": 12.93,
+        "length": 150.17,
+        "status": "estimated"
+      },
+      "priority": "low",
+      "review_status": "pending",
+      "model_version": "gv5-yolo11s",
+      "evidence_summary": {
+        "artificial_verification": "positive",
+        "shadow_context": "not_evaluated: the shadow would fall outside this frame",
+        "notes": "detector class: wreck"
+      },
+      "created_at": "2026-09-05T13:43:24.684097+05:30"
+    },
+    {
+      "detection_id": "D-76EF0D98",
+      "frame_id": "3b624209-4f6d-4029-885e-68af4c7e15f9",
+      "class": "debris",
+      "raw_score": 0.1968,
+      "calibrated_confidence": 0.3736,
+      "uncertainty": "high",
+      "latitude": -46.34628604826851,
+      "longitude": -73.72667374196891,
+      "position_error_m": 3.76,
+      "dimensions": {
+        "width": 13.8,
+        "length": 113.84,
+        "status": "estimated"
+      },
+      "priority": "low",
+      "review_status": "pending",
+      "model_version": "gv5-yolo11s",
+      "evidence_summary": {
+        "artificial_verification": "positive",
+        "shadow_context": "confirmed: the port flank is 44% darker than the near flank, consistent with an object standing proud of the seabed",
+        "notes": "detector class: wreck"
+      },
+      "created_at": "2026-09-05T13:43:25.292535+05:30"
+    }
+  ]
+}

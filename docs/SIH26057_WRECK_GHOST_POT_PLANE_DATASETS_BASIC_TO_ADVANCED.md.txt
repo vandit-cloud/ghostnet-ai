@@ -1,0 +1,965 @@
+# SIH26057 — GhostNet-AI
+# DATASET LIBRARY: WRECK + GHOST POT + PLANE
+## Basic → Strong → Advanced | Download Sources | Exact Use
+
+> **Scope:** This document contains only the three target families requested:
+> 1. Wreck / Shipwreck
+> 2. Ghost Pot / Derelict Fishing Gear
+> 3. Plane / Aircraft wreck
+>
+> Use each source for the class it actually labels. Do not relabel one object type into another.
+
+## 1. Target Classes
+
+Normalized project labels:
+
+```text
+wreck
+ghost_pot
+plane
+```
+
+Optional later:
+
+```text
+unknown
+other_fishing_gear
+other_wreck
+```
+
+Only add a class when the source ground truth supports it.
+
+---
+
+# 2. Best Overall Strategy
+
+```text
+WRECK
+ ├─ AI4Shipwrecks
+ ├─ SeabedObjects
+ └─ optional research-derived data
+
+GHOST POT
+ └─ GhostVision / Ghost Pot
+
+PLANE
+ ├─ SeabedObjects
+ ├─ Roboflow Side Scan Sonar
+ └─ optional research-derived data
+```
+
+There is no need to download every source immediately. Start with the cleanest direct sources, establish a baseline, then expand.
+
+---
+
+# 3. 🟢 BASIC — FIRST DATA TO DOWNLOAD
+
+## 3.1 WRECK — AI4Shipwrecks
+
+### What it contains
+
+A real Side-Scan Sonar shipwreck benchmark.
+
+Official paper reports:
+
+```text
+28 distinct shipwrecks
+286 high-resolution labeled SSS images
+pixel-wise shipwreck labels
+```
+
+Collected using an AUV in Thunder Bay National Marine Sanctuary with an EdgeTech 2205 SSS.
+
+### Use
+
+```text
+wreck detection
+wreck segmentation
+wreck preprocessing
+wreck positive examples
+natural/background comparison
+```
+
+### Source / download
+
+Official project:
+https://umfieldrobotics.github.io/ai4shipwrecks/
+
+University of Michigan Deep Blue:
+https://deepblue.lib.umich.edu/data/concern/data_sets/8623hz41x
+
+GitHub:
+https://github.com/umfieldrobotics/ai4shipwrecks
+
+Paper:
+https://doi.org/10.1177/02783649241266853
+
+### Label mapping
+
+```text
+shipwreck → wreck
+```
+
+### Why first
+
+This is one of the cleanest direct SSS sources for the wreck class. The published benchmark specifically reports 28 wrecks and 286 labeled SSS images. citeturn883133search1turn990721search6
+
+---
+
+## 3.2 GHOST POT — GhostVision / Ghost Pot
+
+### What it contains
+
+Real Side-Scan Sonar imagery collected in Delaware's Inland Bays and Delaware Bay for detecting derelict crab pots ("ghost pots").
+
+The dataset source reports:
+
+```text
+6,674 annotated sonar images
+consumer-grade Humminbird SSS
+bounding-box annotations
+```
+
+The current Zenodo package also provides a downloadable archive.
+
+### Use
+
+```text
+ghost_pot
+derelict fishing gear
+fishing-gear detection
+real SSS object detection
+```
+
+### Source / download
+
+Zenodo:
+https://zenodo.org/records/20056679
+
+Hugging Face:
+https://huggingface.co/datasets/PINGEcosystem/sss-crab-pot-detection-ds
+
+GitHub:
+https://github.com/PINGEcosystem/GhostVision
+
+### Important
+
+```text
+ghost_pot ≠ ghost_net
+```
+
+Do not label crab pots as ghost nets.
+
+### License
+
+The current Hugging Face dataset card lists:
+
+```text
+CC-BY-SA-4.0
+```
+
+Verify the current original/source terms before redistribution.
+
+### Why first
+
+This is your strongest directly verified SSS source for the **ghost-fishing-gear** part of the project. citeturn883133search3turn883133search5
+
+---
+
+## 3.3 PLANE — SeabedObjects
+
+### What it contains
+
+The public SeabedObjects Ship-and-Airplane repository reports:
+
+```text
+385 ship images
+62 airplane images
+```
+
+These are real sidescan sonar images.
+
+### Use
+
+```text
+plane
+wreck
+additional sonar-object diversity
+```
+
+### Source / download
+
+GitHub:
+https://github.com/huoguanying/SeabedObjects-Ship-and-Airplane-dataset
+
+The repository includes:
+
+```text
+plane-real.zip
+ship-real-1.zip
+ship-real-2.zip
+ship-real-3.zip
+```
+
+### Label mapping
+
+```text
+ship → wreck
+airplane → plane
+```
+
+only after confirming the source labels and target definitions.
+
+### License
+
+The repository states the dataset is open for academic use. Re-check current terms before redistribution or commercial use.
+
+citeturn627000search0
+
+---
+
+# 4. 🟡 STRONG — ADD AFTER BASELINE
+
+## 4.1 WRECK + PLANE — Roboflow Side Scan Sonar
+
+A public Roboflow Side Scan Sonar project contains:
+
+```text
+Ship
+Plane
+```
+
+The current project reports:
+
+```text
+550 images
+CC BY 4.0
+```
+
+### Source
+
+https://universe.roboflow.com/dae-hyeok-lee/side-scan-sonar
+
+### Use
+
+```text
+plane
+ship/wreck
+additional SSS domain variation
+```
+
+### Important
+
+Check the exact downloadable dataset version, annotation format, and source license before adding it to your training corpus.
+
+citeturn627000search2turn627000search5
+
+---
+
+## 4.2 WRECK + PLANE — KLSG Variant
+
+A public KLSG-II repository reports a sonar dataset containing:
+
+```text
+66 airplane
+487 ship
+578 seafloor
+```
+
+This differs from the older SeabedObjects repository counts. Treat it as a dataset/version variation, not automatically as additional unique images.
+
+### Source
+
+https://github.com/HHUCzCz/-SeabedObjects-KLSG--II
+
+### Use
+
+```text
+plane
+wreck
+natural seafloor
+```
+
+citeturn627000search8turn627000search7
+
+---
+
+## 4.3 WRECK + PLANE — Sonar Segmentation Research Repository
+
+This public repository documents a processed KLSG/SeabedObjects-derived set with:
+
+```text
+aircraft
+shipwreck
+fish
+other
+```
+
+and YOLO-format labels in its pipeline.
+
+### Source
+
+https://github.com/lMelkorl/sonar-segmentation
+
+### Use
+
+```text
+plane detection
+wreck detection
+YOLO-format experimentation
+segmentation experiments
+```
+
+Treat this as a derived/processed source and prefer the original dataset for provenance where possible. citeturn990721search2
+
+---
+
+# 5. 🔴 ADVANCED — RESEARCH / EXPERIMENTAL SOURCES
+
+## 5.1 Sonar Diffusion Dataset — WRECK + PLANE
+
+A public Hugging Face dataset contains cropped sonar examples with textual classes including:
+
+```text
+shipwreck
+airplane
+other
+fish
+```
+
+Current viewer reports:
+
+```text
+762 rows
+```
+
+### Source
+
+https://huggingface.co/datasets/PaweekornSora/sonar-diffusion-dataset
+
+### Use
+
+```text
+representation learning
+experimental pretraining
+sonar-generation research
+plane/wreck domain expansion
+```
+
+### Caution
+
+It is not the first dataset to trust as your official benchmark. Inspect provenance and license first.
+
+citeturn627000search9
+
+---
+
+## 5.2 Unsupervised Shipwreck / Domain Adaptation Resources
+
+A research implementation studies shipwreck recognition under domain changes and references open SSS sources such as SeabedObjects-KLSG and SCTD.
+
+### Source
+
+https://github.com/firekeepers/DCBD
+
+### Paper
+
+https://www.nature.com/articles/s41598-024-63501-1
+
+### Use
+
+```text
+wreck domain adaptation
+unlabeled SSS
+clear/turbid domain shift
+advanced robustness
+```
+
+The associated research reports clear-water and turbid-water sets and uses open sonar sources for its experiments. citeturn990721search7turn990721search4
+
+---
+
+## 5.3 SCTD — Sonar Common Target Detection Dataset
+
+SCTD provides:
+
+```text
+sonar target images
+Pascal VOC/XML annotations
+```
+
+### Source
+
+https://github.com/MingqiangNing/SCTD
+
+### Files
+
+```text
+SCTD.zip
+SCTD2.0.rar
+```
+
+### Use
+
+Only add targets that, after inspection, are useful for:
+
+```text
+wreck
+plane
+```
+
+Do not assume every sonar class in SCTD maps to your target classes.
+
+citeturn990721search0
+
+---
+
+## 5.4 SCTD 3.0
+
+A newer research repository describes:
+
+> Sonar Common Target Detection in theWild — A Large-Scale, Multi-Scene Dataset from Real Marine Surveys
+
+### Source
+
+https://github.com/automlresearch/SCTD-3.0
+
+### Use
+
+```text
+advanced sonar domain diversity
+multi-scene testing
+research/generalization
+```
+
+The project says the paper is under review, so verify access/license/status before depending on it.
+
+citeturn990721search8
+
+---
+
+# 6. ADVANCED READY-MADE SIH26057-STYLE RESOURCE
+
+## DRISHTI-SSS
+
+A current Hugging Face dataset explicitly describes itself as an SIH 2026 / PS 26057 marine-debris and anomaly detector dataset.
+
+Its release states:
+
+```text
+YOLO-format 640 px tiles
+CC-BY-SA-4.0
+```
+
+Its source attribution includes:
+
+```text
+pipe / background → SubPipe
+wreckA → AI4Shipwrecks
+wreckR → Roboflow Ship + Plane
+```
+
+It explicitly says its shipwreck split has not yet been fully audited for site disjointness, and its ghost-net evaluation is synthetic-on-synthetic rather than a field metric.
+
+### Source
+
+https://huggingface.co/datasets/rehan9599/drishti-sss
+
+### Use
+
+```text
+quick reference
+dataset assembly study
+SIH-like implementation reference
+YOLO-format examples
+```
+
+### IMPORTANT
+
+Do not simply copy it and claim the whole thing is your independently collected dataset. Follow its attribution/share-alike requirements and understand that it is an assembled/derived release.
+
+citeturn990721search3
+
+---
+
+# 7. THREE-CLASS FINAL MAP
+
+| Source | Wreck | Ghost Pot | Plane | Recommended stage |
+|---|:---:|:---:|:---:|---|
+| AI4Shipwrecks | ✅ | ❌ | ❌ | P0 |
+| GhostVision / Ghost Pot | ❌ | ✅ | ❌ | P0 |
+| SeabedObjects | ✅ | ❌ | ✅ | P0 |
+| Roboflow Side Scan Sonar | ✅ Ship | ❌ | ✅ | P1 |
+| KLSG-II | ✅ | ❌ | ✅ | P1 |
+| Sonar segmentation derived data | ✅ | ❌ | ✅ | P1 |
+| Sonar Diffusion Dataset | ✅ | ❌ | ✅ | P2 |
+| DCBD research resources | ✅ | ❌ | possible | P2 |
+| SCTD | inspect | inspect | inspect | P2 |
+| SCTD 3.0 | inspect | inspect | inspect | P2 |
+| DRISHTI-SSS | ✅ | excluded in release | ✅ | P1/P2 |
+
+---
+
+# 8. EXACT BASIC DATASET TO START WITH
+
+For your **first working three-class model**, use:
+
+```text
+WRECK
+AI4Shipwrecks
++
+SeabedObjects ship
+
+GHOST POT
+GhostVision
+
+PLANE
+SeabedObjects airplane
+```
+
+This is the cleanest starting point.
+
+---
+
+# 9. STRONGER THREE-CLASS MODEL
+
+After the baseline:
+
+```text
+WRECK
+AI4Shipwrecks
++
+SeabedObjects
++
+Roboflow Ship
++
+verified derived wreck resources
+
+GHOST POT
+GhostVision
+
+PLANE
+SeabedObjects
++
+Roboflow Plane
++
+verified derived aircraft resources
+```
+
+Then add:
+
+```text
+natural seafloor
+hard negatives
+sonar-specific augmentation
+```
+
+---
+
+# 10. ADVANCED THREE-CLASS MODEL
+
+After the main detector is working:
+
+```text
+real datasets
++
+cross-dataset validation
++
+hard-negative mining
++
+domain adaptation
++
+large-scale natural SSS pretraining
++
+advanced sonar generation
++
+uncertainty/unknown pathway
+```
+
+Possible research sources:
+
+```text
+Sonar Diffusion:
+https://huggingface.co/datasets/PaweekornSora/sonar-diffusion-dataset
+
+DCBD:
+https://github.com/firekeepers/DCBD
+
+SCTD:
+https://github.com/MingqiangNing/SCTD
+
+SCTD 3.0:
+https://github.com/automlresearch/SCTD-3.0
+
+Large SSS seafloor:
+https://zenodo.org/records/10209445
+```
+
+---
+
+# 11. CLASS MAPPING FILE
+
+Create:
+
+```text
+data/provenance/class_mapping.csv
+```
+
+Use mappings such as:
+
+```csv
+source_dataset,source_class,target_class
+AI4Shipwrecks,shipwreck,wreck
+SeabedObjects,ship,wreck
+SeabedObjects,airplane,plane
+GhostVision,crab_pot,ghost_pot
+Roboflow Side Scan Sonar,Ship,wreck
+Roboflow Side Scan Sonar,Plane,plane
+```
+
+Never create:
+
+```csv
+GhostVision,crab_pot,ghost_net
+```
+
+because crab pot and ghost net are different object classes.
+
+---
+
+# 12. NATURAL BACKGROUND IS STILL REQUIRED
+
+Even though this document only targets three object classes, your detector should also see natural SSS backgrounds.
+
+Use:
+
+```text
+rock
+sand
+ripple
+ridge
+seafloor
+shadow
+noise
+```
+
+for negative/hard-negative training.
+
+Useful source:
+
+https://zenodo.org/records/10209445
+
+This prevents the detector from learning:
+
+> "Anything unusual-looking is a wreck/ghost pot/plane."
+
+---
+
+# 13. HARD-NEGATIVE LOOP
+
+After the first model:
+
+```text
+Run model
+↓
+Find false positives
+↓
+Classify error
+↓
+Save hard negative
+↓
+Retrain
+↓
+Measure again
+```
+
+Examples:
+
+```text
+Rock → wreck
+Shadow → ghost pot
+Seafloor texture → plane
+```
+
+---
+
+# 14. DATA SPLIT
+
+Do not randomly split adjacent sonar frames.
+
+Prefer:
+
+```text
+Survey/site A → train
+Survey/site B → train
+Survey/site C → validation
+Survey/site D → final test
+```
+
+For combined sources, preserve source/site groups whenever possible.
+
+---
+
+# 15. DEDUPLICATION
+
+Before combining sources:
+
+```text
+image hashes
+duplicate filenames
+near-duplicate crops
+derived copies
+same image in multiple repositories
+```
+
+Do not count the same source image twice.
+
+---
+
+# 16. DATASET PROVENANCE
+
+Every sample should keep:
+
+```text
+dataset_id
+source_url
+original_filename
+original_class
+target_class
+license
+version
+```
+
+Create:
+
+```text
+data/provenance/data_sources.csv
+```
+
+Recommended columns:
+
+```text
+dataset_id
+dataset_name
+source_url
+paper_url
+download_date
+license
+sonar_modality
+format
+image_count
+annotation_count
+classes
+resolution
+frequency
+metadata_available
+gps_available
+role
+notes
+```
+
+---
+
+# 17. DOWNLOAD PROCEDURE
+
+For every source:
+
+```text
+1. Open the original source
+2. Read license
+3. Record citation
+4. Download a small sample
+5. Verify it is SSS
+6. Inspect classes
+7. Inspect annotations
+8. Inspect image size/resolution
+9. Inspect metadata/GPS
+10. Check duplicate risk
+11. Record provenance
+12. Test loader
+13. Download/use the full dataset
+```
+
+---
+
+# 18. DO NOT DOWNLOAD EVERYTHING FIRST
+
+Start with:
+
+```text
+AI4Shipwrecks
++
+SeabedObjects
++
+GhostVision
+```
+
+Then:
+
+```text
+Roboflow Ship/Plane
+```
+
+Then only add advanced sources when the baseline/error analysis shows a reason.
+
+---
+
+# 19. DATASET INSPECTION SCRIPT
+
+Create:
+
+```text
+scripts/inspect_three_class_datasets.py
+```
+
+Report:
+
+```text
+images
+annotations
+classes
+image dimensions
+corrupt images
+missing labels
+duplicates
+source distribution
+```
+
+Save:
+
+```text
+reports/three_class_dataset_audit.json
+```
+
+---
+
+# 20. DATA VISUALIZATION SCRIPT
+
+Create:
+
+```text
+scripts/visualize_three_class_samples.py
+```
+
+Generate sample views for:
+
+```text
+Wreck
+Ghost Pot
+Plane
+Natural Background
+```
+
+Show:
+
+```text
+SSS image
+ground truth
+class
+source
+```
+
+Review these manually before training.
+
+---
+
+# 21. MODEL DATA FLOW
+
+```text
+WRECK
+AI4Shipwrecks + SeabedObjects
+          │
+          ▼
+GHOST POT
+GhostVision
+          │
+          ▼
+PLANE
+SeabedObjects + Roboflow
+          │
+          ▼
+Class normalization
+          │
+          ▼
+Deduplication
+          │
+          ▼
+Quality check
+          │
+          ▼
+Survey/site-safe split
+          │
+          ▼
+YOLO11-N baseline
+          │
+          ▼
+False-positive analysis
+          │
+          ▼
+Hard negatives
+          │
+          ▼
+YOLO11-S
+          │
+          ▼
+Final three-class model
+```
+
+---
+
+# 22. FINAL RECOMMENDATION
+
+### Start building NOW with only:
+
+```text
+1. AI4Shipwrecks
+   → WRECK
+
+2. SeabedObjects
+   → WRECK + PLANE
+
+3. GhostVision / Ghost Pot
+   → GHOST POT
+```
+
+Then add:
+
+```text
+4. Roboflow Side Scan Sonar
+   → WRECK + PLANE
+```
+
+Then advanced:
+
+```text
+5. KLSG-II
+6. Sonar segmentation derived data
+7. Sonar Diffusion
+8. DCBD
+9. SCTD
+10. SCTD 3.0
+11. DRISHTI-SSS (as a reference/derived corpus, not blindly as your own)
+```
+
+### Final scientific rule
+
+Your model should be able to say:
+
+```text
+WRECK
+GHOST POT
+PLANE
+UNKNOWN / NATURAL
+```
+
+It should **not** be trained to call:
+
+```text
+crab pot → ghost net
+ship → plane
+plane → wreck
+```
+
+unless you have a separate, explicit labeling rule and ground truth that justifies that mapping.
+
+For your SIH problem, the strongest approach is a clean **three-target SSS detector first**, followed by the natural-vs-artificial verification and uncertainty/human-review layers from your main plan.

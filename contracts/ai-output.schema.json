@@ -1,0 +1,256 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ghostnet-ai/contracts/ai-output.schema.json",
+  "title": "GhostNet-AI frame result",
+  "description": "What the AI returns for ONE sonar frame. Generated from ghostnet/contract.py by ai/scripts/export_schemas.py; do not edit by hand. Contract version 1.2.0.",
+  "$defs": {
+    "Detection": {
+      "type": "object",
+      "properties": {
+        "detection_id": {
+          "type": "string",
+          "description": "Stable per-detection identifier, unique within a frame."
+        },
+        "class": {
+          "type": "string",
+          "enum": [
+            "ghost_net",
+            "debris",
+            "natural",
+            "unknown"
+          ],
+          "description": "Detected class, from the closed vocabulary."
+        },
+        "raw_score": {
+          "type": "number",
+          "description": "Uncalibrated detector score. Diagnostic only; do NOT display or threshold on it."
+        },
+        "calibrated_confidence": {
+          "type": "number",
+          "description": "Temperature-scaled probability. This is the number to show and threshold on."
+        },
+        "uncertainty": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "description": "Confidence band for the UI. Capped at medium while the model is uncalibrated, so a low band is a real claim."
+        },
+        "bbox": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "description": "[x, y, width, height] in pixels, top-left origin."
+        },
+        "mask": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "description": "Optional polygon, [[x, y], ...]. Null when the model is detection-only."
+        },
+        "latitude": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "WGS84 latitude. Null when geometry or the nav fix was unavailable; never fabricated."
+        },
+        "longitude": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "WGS84 longitude. Null under the same conditions as latitude."
+        },
+        "position_error_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Radius of the position-uncertainty circle, metres. Render this, not a bare pin."
+        },
+        "localization": {
+          "type": "string",
+          "enum": [
+            "frame-level",
+            "ping-level",
+            "none"
+          ],
+          "description": "How the position was derived. A value of none means no position is claimed."
+        },
+        "review_only": {
+          "type": "boolean"
+        },
+        "dimensions": {
+          "$ref": "#/$defs/Dimensions"
+        },
+        "review_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "confirmed",
+            "rejected"
+          ],
+          "description": "Human review state. Owned by Member 2 after ingest; the AI always emits pending."
+        },
+        "model_version": {
+          "type": "string",
+          "description": "Version of the model that produced this detection."
+        },
+        "evidence_summary": {
+          "$ref": "#/$defs/EvidenceSummary"
+        }
+      },
+      "required": [
+        "detection_id",
+        "class",
+        "raw_score",
+        "calibrated_confidence",
+        "uncertainty",
+        "bbox"
+      ],
+      "additionalProperties": false
+    },
+    "Dimensions": {
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Across-track size in ground metres, after slant-range correction. Null if unavailable."
+        },
+        "length": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Along-track size in metres. Null unless the along-track pixel scale is known."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "estimated",
+            "measured",
+            "unavailable"
+          ],
+          "description": "Estimated from sonar geometry; measured only with verified range resolution and altitude; otherwise unavailable."
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "EvidenceSummary": {
+      "type": "object",
+      "properties": {
+        "artificial_verification": {
+          "type": "string",
+          "description": "Why this was judged artificial or natural."
+        },
+        "shadow_context": {
+          "type": "string",
+          "description": "Acoustic-shadow support, the classic side-scan cue for a raised object."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Free text for the reviewer."
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "FramePosition": {
+      "type": "object",
+      "properties": {
+        "latitude": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "longitude": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "heading_deg": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "timestamp": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "properties": {
+    "survey_id": {
+      "type": "string",
+      "description": "Identifier of the survey this frame belongs to."
+    },
+    "frame_id": {
+      "type": "string",
+      "description": "Identifier of the frame within the survey."
+    },
+    "detections": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Detection"
+      },
+      "description": "Reported detections. An empty list is a valid, meaningful result: clean seabed."
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Model, dataset, preprocessing and calibration versions behind this result."
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Non-fatal conditions. Surface these in the UI; they explain missing positions and suppressed detections."
+    },
+    "contract_version": {
+      "type": "string",
+      "description": "Semver of this contract. A major bump is a breaking change for Member 2."
+    },
+    "frame_position": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/FramePosition"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "survey_id",
+    "frame_id"
+  ],
+  "additionalProperties": false
+}

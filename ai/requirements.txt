@@ -1,0 +1,40 @@
+# GhostNet-AI — Member 1 (AI/ML) pinned environment
+# Install:  .venv/Scripts/python -m pip install -r requirements-ai.txt
+#
+# NOTE: this .venv is created with --system-site-packages, inheriting the
+# already-working global torch/torchvision/ultralytics. An isolated venv here
+# once died mid-download and left a half-written torch that failed to load
+# c10_cuda.dll -- which config.resolve_device() swallows into a silent CPU
+# fallback. If SETTINGS.device says 'cpu' on the RTX 3050, check the install.
+#
+# Versions are pinned to the set verified working on RTX 3050 (4 GB, cc 8.6).
+# cu126 is deliberate: cu128 caps out at torch 2.11. Do not switch indexes casually.
+--extra-index-url https://download.pytorch.org/whl/cu126
+
+torch==2.13.0+cu126
+torchvision==0.28.0+cu126
+
+ultralytics==8.4.134
+
+# headless: no libGL dependency, so the same pin works on Windows, Linux and in Docker.
+# If you ever need cv2.imshow locally, swap to opencv-python of the same version.
+opencv-python-headless==5.0.0.93
+
+numpy==2.5.1
+pandas==3.0.5
+scikit-learn==1.9.0
+scipy==1.18.1
+matplotlib==3.11.1
+pillow==12.3.0
+pyyaml==6.0.3
+
+# geodesy for across-track -> lat/lon (WGS84 ellipsoid, not flat trig)
+pyproj==3.7.2
+
+tqdm
+
+# test tooling
+pytest==9.1.1
+
+# contract schema validation (dev/test only)
+jsonschema==4.26.0

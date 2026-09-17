@@ -1,0 +1,16 @@
+# Backend build context is now the repository root (app/backend/Dockerfile
+# needs ai/) -- this keeps that context from also dragging in everything
+# else in the repo that the backend image has no use for.
+**/__pycache__
+*.pyc
+**/.venv
+**/venv
+.git
+.env
+**/.env
+app/backend/uploads
+**/.pytest_cache
+app/frontend/node_modules
+app/frontend/.next
+demo
+docs

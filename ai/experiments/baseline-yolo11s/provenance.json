@@ -1,0 +1,71 @@
+{
+  "created_utc": "2026-08-30T16:24:29.517299+00:00",
+  "git_commit": "98b9cea",
+  "weights_init": "E:\\New folder\\ai\\experiments\\baseline-yolo11s\\weights\\last.pt",
+  "args": {
+    "model": "yolo11s",
+    "data": "E:\\New folder\\ai\\data\\processed\\data.yaml",
+    "name": "baseline-yolo11s",
+    "epochs": 100,
+    "imgsz": 640,
+    "batch": 4,
+    "patience": 25,
+    "workers": 2,
+    "seed": 0,
+    "device": null,
+    "resume": true,
+    "dry_run": false
+  },
+  "device": "0",
+  "torch": "2.13.0+cu126",
+  "cuda_available": true,
+  "gpu": "NVIDIA GeForce RTX 3050 Laptop GPU",
+  "dataset_build": {
+    "sources": [
+      "SCTD",
+      "AI4SHIPWRECKS"
+    ],
+    "images_per_source": {
+      "SCTD": 327,
+      "AI4SHIPWRECKS": 4200
+    },
+    "exact_duplicates_dropped": {
+      "SCTD": 30
+    },
+    "split_sizes": {
+      "test": 2978,
+      "train": 1335,
+      "val": 214
+    },
+    "background_per_split": {
+      "train": 683,
+      "test": 2529,
+      "val": 96
+    },
+    "boxes_per_class_per_split": {
+      "train": {
+        "plane": 39,
+        "wreck": 613
+      },
+      "val": {
+        "plane": 9,
+        "wreck": 109
+      },
+      "test": {
+        "plane": 9,
+        "wreck": 440
+      }
+    },
+    "declared_classes": [
+      "wreck",
+      "plane"
+    ],
+    "ratios": [
+      0.7,
+      0.15,
+      0.15
+    ],
+    "seed": 0,
+    "warnings": []
+  }
+}

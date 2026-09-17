@@ -1,0 +1,9 @@
+{
+  "model_version": "gv5-yolo11s",
+  "promoted_from": "ai/experiments/gv5-yolo11s/weights/best.pt",
+  "promoted_utc": "2026-09-03T05:55:41+00:00",
+  "sha256": "4ba7703e0b5f1613c9fa878652f26b32f19f7a36706b0f6bc82764c7e61122bd",
+  "note": "Written when gv5 was promoted. Regenerate whenever ghostnet.pt is replaced; config.py reads model_version and dataset_version from here so every payload names the run and the data that produced it. This file must travel WITH ghostnet.pt -- both are gitignored, and without it provenance falls back to 'v0-stub'.",
+  "dataset_version": "8src-12472/1492/4346-ee2f4b940bc1",
+  "dataset_version_note": "sha256[:12] of this run's dataset_build block in ai/experiments/gv5-yolo11s/provenance.json, prefixed with source count and train/val/test sizes. Describes the dataset the WEIGHTS were trained on, not whatever build_dataset.py last wrote to data/processed."
+}

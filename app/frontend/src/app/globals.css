@@ -1,0 +1,304 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import "leaflet/dist/leaflet.css";
+@import "leaflet.markercluster/dist/MarkerCluster.css";
+@import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+
+/* =============================================================================
+ * Atlantic — the four hexes and the alpha ladder derived from them.
+ *
+ * These are the TRUE rgba values. tailwind.config.ts carries the same ladder
+ * flattened to solid hex, because Tailwind's `/40` modifier cannot apply to an
+ * rgba token. Hand-written CSS (the landing page, the textures below) uses
+ * these; utility classes use the flattened twins. They must stay in step.
+ * ========================================================================== */
+:root {
+  --atlantic: #0f4b70;
+  --sky: #c4f8ff;
+  --imperial: #021f94;
+  --paper: #f5f2f3;
+
+  /* See the ladder note in tailwind.config.ts: the mockup's .80/.55 mid steps
+     measure 5.09:1 and 2.81:1 on paper, and ink-3 carries most of the console's
+     secondary text. Darkened until they pass AA. ink-4 is NON-TEXT only. */
+  --ink: rgba(2, 31, 148, 0.92);   /* 9.76:1 */
+  --ink-2: rgba(15, 75, 112, 0.9); /* 6.49:1 */
+  --ink-3: rgba(15, 75, 112, 0.8); /* 5.09:1 */
+  --ink-4: rgba(15, 75, 112, 0.32);/* 1.74:1 - marks, never text */
+  --rule: rgba(15, 75, 112, 0.2);
+  --rule-2: rgba(15, 75, 112, 0.1);
+  --onblue: rgba(245, 242, 243, 0.74);
+  --onblue-2: rgba(245, 242, 243, 0.42);
+  --blue-rule: rgba(196, 248, 255, 0.22);
+
+  /* Outside the four hexes, and deliberately so -- see the `alert` note in
+     tailwind.config.ts. The console has to distinguish a FAILED job from a
+     COMPLETED one, and the Atlantic mockup has no failure state to copy. */
+  --alert-critical: #b3123c;
+  --alert-high: #ae5400;
+  --alert-unknown: #5b3fa8;
+
+  color-scheme: light;
+}
+
+html,
+body {
+  background-color: var(--paper);
+  color: var(--ink);
+}
+
+html {
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--paper);
+  /* Tabular figures: every score, coordinate and error radius in this app is a
+     number in a column, and proportional digits make them jitter between
+     renders. */
+  font-feature-settings: "tnum" 1;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  border-color: var(--rule);
+}
+
+::selection {
+  background: var(--sky);
+  color: var(--imperial);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--paper);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(15, 75, 112, 0.28);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 75, 112, 0.45);
+}
+
+/* =============================================================================
+ * TEXTURE
+ * Atlantic is a printed direction, not a glass one. The grain is SVG turbulence
+ * multiplied over the surface — no asset, no network request, and it survives
+ * any background colour underneath it. Applied to a positioned parent.
+ * ========================================================================== */
+.grain {
+  position: relative;
+}
+
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 8;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='260' height='260' filter='url(%23g)' opacity='0.5'/></svg>");
+  mix-blend-mode: multiply;
+  opacity: 0.13;
+}
+
+.grain-lite::after {
+  opacity: 0.08;
+}
+
+.halftone {
+  background-image: radial-gradient(rgba(2, 31, 148, 0.2) 1px, transparent 1.15px);
+  background-size: 5px 5px;
+}
+
+/* The blue water fill used behind sonar imagery, the sidebar and map panels. */
+.water {
+  background:
+    radial-gradient(120% 90% at 18% 6%, rgba(196, 248, 255, 0.22), transparent 62%),
+    linear-gradient(160deg, var(--atlantic) 0%, #0d4368 46%, var(--imperial) 130%);
+}
+
+/* =============================================================================
+ * SURFACES
+ * `.panel` is the single shared surface for every card in the console, which is
+ * why the whole retheme turns on this one rule. It was a blurred glass slab
+ * with a cyan top-edge highlight and a radial bloom; Atlantic is a flat paper
+ * card inside a 1px rule. Both pseudo-elements are removed rather than restyled
+ * — there is nothing in this direction for them to be.
+ * ========================================================================== */
+.panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+/* THE TONES ARE WRITTEN AS `.panel.panel-x` ON PURPOSE.
+ *
+ * `.panel` above sets a background, and this file is loaded AFTER Tailwind's
+ * utilities layer. Both are single-class selectors, so `.panel` wins every
+ * conflict with a `bg-*` utility on the same element. That is not theoretical:
+ * the first version of this put `bg-imperial` on the accent card as a utility,
+ * `.panel` overrode it, and the card rendered paper text on a paper ground --
+ * invisible, with nothing in the build to show for it. Two classes out-specify
+ * one, so the tone always wins and the component never fights the cascade.
+ */
+
+/* Chrome that shows water rather than data: sonar, the map, the 3D replay. */
+.panel.panel-blue {
+  border-color: rgba(196, 248, 255, 0.22);
+  background: var(--atlantic);
+  color: var(--paper);
+}
+
+/* The quiet pick-out -- the mockup's `.card.tint`. Still dark ink. */
+.panel.panel-tint {
+  border-color: rgba(2, 31, 148, 0.14);
+  background: var(--sky);
+}
+
+/* The one loud card on a screen: imperial ground, paper contents. */
+.panel.panel-accent {
+  border-color: var(--imperial);
+  background: var(--imperial);
+  color: var(--paper);
+}
+
+/* Contents of an accent card inherit paper, so the usual ink utilities inside
+   it would fight the ground. Overriding here means a caller can drop an
+   ordinary card's children into an accent one without restyling each. */
+/* :where() so this contributes ZERO specificity. Written as a plain descendant
+   list it scored (0,2,1) and beat every colour utility inside the card: the KPI
+   tile's label (`text-skytint/75`), badge (`text-skytint`) and hint
+   (`text-paper/74`) all collapsed to flat paper, flattening the hierarchy this
+   rule exists to protect. It only needs to be a DEFAULT. */
+.panel.panel-accent :where(h1, h2, h3, p, span, b) {
+  color: var(--paper);
+}
+
+/* The two states that are not part of the four-hex system. They are tinted
+   grounds rather than fills, because an error card still has to be read. */
+.panel.panel-critical {
+  border-color: var(--alert-critical);
+  background: rgba(179, 18, 60, 0.06);
+}
+
+.panel.panel-unknown {
+  border-color: var(--alert-unknown);
+  background: rgba(91, 63, 168, 0.06);
+}
+
+/* =============================================================================
+ * MAP AND SONAR
+ * ========================================================================== */
+.leaflet-container {
+  background: var(--atlantic);
+  font-family: inherit;
+}
+
+/* Raster tiles are photographic and fight a four-colour system. Rather than
+   invert them to a fake dark mode as before, they are desaturated and pushed
+   toward the atlantic blue so the basemap reads as water under the detections
+   instead of competing with them. Scoped to the tile pane so markers, popups
+   and the legend keep their real colours. */
+.map-dark-mode .leaflet-tile-pane {
+  filter: grayscale(1) brightness(0.72) contrast(0.92) sepia(0.45) hue-rotate(165deg) saturate(2.6);
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px var(--rule);
+}
+
+/* Leaflet ships its attribution links at #0078A8, which measures 3.50:1 on the
+   control's own ground. It is third-party chrome, but it is still the only link
+   on that edge of the map. */
+.leaflet-control-attribution {
+  background: rgba(245, 242, 243, 0.92);
+  color: var(--ink-2);
+  font-family: inherit;
+}
+
+.leaflet-control-attribution a {
+  color: var(--imperial);
+}
+
+.leaflet-bar a,
+.leaflet-bar a:hover {
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--imperial);
+  border-color: var(--rule);
+}
+
+/* The waterfall backdrop. Same construction as before — a lit top edge over a
+   deep field with a survey grid — rebuilt on atlantic/sky instead of cyan. */
+.sonar-grid-bg {
+  background-image:
+    radial-gradient(circle at top, rgba(196, 248, 255, 0.14), transparent 34%),
+    linear-gradient(180deg, rgba(15, 75, 112, 0.96), rgba(2, 31, 148, 0.98)),
+    repeating-linear-gradient(0deg, rgba(196, 248, 255, 0.07) 0, rgba(196, 248, 255, 0.07) 1px, transparent 1px, transparent 48px),
+    repeating-linear-gradient(90deg, rgba(196, 248, 255, 0.07) 0, rgba(196, 248, 255, 0.07) 1px, transparent 1px, transparent 48px);
+}
+
+/* The console canvas itself. The old app painted the main scroll area with
+   sonar-grid-bg; on paper that surface is the page, and the grid moves to the
+   panels that actually show sonar. */
+.console-canvas {
+  background: var(--paper);
+}
+
+/* =============================================================================
+ * FORM CONTROLS
+ * Tailwind's preflight leaves inputs transparent, which was invisible against
+ * the old dark panels and is invisible against paper too. Given once here so
+ * no screen has to restate it.
+ * ========================================================================== */
+input,
+select,
+textarea {
+  background: rgba(196, 248, 255, 0.38);
+  border: 1px solid var(--rule);
+  color: var(--ink);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--ink-3);
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--imperial);
+  outline-offset: 1px;
+}
+
+/* THE FOCUS RING HAS TO CHANGE COLOUR ON BLUE.
+ *
+ * Imperial on paper is 11.6:1 and unmistakable. Imperial on the atlantic rail
+ * is 1.39:1, and on an active nav item (imperial at 55% over atlantic) it is
+ * 1.12:1 -- which means a keyboard user tabbing the console's main navigation
+ * sees nothing at all. Sky is the palette's designated bright ink on blue, so
+ * the ring flips with the ground. `.on-blue` marks any surface painted
+ * atlantic or imperial. */
+.on-blue :focus-visible,
+.on-blue input:focus,
+.on-blue select:focus,
+.on-blue textarea:focus {
+  outline-color: var(--sky);
+  outline-offset: 2px;
+}

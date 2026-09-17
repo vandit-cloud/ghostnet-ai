@@ -1,0 +1,72 @@
+# If ports 5432/8000/3000 collide with something else on your machine, add a
+# docker-compose.override.yml next to this file remapping the host side of
+# the `ports:` entries below (compose merges override files automatically).
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ghostnet
+      POSTGRES_PASSWORD: ghostnet
+      POSTGRES_DB: ghostnet
+    ports:
+      - "5432:5432"
+    volumes:
+      - ghostnet_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ghostnet"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    # Build context is the repository root (see backend/Dockerfile) so the
+    # image can reach ai/ and install the `ghostnet` package editable,
+    # --no-deps, alongside the lightweight numpy/pyproj/opencv it needs to
+    # split a .xtf into frames (ghostnet/xtf.py, ghostnet/survey.py).
+    #
+    # torch, torchvision and ultralytics are still NOT installed here -- that
+    # is a ~2.6 GB layer nobody has committed to baking into this image yet.
+    # `GhostNetAdapter.__init__`'s `warmup()` therefore can't load a model and
+    # `try_build()` falls back to MockAIAdapter: every detection payload is
+    # still stamped model_version "mock-ghostnet-dev-v0" and must never be
+    # shown as a real result. Only .xtf frame splitting became real here.
+    #
+    # Full real detection needs the local setup in README.md -- a venv with
+    # the complete AI package (including torch) installed editable from ai/.
+    build:
+      context: ..
+      dockerfile: app/backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://ghostnet:ghostnet@db:5432/ghostnet
+      JWT_SECRET: change-me-in-production
+      SEED_ADMIN_USERNAME: operator
+      SEED_ADMIN_PASSWORD: operator123
+      STORAGE_ROOT: /app/uploads
+      CORS_ORIGINS: '["http://localhost:3000"]'
+    ports:
+      - "8000:8000"
+    volumes:
+      - ghostnet_uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Baked into the browser bundle at build time (Next.js NEXT_PUBLIC_* rule) -
+        # must match whatever host/port the backend is actually reachable on.
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api/v1
+        NEXT_PUBLIC_WS_BASE_URL: ws://localhost:8000/api/v1
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  ghostnet_pgdata:
+  ghostnet_uploads:
