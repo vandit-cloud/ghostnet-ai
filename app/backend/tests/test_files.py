@@ -101,3 +101,92 @@ def test_an_uploaded_image_frame_points_at_a_file_that_exists(client, auth_heade
     image = client.get(f"/api/v1/frames/{frame.id}/image", headers=auth_headers)
     assert image.status_code == 200
     assert image.content.startswith(b"\x89PNG")
+
+
+# ---------------------------------------------------------------------------
+# Per-file delete.
+#
+# This path had no coverage at all, which mattered more than the usual gap: it
+# is the only destructive operation scoped narrower than a whole survey, it
+# cascades to frames and detections, and it is guarded by both a survey-scoped
+# lookup and a 409 while a job is running. Each of those is a place where an
+# ordinary refactor could silently widen the blast radius.
+# ---------------------------------------------------------------------------
+
+
+def _upload_png(client, auth_headers, survey_id, name="frame.png"):
+    return client.post(
+        f"/api/v1/surveys/{survey_id}/files",
+        files={"file": (name, io.BytesIO(b"\x89PNG\r\n\x1a\nfakepngbytes"), "image/png")},
+        data={"metadata": json.dumps({"latitude": 9.06, "longitude": 79.21})},
+        headers=auth_headers,
+    ).json()
+
+
+def test_delete_file_removes_the_row_and_its_frames(client, auth_headers, db_session):
+    from app.models.sonar_frame import SonarFrame
+
+    survey = _create_survey(client, auth_headers)
+    uploaded = _upload_png(client, auth_headers, survey["id"])
+
+    assert db_session.query(SonarFrame).filter(SonarFrame.survey_id == survey["id"]).count() == 1
+
+    response = client.delete(
+        f"/api/v1/surveys/{survey['id']}/files/{uploaded['id']}", headers=auth_headers
+    )
+    assert response.status_code == 204
+
+    assert client.get(f"/api/v1/surveys/{survey['id']}/files", headers=auth_headers).json() == []
+    # The frame cascades with its file. Asserted through a fresh query because
+    # passive_deletes leaves the DB, not the session, to do the cascade.
+    db_session.expire_all()
+    assert db_session.query(SonarFrame).filter(SonarFrame.survey_id == survey["id"]).count() == 0
+
+
+def test_delete_file_only_works_through_its_own_survey(client, auth_headers):
+    """A file id alone must not be enough.
+
+    Otherwise pasting the wrong survey into the URL deletes a file out of a
+    survey the caller was not even looking at, and the 404 has to be
+    indistinguishable from "no such file" so the endpoint does not confirm the
+    existence of things outside the requested survey.
+    """
+    survey_a = _create_survey(client, auth_headers)
+    survey_b = _create_survey(client, auth_headers)
+    uploaded = _upload_png(client, auth_headers, survey_a["id"])
+
+    response = client.delete(
+        f"/api/v1/surveys/{survey_b['id']}/files/{uploaded['id']}", headers=auth_headers
+    )
+    assert response.status_code == 404
+
+    # ...and the file is still there.
+    assert len(client.get(f"/api/v1/surveys/{survey_a['id']}/files", headers=auth_headers).json()) == 1
+
+
+def test_delete_file_is_refused_while_a_job_is_running(client, auth_headers, db_session):
+    """409 rather than a cascade that pulls rows out from under a live job."""
+    from app.models.enums import JobStatus
+    from app.models.processing_job import ProcessingJob
+
+    survey = _create_survey(client, auth_headers)
+    uploaded = _upload_png(client, auth_headers, survey["id"])
+
+    db_session.add(ProcessingJob(survey_id=survey["id"], frames_total=1, status=JobStatus.PROCESSING))
+    db_session.commit()
+
+    response = client.delete(
+        f"/api/v1/surveys/{survey['id']}/files/{uploaded['id']}", headers=auth_headers
+    )
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "SURVEY_PROCESSING"
+
+
+def test_delete_unknown_file_is_404(client, auth_headers):
+    import uuid as _uuid
+
+    survey = _create_survey(client, auth_headers)
+    response = client.delete(
+        f"/api/v1/surveys/{survey['id']}/files/{_uuid.uuid4()}", headers=auth_headers
+    )
+    assert response.status_code == 404

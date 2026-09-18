@@ -132,6 +132,13 @@ def start_processing(
     so it discards the operator's accept/reject decisions along with them. It
     is the caller's call to make, which is why it is a flag and not a default.
     """
+    # Same lock the per-file delete takes, so the two cannot interleave: a
+    # delete that has already decided "nothing is running" must not have a job
+    # created under it. See survey_service.lock_survey_or_404.
+    from app.services import survey_service
+
+    survey_service.lock_survey_or_404(db, survey_id)
+
     existing = get_active_job_for_survey(db, survey_id)
     if existing:
         return existing

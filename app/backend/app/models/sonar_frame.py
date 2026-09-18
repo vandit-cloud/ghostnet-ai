@@ -54,4 +54,8 @@ class SonarFrame(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     source_file: Mapped["SurveyFile"] = relationship(back_populates="frames")
-    detections: Mapped[list["Detection"]] = relationship(back_populates="frame", cascade="all, delete-orphan")
+    # See the note on SurveyFile.frames: the FK cascades in the database, so
+    # loading every child row just to delete it one at a time is pure cost.
+    detections: Mapped[list["Detection"]] = relationship(
+        back_populates="frame", cascade="all, delete-orphan", passive_deletes=True
+    )

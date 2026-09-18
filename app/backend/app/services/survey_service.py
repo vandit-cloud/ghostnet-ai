@@ -38,6 +38,33 @@ def get_survey_or_404(db: Session, survey_id: uuid.UUID) -> Survey:
     return survey
 
 
+def lock_survey_or_404(db: Session, survey_id: uuid.UUID) -> Survey:
+    """`get_survey_or_404`, but takes a row lock held to the end of the
+    transaction.
+
+    This is the serialization point between the two writers that can invalidate
+    each other: starting a processing job, and deleting one of the survey's
+    files. Each reads the other's state and then acts on it, so without a lock
+    both can pass their check against a world that changes underneath them --
+    a job started between the delete's "is anything running?" check and its
+    commit gets its frames deleted out from under it and fails with a stream of
+    foreign-key errors.
+
+    A lock only excludes writers that ALSO take it, which is why both paths
+    call this and not just the delete. The survey row is the right granularity:
+    it is the thing both operations are scoped to, it always exists for a valid
+    request, and it is never held for long.
+
+    No-op on SQLite, which has no row locks and serializes writers anyway.
+    """
+    survey = (
+        db.query(Survey).filter(Survey.id == survey_id).with_for_update().one_or_none()
+    )
+    if not survey:
+        raise ApiError(404, "SURVEY_NOT_FOUND", "Survey was not found.")
+    return survey
+
+
 def list_surveys(db: Session, page: int, page_size: int) -> tuple[list[Survey], int]:
     total = db.scalar(select(func.count()).select_from(Survey)) or 0
     surveys = (

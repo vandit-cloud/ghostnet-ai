@@ -28,4 +28,14 @@ class SurveyFile(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     survey: Mapped["Survey"] = relationship(back_populates="files")
-    frames: Mapped[list["SonarFrame"]] = relationship(back_populates="source_file", cascade="all, delete-orphan")
+  # passive_deletes: let the DATABASE do the cascade.
+    #
+    # The FK already carries ON DELETE CASCADE (see migrations 0001), so
+    # without this SQLAlchemy does the work twice: it SELECTs every child row
+    # into the session and emits one DELETE per row, then the database cascades
+    # anyway. On a real .xtf that is thousands of frames and tens of thousands
+    # of detections loaded into memory and deleted one statement at a time,
+    # inside a synchronous request holding its locks the whole way.
+    frames: Mapped[list["SonarFrame"]] = relationship(
+        back_populates="source_file", cascade="all, delete-orphan", passive_deletes=True
+    )

@@ -220,7 +220,12 @@ def delete_survey_file(
     because it is removing everything. Here the job is still legitimately
     working on the survey's other files, so the honest answer is "not now".
     """
-    from app.services import processing_service
+    from app.services import processing_service, survey_service
+
+    # Serialize against a job starting concurrently -- see lock_survey_or_404.
+    # Taken BEFORE the active-job read so the answer cannot go stale between
+    # the check and the commit below.
+    survey_service.lock_survey_or_404(db, survey_id)
 
     survey_file = get_survey_file_or_404(db, survey_id, file_id)
 
