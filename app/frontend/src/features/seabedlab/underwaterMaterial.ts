@@ -49,6 +49,7 @@ const TUNABLE = [
   "detailScale", "mottleScale", "mottleAmt", "bump", "roughLo", "roughHi", "grimeAmt",
   "dustAmt", "dustLo", "dustHi", "dustBreak", "dustR", "dustG", "dustB",
   "gradeMatch", "vignette", "grain",
+  "netCell", "netGauge", "netTear", "netBillow", "netSpeed",
 ] as const;
 
 /** The shipped fog, reproduced exactly so the A/B is honest.
@@ -83,12 +84,26 @@ export function makeUnderwaterUniforms(values: Record<string, number>): Underwat
 
 /* ---------------------------------------------------------------------------
  * The injected GLSL.
+ *
+ * TWO VARIANTS. "solid" is rock, slab, coral, hull plating - anything opaque.
+ * "net" adds an alpha-cut mesh pattern and a current-driven billow, because
+ * netting cannot be geometry at this scale: a 6 m panel at a realistic 90 mm
+ * gauge is roughly 4,500 openings, and drawing that as tubes costs more than
+ * the rest of the seabed put together. Cut it out of a subdivided plane in the
+ * fragment shader and a whole panel is a few hundred triangles.
  * ------------------------------------------------------------------------- */
 
-const FRAG_PRELUDE = /* glsl */ `
+export type PatchVariant = "solid" | "net";
+
+const NET_PARS = /* glsl */ `
+varying vec2 vNetUv;
+uniform float netCell, netGauge, netTear;
+`;
+
+const fragPrelude = (variant: PatchVariant) => /* glsl */ `
 varying vec3 vWPos;
 varying vec3 vWNrm;
-
+${variant === "net" ? NET_PARS : ""}
 uniform float uTime, uEyeDepth, uSeabedY, uFogNear, uFogFar;
 uniform vec2  uRes;
 uniform vec3  uLinearFogColor;
@@ -116,7 +131,7 @@ float triFbm(vec3 p, vec3 n){
  * sedimentMask() - HOW MUCH SILT HAS SETTLED ON THIS PIXEL.
  *
  * >>> THIS IS THE DECISION POINT. The implementation below is deliberately
- * >>> NAIVE and is the first thing to replace - see the note in the chat.
+ * >>> NAIVE and is the first thing to replace.
  *
  * 'n' is the world normal, 'detail' is triplanar FBM in 0..1 at this point,
  * 'hAbove' is metres above the seabed plane. Returns 0..1.
@@ -148,9 +163,35 @@ vec3 perturbBump(vec3 n, vec3 vpos, float h, float scale){
 }
 `;
 
-const VERT_PRELUDE = /* glsl */ `
+const vertPrelude = (variant: PatchVariant) => /* glsl */ `
 varying vec3 vWPos;
 varying vec3 vWNrm;
+${variant === "net" ? `
+attribute vec2 netUv;
+varying vec2 vNetUv;
+uniform float uTime, netBillow, netSpeed;
+` : ""}
+`;
+
+/* The billow, applied to `transformed` BEFORE <project_vertex> so the world
+   position the fragment shader derives is the MOVED one. Otherwise the net
+   swims through a caustic pattern that stays nailed to its rest pose.
+ *
+ * Amplitude peaks MID-PANEL, as sin(pi*v) squared: a derelict net is held at
+ * both ends - snagged on the wreck at the top, pooled or part-buried at the
+ * bottom - so the slack is in the middle. Driving the amplitude from height
+ * instead makes the free edge flap like a flag, which reads as a net still
+ * bent onto a working boat rather than one that has been down here for years. */
+const NET_VERT_BODY = /* glsl */ `
+  vNetUv = netUv;
+  {
+    float slack = sin(3.14159*clamp(netUv.y, 0.0, 1.0));
+    float amp = netBillow*slack*slack;
+    float ph = uTime*netSpeed;
+    transformed.x += sin(netUv.y*2.7 + ph)*amp;
+    transformed.z += cos(netUv.y*2.2 + netUv.x*1.7 + ph*0.8)*amp*0.7;
+    transformed.y += sin(netUv.x*3.1 - ph*0.6)*amp*0.25;
+  }
 `;
 
 /* World position and normal, instancing included.
@@ -168,26 +209,75 @@ const VERT_BODY = /* glsl */ `
   vWNrm = normalize(mat3(modelMatrix) * uwNrm);
 `;
 
+/* THE NET ITSELF. Distance to the nearest cell edge, thresholded at the twine
+   gauge, with fwidth() antialiasing - without that the mesh aliases into moire
+   the moment the panel is more than a few metres off, which is most of the time.
+ *
+ * The tear field is what stops it reading as window screen. Real derelict gear
+ * is shredded: whole panels gone, edges frayed, holes where it has been dragged
+ * over relief. One fbm threshold does most of that, and a second
+ * higher-frequency one frays the boundary so the holes have no clean edge. */
+const NET_ALPHA = /* glsl */ `
+{
+  vec2 g = fract(vNetUv*netCell);
+  float dx = min(g.x, 1.0-g.x);
+  float dy = min(g.y, 1.0-g.y);
+  float d  = min(dx, dy);
+  float aa = max(fwidth(d)*1.5, 1e-4);
+  float twine = 1.0 - smoothstep(netGauge, netGauge+aa, d);
+
+  float tear = fbm(vNetUv*3.1);
+  float fray = fbm(vNetUv*11.0)*0.18;
+  twine *= smoothstep(netTear-0.04, netTear+0.04, tear+fray);
+
+  /* ERODE THE BOUNDARY. Without this the panel keeps the clean rectangular
+     silhouette of the quad it was cut from, and a rectangle is the one shape
+     derelict gear never has - it has been dragged, snagged and torn, so every
+     edge is ragged. Holes in the middle do not fix that on their own: the eye
+     reads the OUTLINE first, and a tidy border says "texture on a plane" no
+     matter how shredded the interior is. */
+  float edge = min(min(vNetUv.x, 1.0-vNetUv.x), min(vNetUv.y, 1.0-vNetUv.y));
+  twine *= smoothstep(0.0, 0.09, edge + (fbm(vNetUv*4.7)-0.5)*0.17);
+
+  diffuseColor.a *= twine;
+}
+`;
+
 export function patchUnderwater(
   material: THREE.MeshStandardMaterial,
-  uniforms: UnderwaterUniforms
+  uniforms: UnderwaterUniforms,
+  variant: PatchVariant = "solid"
 ): THREE.MeshStandardMaterial {
   /* three's fog is replaced wholesale, not layered on. Leaving it on would mean
      two fogs stacked, and the A/B slider could never reach a clean 0 or 1. */
   material.fog = false;
-  material.customProgramCacheKey = () => "ghostnet-underwater-v1";
+
+  /* THE VARIANT MUST BE IN THE CACHE KEY. three caches compiled programs by
+     this string, so returning a constant would hand the net's program to the
+     rocks or the other way round depending on which compiled first. It shows up
+     as rocks full of holes and is maddening to trace back to a cache. */
+  material.customProgramCacheKey = () => `ghostnet-underwater-v2:${variant}`;
+
+  const isNet = variant === "net";
 
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
 
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", `#include <common>\n${VERT_PRELUDE}`)
+      .replace("#include <common>", `#include <common>\n${vertPrelude(variant)}`)
+      .replace(
+        "#include <begin_vertex>",
+        `#include <begin_vertex>\n${isNet ? NET_VERT_BODY : ""}`
+      )
       .replace("#include <project_vertex>", `#include <project_vertex>\n${VERT_BODY}`);
 
     shader.fragmentShader = shader.fragmentShader
-      .replace("#include <common>", `#include <common>\n${FRAG_PRELUDE}`)
+      .replace("#include <common>", `#include <common>\n${fragPrelude(variant)}`)
 
-      /* ---- 1. ALBEDO: mottle, crevice grime, settled sediment ------------- */
+      /* ---- 1. ALBEDO: mottle, crevice grime, sediment, and the net cutout --
+       * <alphatest_fragment> runs AFTER <map_fragment>, so setting
+       * diffuseColor.a here is all the net needs - three discards for us.
+       * -------------------------------------------------------------------- */
       .replace(
         "#include <map_fragment>",
         /* glsl */ `#include <map_fragment>
@@ -208,7 +298,8 @@ export function patchUnderwater(
           // face and the sediment behind it are the same material.
           float uwDust = clamp(sedimentMask(vWNrm, uwDetail, uwH), 0.0, 1.0);
           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(dustR,dustG,dustB), uwDust);
-        }`
+        }
+        ${isNet ? NET_ALPHA : ""}`
       )
 
       /* ---- 2. ROUGHNESS: kill the uniform sheen --------------------------- */
@@ -221,14 +312,17 @@ export function patchUnderwater(
         }`
       )
 
-      /* ---- 3. NORMAL: derivative bump from the same field ----------------- */
+      /* ---- 3. NORMAL: derivative bump from the same field ------------------
+       * Skipped for netting: twine is thinner than a pixel at any sane range,
+       * so a bump on it is noise with a cost.
+       * -------------------------------------------------------------------- */
       .replace(
         "#include <normal_fragment_maps>",
-        /* glsl */ `#include <normal_fragment_maps>
+        /* glsl */ `#include <normal_fragment_maps>${isNet ? "" : `
         if (bump > 0.001) {
-          float uwH = triFbm(vWPos*detailScale*2.3, vWNrm);
-          normal = perturbBump(normal, -vViewPosition, uwH, bump*0.06);
-        }`
+          float uwHb = triFbm(vWPos*detailScale*2.3, vWNrm);
+          normal = perturbBump(normal, -vViewPosition, uwHb, bump*0.06);
+        }`}`
       )
 
       /* ---- 4. CAUSTICS: the same field the floor uses --------------------- */

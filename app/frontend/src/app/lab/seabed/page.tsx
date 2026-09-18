@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { BUILD, PARAMS, flatten, type ParamGroup } from "@/features/seabedlab/params";
 import type { BuildOpts } from "@/features/seabedlab/seabed";
+import type { TargetOpts } from "@/features/seabedlab/targets";
 
 const SeabedScene = dynamic(
   () => import("@/features/seabedlab/SeabedScene").then((m) => m.SeabedScene),
@@ -45,6 +46,17 @@ export default function SeabedLabPage() {
       slabBevel: buildP.slabBevel.v,
       hueJitter: buildP.hueJitter.v,
       valueJitter: buildP.valueJitter.v,
+    }),
+    [buildP]
+  );
+  const targets = useMemo<TargetOpts>(
+    () => ({
+      showWreck: buildP.showWreck.v,
+      showNet: buildP.showNet.v,
+      wreckLen: buildP.wreckLen.v,
+      wreckList: buildP.wreckList.v,
+      wreckBury: buildP.wreckBury.v,
+      netPanels: buildP.netPanels.v,
     }),
     [buildP]
   );
@@ -92,7 +104,7 @@ export default function SeabedLabPage() {
     <div className="flex h-screen bg-[#0A1826] font-mono text-xs text-[#C4F8FF]">
       <div className="relative flex-1">
         <SeabedScene
-          values={values} build={build}
+          values={values} build={build} targets={targets}
           compare={mode} seam={seam} playing={playing}
         />
 

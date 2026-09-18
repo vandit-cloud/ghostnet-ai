@@ -1,22 +1,44 @@
 /* eslint-disable */
 // @ts-nocheck
 /* =============================================================================
- * GENERATED FILE -- DO NOT EDIT BY HAND.
+ * ORIGINALLY A GENERATED FILE. IT IS NOW THE SOURCE. EDIT IT HERE.
  *
- * Ported verbatim from the standalone landing demo by
- * `scripts/port_hero_scene.py`. Tune the hero in
- * `ghostnet-demo/demo.src.html`, rebuild it with `build_demo.py`, then re-run
- * the port. Editing this file directly means the next port silently reverts it.
+ * The old header said DO NOT EDIT BY HAND and pointed at
+ * `ghostnet-demo/demo.src.html`, to be rebuilt with `build_demo.py` and
+ * re-ported by `scripts/port_hero_scene.py`. THAT SOURCE IS NOT IN THIS REPO -
+ * the directory does not exist, so the port cannot be re-run and there is
+ * nothing left for it to silently revert. Leaving the warning up was worse than
+ * useless: it sent anyone touching the hero hunting for a file that is gone.
  *
- * ts-nocheck is deliberate and is the price of a verbatim port: the source is
- * plain JavaScript written against the DOM and three's untyped uniform objects,
- * and annotating it would mean rewriting it, which is the one thing this file
- * exists to avoid. The wrapper below is typed, and it is the only surface the
- * rest of the app touches.
+ * So this file is the source of truth for the hero, and is edited directly.
+ * If the standalone demo ever comes back, the port has to be reconciled with
+ * what is here rather than run over the top of it.
+ *
+ * THE SEABED IS THE ONE EXCEPTION and is NOT edited here. It is built by
+ * features/seabedlab/, tuned at /lab/seabed, and arrives through TUNED_VALUES /
+ * TUNED_BUILD / TUNED_TARGETS. Changing a seabed number in this file puts it
+ * out of step with the lab that is supposed to be judging it. See
+ * docs/SEABED_LAB.md.
+ *
+ * ts-nocheck is inherited from the verbatim port: the body is plain JavaScript
+ * written against the DOM and three's untyped uniform objects, and annotating
+ * it would mean rewriting it. NOTE THE COST - nothing in here is type checked,
+ * including the seabed calls above, so those are covered by the lab's own
+ * typed modules instead. The wrapper below is typed, and it is the only surface
+ * the rest of the app touches.
  * ========================================================================== */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+
+/* The seabed now comes from the lab rather than being built inline here. See
+   docs/SEABED_LAB.md. Tuning happens at /lab/seabed, lands in
+   features/seabedlab/params.ts, and arrives here through TUNED_*, so the two
+   cannot drift. */
+import { TUNED_BUILD, TUNED_TARGETS, TUNED_VALUES } from '@/features/seabedlab/params';
+import { buildSeabed } from '@/features/seabedlab/seabed';
+import { buildTargets } from '@/features/seabedlab/targets';
+import { makeUnderwaterUniforms } from '@/features/seabedlab/underwaterMaterial';
 
 const VESSEL_URL = "/models/vessel.glb";
 const TOWFISH_URL = "/models/towfish.glb";
@@ -653,144 +675,33 @@ export function initHero(): () => void {
   shadowCatcher.rotation.x=-Math.PI/2; shadowCatcher.receiveShadow=true;
   scene.add(shadowCatcher);
 
-  /* ------------------------------------------------------------ seabed life
-     The bottom is drawn by the shader, so anything ON it has to be geometry.
-     It earns the polygons twice over: an empty floor gives the eye nothing to
-     judge SCALE or MOTION against - the towfish could be flying 2 m or 20 m up
-     and you could not tell - and a real survey site is cluttered, which is the
-     entire reason the model has to be good.
+  /* -------------------------------------------------- seabed life + targets
+     WAS ~140 LINES OF INLINE GEOMETRY, NOW TWO CALLS.
 
-     SEEDED, not Math.random(). A scene that reshuffles on every reload cannot be
-     tuned, and a rock that moves between two screenshots is an hour lost to a
-     bug that was never there. */
-  function rng(seed){ return function(){ seed|=0; seed=seed+0x6D2B79F5|0;
-    let t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t;
-    return ((t^t>>>14)>>>0)/4294967296; }; }
+     The props still exist for the reason the old comment here gave: an empty
+     floor gives the eye nothing to judge SCALE or MOTION against, and the
+     towfish could be flying 2 m or 20 m up with no way to tell. What changed is
+     that they are no longer lit by a different ocean than the water they sit in.
 
-  const seabed = new THREE.Group(); scene.add(seabed);
+     Placement is UNCHANGED - same seeds (20260914, 77003, 5150, 31337), same
+     lane bias, same counts, same sink depths. Only the material and the
+     tessellation moved, so this is not a re-dress of the composition.
 
-  /* Deformed by POSITION, not per vertex. IcosahedronGeometry is non-indexed, so
-     every corner is duplicated once per face - jitter them independently and the
-     solid tears itself open along every edge. Driving the displacement from the
-     original coordinate makes the duplicates agree. */
-  function lumpy(geo, amt){
-    const a=geo.getAttribute("position");
-    for(let i=0;i<a.count;i++){
-      const x=a.getX(i), y=a.getY(i), z=a.getZ(i);
-      const k=1+amt*(Math.sin(x*4.1+y*2.3)*0.5+Math.cos(z*3.7-x*1.9)*0.5);
-      a.setXYZ(i,x*k,y*k,z*k);
-    }
-    geo.computeVertexNormals(); return geo;
-  }
+     TARGETS are new. The contact stage below announces
 
-  /* One InstancedMesh per kind: four draw calls for the whole bottom. */
-  function scatter(mesh, n, rnd, place){
-    const m=new THREE.Matrix4(), q=new THREE.Quaternion(), e=new THREE.Euler();
-    const pos=new THREE.Vector3(), scl=new THREE.Vector3();
-    for(let i=0;i<n;i++){
-      place(i,rnd,pos,scl,e);
-      q.setFromEuler(e);
-      mesh.setMatrixAt(i, m.compose(pos,q,scl));
-    }
-    mesh.instanceMatrix.needsUpdate=true;
-    /* castShadow stays OFF, the same call already made for the hull. A 30 m water
-       column scatters a small object's shadow into nothing long before it reaches
-       the floor, and the towfish's shadow is the one carrying information -
-       letting fifty rocks compete with it buries the only cue that says how high
-       the fish is flying. */
-    mesh.castShadow=false; mesh.receiveShadow=true;
-    seabed.add(mesh);
-    return mesh;
-  }
+         ghost_net - 0.91 calibrated
 
-  /* A LANE, not a rectangle: dense along the track the fish sweeps, thinning to
-     the sides. rnd()*rnd() biases toward zero, which piles the clutter near the
-     lane centre without a hard edge where it stops. Clutter matters where the
-     sonar is looking; scattering it evenly just costs fill rate out at the fog
-     limit where nothing is legible anyway. */
-  function lane(rnd, spread, zNear, zFar){
-    const side = rnd()<0.5?-1:1;
-    return [ side*spread*rnd()*rnd() + (rnd()-0.5)*10,
-             zNear + (zFar-zNear)*rnd() ];
-  }
+     and until now there was no net in the scene to be that contact. There is
+     one on the wreck at the end of the lane. */
+  const UW = makeUnderwaterUniforms(TUNED_VALUES);
+  const seabedBuild  = buildSeabed(UW, TUNED_BUILD, true);
+  const targetsBuild = buildTargets(UW, TUNED_TARGETS, true);
 
-  // ---- rubble
-  const rockGeo = lumpy(new THREE.IcosahedronGeometry(1,0), 0.55);
-  const rockMat = new THREE.MeshStandardMaterial({color:0x6b6f66, roughness:0.95, metalness:0.0});
-  const rocks = new THREE.InstancedMesh(rockGeo, rockMat, 58);
-  scatter(rocks, 58, rng(20260914), (i,rnd,pos,scl,e)=>{
-    const [x,z]=lane(rnd, 58, -8, -168);
-    const r = 0.35 + rnd()*rnd()*2.4;
-    /* SUNK, not resting. A rock on a soft bottom is partly buried; the giveaway
-       of dressed CG terrain is objects sitting on the surface like props on a
-       table. Dropping each one about a third of its radius reads as sediment. */
-    pos.set(x, r*0.62 - r*0.34, z);
-    scl.set(r*(0.8+rnd()*0.5), r*(0.55+rnd()*0.4), r*(0.8+rnd()*0.5));
-    e.set(rnd()*3.14, rnd()*6.28, rnd()*3.14);
-  });
+  const seabed = new THREE.Group();
+  seabed.add(seabedBuild.group, targetsBuild.group);
+  scene.add(seabed);
 
-  // ---- broken slabs: flatter and angular, man-made rather than geological
-  const slabMat = new THREE.MeshStandardMaterial({color:0x585d5c, roughness:0.88, metalness:0.05});
-  const slabs = new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1), slabMat, 16);
-  scatter(slabs, 16, rng(77003), (i,rnd,pos,scl,e)=>{
-    const [x,z]=lane(rnd, 46, -14, -150);
-    const w=1.2+rnd()*3.4;
-    pos.set(x, 0.18, z);
-    scl.set(w, 0.22+rnd()*0.35, w*(0.4+rnd()*0.7));
-    /* Tipped, never level. Debris that has been through surf and settled does
-       not lie flat, and a flat slab reads instantly as a placed box. */
-    e.set((rnd()-0.5)*0.5, rnd()*6.28, (rnd()-0.5)*0.5);
-  });
-
-  // ---- coral: branching colonies
-  /* Built from ONE tapered branch, instanced. A colony is not a random spray:
-     coral radiates from a holdfast, so every branch shares an origin and tilts
-     OUTWARD by an angle that grows with how high up the colony it starts. That
-     single rule is most of what separates coral from scattered sticks. */
-  const branchGeo = new THREE.CylinderGeometry(0.055, 0.17, 1, 5, 1, true);
-  branchGeo.translate(0, 0.5, 0);
-  const coralMat = new THREE.MeshStandardMaterial({color:0xa8614c, roughness:0.92,
-    metalness:0.0, side:THREE.DoubleSide});
-  const CLUSTERS = 11, PER = 14;
-  const coral = new THREE.InstancedMesh(branchGeo, coralMat, CLUSTERS*PER);
-  {
-    const rnd = rng(5150), sites=[];
-    for(let c=0;c<CLUSTERS;c++){ const [x,z]=lane(rnd, 50, -18, -160); sites.push([x,z,0.6+rnd()*1.5]); }
-    let i=0;
-    const m=new THREE.Matrix4(), q=new THREE.Quaternion(), e=new THREE.Euler();
-    const pos=new THREE.Vector3(), scl=new THREE.Vector3();
-    for(const site of sites){
-      const cx=site[0], cz=site[1], size=site[2];
-      for(let b=0;b<PER;b++){
-        const az = (b/PER)*6.2831 + rnd()*0.5;
-        const up = rnd();                       // how high on the colony it starts
-        const tilt = 0.15 + up*0.85 + rnd()*0.25;
-        const len = size*(1.4 - up*0.7)*(0.7+rnd()*0.6);
-        const rad = size*up*0.45;
-        pos.set(cx + Math.cos(az)*rad, size*0.15 + up*size*0.5, cz + Math.sin(az)*rad);
-        scl.set(size*0.55, len, size*0.55);
-        e.set(Math.cos(az)*tilt, az, Math.sin(az)*tilt, "ZYX");
-        q.setFromEuler(e);
-        coral.setMatrixAt(i++, m.compose(pos,q,scl));
-      }
-    }
-    coral.instanceMatrix.needsUpdate=true;
-    coral.castShadow=false; coral.receiveShadow=true;
-    seabed.add(coral);
-  }
-
-  // ---- coral: massive heads, the rounded kind
-  const headMat = new THREE.MeshStandardMaterial({color:0x9a8455, roughness:0.95, metalness:0.0});
-  const headGeo = lumpy(new THREE.SphereGeometry(1, 12, 8), 0.28);
-  const heads = new THREE.InstancedMesh(headGeo, headMat, 13);
-  scatter(heads, 13, rng(31337), (i,rnd,pos,scl,e)=>{
-    const [x,z]=lane(rnd, 44, -20, -155);
-    const r=0.7+rnd()*1.7;
-    pos.set(x, r*0.42, z);
-    scl.set(r, r*0.62, r*(0.85+rnd()*0.3));
-    e.set(0, rnd()*6.28, 0);
-  });
-
+  const { rocks, slabs, coral, heads } = seabedBuild.meshes;
   rocks.visible = slabs.visible = SHOW.debris;
   coral.visible = heads.visible = SHOW.coral;
 
@@ -832,6 +743,7 @@ export function initHero(): () => void {
     renderer.setSize(w,h,false);
     const pr=renderer.getPixelRatio();
     wu.uRes.value.set(w*pr,h*pr);
+    UW.uRes.value.set(w*pr,h*pr);
     camera.aspect=w/h;
   }
   window.addEventListener("resize", resize); resize();
@@ -967,6 +879,12 @@ export function initHero(): () => void {
     rim.intensity  = 0.85*sub;
     sunTarget.position.copy(fishGroup.position);
     seabed.position.y = seabedY;
+    /* The patched materials are a second consumer of the scene's state and have
+       to be fed it: without uEyeDepth the props fog toward the wrong water
+       colour, and without uSeabedY the caustics stop fading with height. */
+    UW.uTime.value = t;
+    UW.uEyeDepth.value = Math.max(-WP.camY.v, 0);
+    UW.uSeabedY.value = seabedY;
     shadowCatcher.position.set(vx, seabedY+0.05, fishGroup.position.z);
     shadowCatcher.visible = sub > 0.05;
     if ((sub>0.5) === envIsAir){ envIsAir = !(sub>0.5); scene.environment = envIsAir?ENV_AIR:ENV_WATER;

@@ -94,6 +94,15 @@ function tint(base: THREE.Color, rnd: () => number, hue: number, value: number) 
 export type SeabedHandles = {
   group: THREE.Group;
   materials: THREE.MeshStandardMaterial[];
+  /** Named so the hero's SHOW.debris / SHOW.coral switches keep working.
+   *  Indexing group.children by position would work today and break the first
+   *  time anything is added to the group. */
+  meshes: {
+    rocks: THREE.InstancedMesh;
+    slabs: THREE.InstancedMesh;
+    coral: THREE.InstancedMesh;
+    heads: THREE.InstancedMesh;
+  };
   dispose: () => void;
 };
 
@@ -106,8 +115,23 @@ export function buildSeabed(
   const materials: THREE.MeshStandardMaterial[] = [];
   const geos: THREE.BufferGeometry[] = [];
 
-  const mat = (params: THREE.MeshStandardMaterialParameters) => {
-    const m = new THREE.MeshStandardMaterial(params);
+  /* WHERE THE ALBEDO LIVES, and it cannot live in both places.
+   *
+   * three's instancing shader does `diffuseColor *= vColor`, so instanceColor is
+   * a MULTIPLIER on material.color, not an absolute colour. Setting both to
+   * 0x6b6f66 squares the albedo - 0.147 linear becomes 0.0216 - and the whole
+   * field renders as black silhouettes. That is a real regression and it is why
+   * the first pass of this lab looked nothing like the live hero.
+   *
+   * So: the patched build drives material.color to white and carries the full
+   * per-instance colour in instanceColor. The shipped build sets NO instance
+   * colour at all, because the hero sets none, and the reference side of a wipe
+   * has to be the thing that ships and not a near miss. */
+  const mat = (baseHex: number, params: THREE.MeshStandardMaterialParameters) => {
+    const m = new THREE.MeshStandardMaterial({
+      ...params,
+      color: patched ? 0xffffff : baseHex,
+    });
     if (patched) patchUnderwater(m, uniforms);
     materials.push(m);
     return m;
@@ -134,7 +158,7 @@ export function buildSeabed(
       place(i, rnd, pos, scl, e);
       q.setFromEuler(e);
       mesh.setMatrixAt(i, m.compose(pos, q, scl));
-      mesh.setColorAt(i, tint(base, rnd, opts.hueJitter, opts.valueJitter));
+      if (patched) mesh.setColorAt(i, tint(base, rnd, opts.hueJitter, opts.valueJitter));
     }
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
@@ -151,7 +175,7 @@ export function buildSeabed(
     3.1
   );
   geos.push(rockGeo);
-  const rocks = new THREE.InstancedMesh(rockGeo, mat({ color: 0x6b6f66, roughness: 0.95, metalness: 0.0 }), 58);
+  const rocks = new THREE.InstancedMesh(rockGeo, mat(0x6b6f66, { roughness: 0.95, metalness: 0.0 }), 58);
   scatter(rocks, 58, 20260914, new THREE.Color(0x6b6f66), (_i, rnd, pos, scl, e) => {
     const [x, z] = lane(rnd, 58, -8, -168);
     const r = 0.35 + rnd() * rnd() * 2.4;
@@ -168,7 +192,7 @@ export function buildSeabed(
     ? crease(new THREE.BoxGeometry(1, 1, 1, 3, 2, 3), 0.045, 5.5)
     : new THREE.BoxGeometry(1, 1, 1);
   geos.push(slabGeo);
-  const slabs = new THREE.InstancedMesh(slabGeo, mat({ color: 0x585d5c, roughness: 0.88, metalness: 0.05 }), 16);
+  const slabs = new THREE.InstancedMesh(slabGeo, mat(0x585d5c, { roughness: 0.88, metalness: 0.05 }), 16);
   scatter(slabs, 16, 77003, new THREE.Color(0x585d5c), (_i, rnd, pos, scl, e) => {
     const [x, z] = lane(rnd, 46, -14, -150);
     const w = 1.2 + rnd() * 3.4;
@@ -183,7 +207,7 @@ export function buildSeabed(
   const branchGeo = new THREE.CylinderGeometry(0.055, 0.17, 1, opts.branchRadial, 3, true);
   branchGeo.translate(0, 0.5, 0);
   geos.push(branchGeo);
-  const coralMat = mat({ color: 0xa8614c, roughness: 0.92, metalness: 0.0, side: THREE.DoubleSide });
+  const coralMat = mat(0xa8614c, { roughness: 0.92, metalness: 0.0, side: THREE.DoubleSide });
   const CLUSTERS = 11, PER = 14;
   const coral = new THREE.InstancedMesh(branchGeo, coralMat, CLUSTERS * PER);
   {
@@ -213,7 +237,7 @@ export function buildSeabed(
         e.set(Math.cos(az) * tilt, az, Math.sin(az) * tilt, "ZYX");
         q.setFromEuler(e);
         coral.setMatrixAt(i, m.compose(pos, q, scl));
-        coral.setColorAt(i, colonyTint);
+        if (patched) coral.setColorAt(i, colonyTint);
         i++;
       }
     }
@@ -231,7 +255,7 @@ export function buildSeabed(
     6.5
   );
   geos.push(headGeo);
-  const heads = new THREE.InstancedMesh(headGeo, mat({ color: 0x9a8455, roughness: 0.95, metalness: 0.0 }), 13);
+  const heads = new THREE.InstancedMesh(headGeo, mat(0x9a8455, { roughness: 0.95, metalness: 0.0 }), 13);
   scatter(heads, 13, 31337, new THREE.Color(0x9a8455), (_i, rnd, pos, scl, e) => {
     const [x, z] = lane(rnd, 44, -20, -155);
     const r = 0.7 + rnd() * 1.7;
@@ -243,6 +267,7 @@ export function buildSeabed(
   return {
     group,
     materials,
+    meshes: { rocks, slabs, coral, heads },
     dispose: () => {
       for (const g of geos) g.dispose();
       for (const m of materials) m.dispose();

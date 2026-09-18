@@ -12,6 +12,7 @@ import {
   WORK_Y,
 } from "./optics";
 import { buildSeabed, type BuildOpts } from "./seabed";
+import { buildTargets, type TargetOpts } from "./targets";
 import { makeUnderwaterUniforms, SHIPPED_FOG } from "./underwaterMaterial";
 
 /* =============================================================================
@@ -125,12 +126,13 @@ export type SceneHandle = {
   setUniform: (name: string, v: number) => void;
   setCompare: (mode: number, seam: number) => void;
   setPlaying: (p: boolean) => void;
-  rebuild: (opts: BuildOpts) => void;
+  rebuild: (opts: BuildOpts, targets: TargetOpts) => void;
 };
 
 export function SeabedScene({
   values,
   build,
+  targets,
   compare,
   seam,
   playing,
@@ -138,6 +140,7 @@ export function SeabedScene({
 }: {
   values: Record<string, number>;
   build: BuildOpts;
+  targets: TargetOpts;
   compare: number;
   seam: number;
   playing: boolean;
@@ -264,6 +267,13 @@ export function SeabedScene({
     let shipped = buildSeabed(uniforms, { ...build, rockDetail: 0, headDetail: 0,
       branchRadial: 5, slabBevel: 0, hueJitter: 0, valueJitter: 0 }, false);
     let patched = buildSeabed(uniforms, build, true);
+    /* The targets go in BOTH builds so the wipe still means something across
+       them: the wreck is the largest single surface in the scene and therefore
+       the clearest read on whether the absorption match is right. */
+    let shipTargets = buildTargets(uniforms, targets, false);
+    let patchTargets = buildTargets(uniforms, targets, true);
+    shipped.group.add(shipTargets.group);
+    patched.group.add(patchTargets.group);
     shipped.group.position.y = SEABED_Y;
     patched.group.position.y = SEABED_Y;
     scene.add(shipped.group, patched.group);
@@ -405,12 +415,17 @@ export function SeabedScene({
         cmpUniforms.uSeam.value = s;
       },
       setPlaying(p) { running = p; },
-      rebuild(opts) {
+      rebuild(opts, tOpts) {
         scene.remove(shipped.group, patched.group);
         shipped.dispose(); patched.dispose();
+        shipTargets.dispose(); patchTargets.dispose();
         shipped = buildSeabed(uniforms, { ...opts, rockDetail: 0, headDetail: 0,
           branchRadial: 5, slabBevel: 0, hueJitter: 0, valueJitter: 0 }, false);
         patched = buildSeabed(uniforms, opts, true);
+        shipTargets = buildTargets(uniforms, tOpts, false);
+        patchTargets = buildTargets(uniforms, tOpts, true);
+        shipped.group.add(shipTargets.group);
+        patched.group.add(patchTargets.group);
         shipped.group.position.y = SEABED_Y;
         patched.group.position.y = SEABED_Y;
         scene.add(shipped.group, patched.group);
@@ -418,6 +433,13 @@ export function SeabedScene({
     };
     handleRef.current = handle;
     onHandle?.(handle);
+
+    /* A debug handle, same courtesy the hero gives itself with
+       window.__heroProgress. A lab you cannot interrogate from the console is a
+       lab where every question costs a rebuild. */
+    (window as unknown as Record<string, unknown>).__sb = {
+      scene, renderer, camera, uniforms, shipped, patched, sun,
+    };
 
     return () => {
       cancelAnimationFrame(raf);
@@ -446,7 +468,7 @@ export function SeabedScene({
 
   useEffect(() => { handleRef.current?.setCompare(compare, seam); }, [compare, seam]);
   useEffect(() => { handleRef.current?.setPlaying(playing); }, [playing]);
-  useEffect(() => { handleRef.current?.rebuild(build); }, [build]);
+  useEffect(() => { handleRef.current?.rebuild(build, targets); }, [build, targets]);
 
   return <canvas ref={canvasRef} className="h-full w-full touch-none" />;
 }
