@@ -140,7 +140,7 @@ export default function DashboardPage() {
                 </div>
               </>
             ) : (
-              <EmptyState title="No surveys yet." description="Create a survey to activate the mission dashboard and 3D monitoring view." />
+              <EmptyState title="No surveys yet." description="Create a survey to activate the mission dashboard and survey map." />
             )}
           </Panel>
 
@@ -217,10 +217,10 @@ export default function DashboardPage() {
           <div className="space-y-3">
             <div>
               <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-accent/80">Survey Theater</p>
-              <h2 className="mt-2 font-display text-2xl font-semibold text-slate-100">3D Vessel Replay</h2>
+              <h2 className="mt-2 font-display text-2xl font-semibold text-slate-100">Survey Map</h2>
               <p className="mt-1.5 max-w-xl text-sm text-slate-400">
-                Follow the vessel path, inspect detections spatially, and switch between overview and close-up
-                review modes.
+                Follow the vessel path and inspect detections geospatially, with replay across the
+                survey timeline.
               </p>
             </div>
             {data.current_survey ? (
@@ -231,7 +231,7 @@ export default function DashboardPage() {
               />
             ) : (
               <Panel className="flex h-[520px] items-center justify-center p-6">
-                <EmptyState title="No active survey selected." description="Create or upload a survey to unlock the live 3D theater." />
+                <EmptyState title="No active survey selected." description="Create or upload a survey to populate the survey map." />
               </Panel>
             )}
           </div>

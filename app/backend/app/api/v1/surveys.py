@@ -66,18 +66,49 @@ def get_survey(survey_id: uuid.UUID, db: Session = Depends(get_db)) -> SurveyDet
 
 
 @router.patch("/{survey_id}", response_model=SurveyDetailOut)
-def update_survey(survey_id: uuid.UUID, payload: SurveyUpdate, db: Session = Depends(get_db)) -> SurveyDetailOut:
+def update_survey(
+    request: Request,
+    survey_id: uuid.UUID,
+    payload: SurveyUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles(Role.ADMIN, Role.OPERATOR)),
+) -> SurveyDetailOut:
+    """Rename a survey or move its status.
+
+    Gated and audited to match `create_survey`. Router-level auth only proves
+    the caller is signed in, and this endpoint can rename a survey or force its
+    status, which a VIEWER or REVIEWER has no business doing -- their roles
+    exist precisely to separate reading and judging from changing.
+    """
     survey = survey_service.update_survey(db, survey_id, payload)
+    audit_service.log(
+        db, actor=user, action="survey.updated", entity_type="survey", entity_id=str(survey_id), request=request
+    )
     return _to_out(db, survey, detail=True)
 
 
 @router.delete("/{survey_id}", status_code=204, response_class=Response)
 def delete_survey(
+    request: Request,
     survey_id: uuid.UUID,
     db: Session = Depends(get_db),
     storage: StorageBackend = Depends(get_storage_backend),
+    user: User = Depends(require_roles(Role.ADMIN, Role.OPERATOR)),
 ) -> Response:
     """Erase a survey and everything derived from it. 404 if it never existed,
-    so a repeated delete is honest about it rather than reporting success."""
+    so a repeated delete is honest about it rather than reporting success.
+
+    ADMIN/OPERATOR only, and audited. This is the single most destructive call
+    in the API -- it cascades to every file, frame, detection and review the
+    survey owns -- and it previously carried no role check at all beyond the
+    router's "is signed in", so a VIEWER could issue it. The audit entry is
+    written BEFORE the delete: afterwards there is no survey row left to
+    describe, and an audit trail that only records destructions it survived is
+    not a trail.
+    """
+    survey_service.get_survey_or_404(db, survey_id)
+    audit_service.log(
+        db, actor=user, action="survey.deleted", entity_type="survey", entity_id=str(survey_id), request=request
+    )
     survey_service.delete_survey(db, survey_id, storage)
     return Response(status_code=204)

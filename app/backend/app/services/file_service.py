@@ -1,4 +1,6 @@
 import json
+import logging
+import shutil
 import uuid
 from datetime import datetime, timezone
 from typing import BinaryIO
@@ -11,6 +13,8 @@ from app.models.enums import FileValidationStatus
 from app.models.sonar_frame import SonarFrame
 from app.models.survey_file import SurveyFile
 from app.storage.local import StorageBackend
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -167,3 +171,88 @@ def list_survey_files(db: Session, survey_id: uuid.UUID) -> list[SurveyFile]:
         .order_by(SurveyFile.created_at.desc())
         .all()
     )
+
+
+def get_survey_file_or_404(
+    db: Session, survey_id: uuid.UUID, file_id: uuid.UUID
+) -> SurveyFile:
+    """Fetch a file, scoped to its survey.
+
+    Scoped on purpose: an id alone would let a caller delete a file out of a
+    survey they were not looking at by pasting the wrong URL, and the 404 for
+    "exists, but not here" should be indistinguishable from "does not exist".
+    """
+    survey_file = (
+        db.query(SurveyFile)
+        .filter(SurveyFile.id == file_id, SurveyFile.survey_id == survey_id)
+        .one_or_none()
+    )
+    if survey_file is None:
+        raise ApiError(404, "FILE_NOT_FOUND", "Survey file was not found.")
+    return survey_file
+
+
+def delete_survey_file(
+    db: Session,
+    storage: StorageBackend,
+    survey_id: uuid.UUID,
+    file_id: uuid.UUID,
+) -> None:
+    """Remove one uploaded file from a survey, with whatever was derived from it.
+
+    This exists for the ordinary mistake -- the wrong file dragged into the
+    dropzone -- so the common case is a file with nothing hanging off it yet.
+    But it deliberately also works once a file HAS been processed, because
+    "I uploaded the wrong survey and only noticed after it ran" is the same
+    mistake caught later, and leaving it un-deletable would mean the operator's
+    only recovery is deleting the whole survey.
+
+    What that costs is real and the UI states it before asking: `sonar_frames`
+    cascades off `survey_files.file_id` and `detections` off BOTH `frame_id`
+    and `source_file_id`, so every frame, detection and review belonging to this
+    file goes with it. Detections from OTHER files in the survey are untouched,
+    which is the whole point of doing this per-file rather than per-survey.
+
+    Refused outright while a job is running. The cascade would pull rows out
+    from under a task that is still writing to them, which surfaces as a stream
+    of foreign-key errors after an apparently successful delete -- the same trap
+    `survey_service.delete_survey` documents, except that one can cancel the job
+    because it is removing everything. Here the job is still legitimately
+    working on the survey's other files, so the honest answer is "not now".
+    """
+    from app.services import processing_service
+
+    survey_file = get_survey_file_or_404(db, survey_id, file_id)
+
+    active = processing_service.get_active_job_for_survey(db, survey_id)
+    if active is not None:
+        raise ApiError(
+            409,
+            "SURVEY_PROCESSING",
+            "This survey is being processed. Wait for the job to finish, or "
+            "cancel it, before removing a file.",
+        )
+
+    # Read the paths off the row before it is gone.
+    storage_reference = survey_file.storage_reference
+
+    db.delete(survey_file)
+    db.commit()
+
+    # Rows cascade; bytes do not. Same ordering and same forgiveness as
+    # delete_survey: the delete has already succeeded by this point, so a
+    # failure to unlink is a cleanup problem and must not become a 500.
+    try:
+        path = storage.path_for(storage_reference)
+        # Frames were tiled to <survey_dir>/frames/<file_stem>/ (xtf_ingest's
+        # FRAME_SUBDIR). Remove that directory, not the survey's whole frames/
+        # tree, which holds the other files' frames too.
+        frame_dir = path.parent / "frames" / path.stem
+        if frame_dir.is_dir():
+            shutil.rmtree(frame_dir)
+        if path.is_file():
+            path.unlink()
+    except Exception:
+        logger.exception(
+            "Could not remove storage for deleted survey file %s", file_id
+        )

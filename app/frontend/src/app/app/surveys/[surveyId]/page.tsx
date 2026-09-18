@@ -11,7 +11,8 @@ import { FileValidationCard } from "@/components/FileValidationCard";
 import { EmptyState, ErrorState, LoadingSkeleton } from "@/components/States";
 import { useToastStore } from "@/components/Toast";
 import { UploadDropzone } from "@/components/UploadDropzone";
-import { useSurveyFiles, useUploadFile } from "@/features/upload/hooks";
+import { useDeleteFile, useSurveyFiles, useUploadFile } from "@/features/upload/hooks";
+import { ApiError } from "@/api/client";
 import { useDeleteSurvey, useSurvey } from "@/features/surveys/hooks";
 import type { SurveyFile } from "@/types";
 import { formatDateTime } from "@/utils/format";
@@ -24,10 +25,14 @@ export default function SurveyDetailPage() {
   const { data: survey, isLoading, isError, refetch } = useSurvey(surveyId);
   const { data: files, isLoading: filesLoading } = useSurveyFiles(surveyId);
   const uploadFile = useUploadFile(surveyId);
+  const deleteFile = useDeleteFile(surveyId);
   const deleteSurvey = useDeleteSurvey();
   const push = useToastStore((s) => s.push);
 
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  // Which row is mid-delete, so only that card shows a spinner rather than all
+  // of them sharing the mutation's single isPending flag.
+  const [removingFileId, setRemovingFileId] = useState<string | null>(null);
 
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
@@ -51,6 +56,25 @@ export default function SurveyDetailPage() {
       }
     }
     push("Upload complete.", "success");
+  }
+
+  async function handleRemoveFile(fileId: string) {
+    const name = files?.find((f) => f.id === fileId)?.filename ?? "File";
+    setRemovingFileId(fileId);
+    try {
+      await deleteFile.mutateAsync(fileId);
+      push(`${name} removed.`, "success");
+    } catch (error) {
+      // The backend refuses with 409 while a job is running, and its message
+      // explains what to do about it. Surface that rather than a generic
+      // failure, which would leave the operator retrying a click that cannot
+      // work until the job finishes.
+      const message =
+        error instanceof ApiError ? error.message : `Could not remove ${name}.`;
+      push(message, "error");
+    } finally {
+      setRemovingFileId(null);
+    }
   }
 
   if (isLoading) {
@@ -170,7 +194,12 @@ export default function SurveyDetailPage() {
               <ValidationStrip files={files} />
               <div className="space-y-2">
                 {files.map((file) => (
-                  <FileValidationCard key={file.id} file={file} />
+                  <FileValidationCard
+                    key={file.id}
+                    file={file}
+                    onRemove={handleRemoveFile}
+                    removing={removingFileId === file.id}
+                  />
                 ))}
               </div>
             </>

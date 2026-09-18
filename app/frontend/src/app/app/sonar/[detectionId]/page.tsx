@@ -7,6 +7,7 @@ import { AppShell } from "@/components/AppShell";
 import { PriorityBadge, UncertaintyLabel } from "@/components/Badges";
 import { EvidenceSummary } from "@/components/EvidenceSummary";
 import { SonarViewer } from "@/components/SonarViewer";
+import { NoGeometryNote } from "@/components/NoGeometryNote";
 import { ErrorState, LoadingSkeleton } from "@/components/States";
 import { useDetection } from "@/features/detections/hooks";
 import {
@@ -113,6 +114,9 @@ export default function SonarInvestigationPage() {
               }
             />
             <Row label="Model" value={detection.model_version ?? "Unavailable"} />
+            {detection.latitude === null && detection.longitude === null && (
+              <NoGeometryNote kind="geospatial" />
+            )}
           </div>
         </div>
       </div>

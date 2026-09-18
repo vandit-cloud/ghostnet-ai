@@ -291,28 +291,121 @@ export function HeroWaterBackdrop() {
       )
     );
 
+    // Set once the loop below exists. A resize while the loop is PAUSED still
+    // has to repaint -- the canvas was resized under a frame that will not be
+    // drawn again on its own, so without this the backdrop stretches or blanks
+    // and stays that way until something else happens to resume it.
+    let repaintIfPaused: (() => void) | null = null;
+
     function resize() {
       const w = canvasEl.clientWidth;
       const h = canvasEl.clientHeight;
       if (w === 0 || h === 0) return;
       renderer.setSize(w, h, false);
       (uniforms.uRes.value as THREE.Vector2).set(w, h);
+      repaintIfPaused?.();
     }
     const ro = new ResizeObserver(resize);
     ro.observe(canvasEl);
     resize();
 
+    /* The loop only runs when this shader is actually being looked at.
+     *
+     * It used to render unconditionally, forever, from mount until unmount.
+     * That is expensive in a way the file does not look expensive: FRAG is a
+     * full-screen raymarch with 5-octave fbm, caustics, god rays and bubbles,
+     * evaluated per pixel at up to 1.6x device pixel ratio. On integrated
+     * graphics it saturates the GPU, and a saturated GPU stalls the compositor
+     * -- which the user does not experience as "the water is slow", they
+     * experience it as clicks being dropped and navigation hanging, because
+     * their click DID land and the frame showing it never came.
+     *
+     * Three cases, and the old loop got all three wrong:
+     *
+     *   off-screen   scrolled past, or on a page where it sits behind content
+     *                that has grown taller than the viewport -- still rendered
+     *   tab hidden   browsers throttle rAF here but do not reliably stop it
+     *   reduced motion  it pinned uTime to 0 and then kept re-rendering the
+     *                IDENTICAL frame 60 times a second, which is the worst of
+     *                both: the accessibility preference was honoured visually
+     *                and ignored entirely where it costs
+     *
+     * Paused is not blank: renderOnce() paints one frame so the backdrop is
+     * still there, it has simply stopped animating.
+     */
     let raf = 0;
-    const start = performance.now();
+    let running = false;
+    let onScreen = true;
+    let tabVisible = typeof document === "undefined" || !document.hidden;
+
+    // Accumulated rather than derived from a fixed start, so resuming after a
+    // pause continues the swell instead of jumping forward by however long the
+    // page sat in a background tab.
+    let elapsed = 0;
+    let last = 0;
+
+    const animated = !reducedMotion;
+    const shouldRun = () => animated && onScreen && tabVisible;
+
+    function renderOnce() {
+      uniforms.uTime.value = elapsed;
+      renderer.render(scene, camera);
+    }
+
     function tick(now: number) {
-      uniforms.uTime.value = reducedMotion ? 0 : (now - start) / 1000;
+      if (last === 0) last = now;
+      elapsed += (now - last) / 1000;
+      last = now;
+      uniforms.uTime.value = elapsed;
       renderer.render(scene, camera);
       raf = requestAnimationFrame(tick);
     }
-    raf = requestAnimationFrame(tick);
+
+    function startLoop() {
+      if (running || !shouldRun()) return;
+      running = true;
+      last = 0;
+      raf = requestAnimationFrame(tick);
+    }
+
+    function stopLoop() {
+      if (!running) return;
+      cancelAnimationFrame(raf);
+      running = false;
+      last = 0;
+    }
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        onScreen = entry.isIntersecting;
+        if (shouldRun()) startLoop();
+        else {
+          stopLoop();
+          if (onScreen) renderOnce();
+        }
+      },
+      { threshold: 0 }
+    );
+    io.observe(canvasEl);
+
+    function onVisibility() {
+      tabVisible = !document.hidden;
+      if (shouldRun()) startLoop();
+      else stopLoop();
+    }
+    document.addEventListener("visibilitychange", onVisibility);
+
+    repaintIfPaused = () => {
+      if (!running) renderOnce();
+    };
+
+    if (shouldRun()) startLoop();
+    else renderOnce();
 
     return () => {
-      cancelAnimationFrame(raf);
+      stopLoop();
+      io.disconnect();
+      document.removeEventListener("visibilitychange", onVisibility);
       ro.disconnect();
       renderer.dispose();
     };

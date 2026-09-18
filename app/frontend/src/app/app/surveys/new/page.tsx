@@ -14,7 +14,16 @@ import { useCreateSurvey } from "@/features/surveys/hooks";
 
 const HeroWaterBackdrop = dynamic(
   () => import("@/components/three/HeroWaterBackdrop").then((m) => m.HeroWaterBackdrop),
-  { ssr: false }
+  {
+    ssr: false,
+    // ssr:false means nothing at all renders here until the three.js chunk has
+    // downloaded and the shader has compiled. Without a fallback that gap is
+    // the PAGE BACKGROUND showing through -- a white flash on every cold load,
+    // for as long as the chunk takes. Painting the shader's own deep-water
+    // colour makes the wait read as the backdrop still loading rather than as
+    // a broken page. Matches the pattern HeroSonar already used.
+    loading: () => <div aria-hidden className="absolute inset-0 bg-[#072639]" />,
+  }
 );
 
 const schema = z.object({

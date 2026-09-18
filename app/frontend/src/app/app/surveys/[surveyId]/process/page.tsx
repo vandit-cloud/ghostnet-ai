@@ -29,7 +29,16 @@ import { formatConfidence, formatDateTime } from "@/utils/format";
 
 const HeroWaterBackdrop = dynamic(
   () => import("@/components/three/HeroWaterBackdrop").then((m) => m.HeroWaterBackdrop),
-  { ssr: false }
+  {
+    ssr: false,
+    // ssr:false means nothing at all renders here until the three.js chunk has
+    // downloaded and the shader has compiled. Without a fallback that gap is
+    // the PAGE BACKGROUND showing through -- a white flash on every cold load,
+    // for as long as the chunk takes. Painting the shader's own deep-water
+    // colour makes the wait read as the backdrop still loading rather than as
+    // a broken page. Matches the pattern HeroSonar already used.
+    loading: () => <div aria-hidden className="absolute inset-0 bg-[#072639]" />,
+  }
 );
 
 // Same shape-first convention as the survey detail page's ValidationStrip:
@@ -356,7 +365,7 @@ function CompletionPanel({
       {job.detections_found === 0 ? (
         <p className="mt-2 text-xs text-slate-500">
           No candidates cleared the detection threshold on this survey. That is a result, not a failure — the
-          frames were scored and nothing in them met the bar. If that's unexpected, double-check the uploaded
+          frames were scored and nothing in them met the bar. If that&apos;s unexpected, double-check the uploaded
           files on the{" "}
           <Link href={`/app/surveys/${surveyId}`} className="text-cyan-accent hover:underline">
             survey page

@@ -12,6 +12,7 @@ import { SonarViewer } from "@/components/SonarViewer";
 import { useDetection, useDetectionReviews } from "@/features/detections/hooks";
 import { formatConfidence, formatCoordinate, formatDateTime, formatDetectionClassWithDetector } from "@/utils/format";
 import { ReviewOnlyBanner } from "@/components/ReviewOnlyBanner";
+import { NoGeometryNote } from "@/components/NoGeometryNote";
 
 export default function DetectionDetailPage() {
   const params = useParams<{ detectionId: string }>();
@@ -102,6 +103,9 @@ export default function DetectionDetailPage() {
             <Row label="Longitude" value={formatCoordinate(detection.longitude)} />
             <Row label="Position Error" value={detection.position_error_m ? `±${detection.position_error_m} m` : "Unavailable"} />
             <Row label="Localization" value={detection.localization_method ?? "Unavailable"} />
+            {detection.latitude === null && detection.longitude === null && (
+              <NoGeometryNote kind="geospatial" />
+            )}
           </ExpandableSection>
 
           <ExpandableSection title="Sonar Quality">
@@ -109,6 +113,9 @@ export default function DetectionDetailPage() {
             <Row label="Length" value={detection.dimensions.length ? `${detection.dimensions.length} m (${detection.dimensions.status ?? "estimated"})` : "Unavailable"} />
             <Row label="Area" value={detection.dimensions.area ? `${detection.dimensions.area} m²` : "Unavailable"} />
             <Row label="Depth" value={detection.depth ? `${detection.depth} m` : "Unavailable"} />
+            {detection.dimensions.status === "unavailable" && (
+              <NoGeometryNote kind="dimensions" />
+            )}
           </ExpandableSection>
 
           <ExpandableSection title="Model Information">

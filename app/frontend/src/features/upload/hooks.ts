@@ -28,3 +28,19 @@ export function useUploadFile(surveyId: string) {
     },
   });
 }
+
+export function useDeleteFile(surveyId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (fileId: string) =>
+      apiFetch<void>(`/surveys/${surveyId}/files/${fileId}`, { method: "DELETE" }),
+    onSuccess: () => {
+      // The same two as upload, plus detections: removing a processed file
+      // cascades its detections away, so a stale list would keep showing rows
+      // whose detail pages now 404.
+      queryClient.invalidateQueries({ queryKey: ["survey-files", surveyId] });
+      queryClient.invalidateQueries({ queryKey: ["survey", surveyId] });
+      queryClient.invalidateQueries({ queryKey: ["detections"] });
+    },
+  });
+}

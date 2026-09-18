@@ -55,3 +55,25 @@ export const ALERT = {
 } as const;
 
 export type AlertKey = keyof typeof ALERT;
+
+/**
+ * The detection box drawn over a sonar frame.
+ *
+ * This is the second deliberate departure from the four hexes, for the same
+ * reason as ALERT: it is a mark on a photograph, not ink on paper, and the
+ * palette's constraints are tuned for the latter. Imperial (#021F94) was used
+ * here and is a near-black on a greyscale waterfall -- it reads as one more
+ * dark artefact among the shadows it is supposed to be pointing at.
+ *
+ * Green because the box answers one question -- "here is the thing the model
+ * found" -- and green is the only hue on this canvas that no sonar return can
+ * counterfeit. The frames are greyscale, so ANY saturated hue separates from
+ * the image; green additionally avoids colliding with ALERT's red/amber
+ * priority ramp, which the operator reads as severity elsewhere in the console.
+ *
+ * Luminance, not hue, is what makes it survive: emerald-400 (#16705A) is the
+ * system's "good" green but at L*42 it disappears into the dark half of a
+ * waterfall. This is the same hue family lifted to L*75, and it is paired with
+ * a 1px dark outer ring so it also holds against the bright nadir stripe.
+ */
+export const DETECTION = "#00D97E";

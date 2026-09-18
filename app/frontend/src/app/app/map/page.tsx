@@ -10,27 +10,17 @@ import { AppShell } from "@/components/AppShell";
 import { PriorityBadge, ReviewStatusBadge, UncertaintyLabel } from "@/components/Badges";
 import { FilterSelect } from "@/components/FilterBar";
 import { MapLegend } from "@/components/MapLegend";
-import type { Scene3DDetection } from "@/components/three/Scene3D";
-import { computeBounds, projectLatLon } from "@/components/three/utils/geo3d";
 import { SonarViewer } from "@/components/SonarViewer";
 import { EmptyState, ErrorState, LoadingSkeleton } from "@/components/States";
 import { useDetection } from "@/features/detections/hooks";
 import { useSurveyMap } from "@/features/map/hooks";
 import { useSurveys } from "@/features/surveys/hooks";
-import { useActiveJob } from "@/features/processing/hooks";
-import { usePageVisible } from "@/hooks/usePageVisible";
-import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { bearingDeg } from "@/utils/geo";
 import { formatConfidence } from "@/utils/format";
 
 const MapView = dynamic(() => import("@/components/MapView").then((mod) => mod.MapView), {
   ssr: false,
   loading: () => <LoadingSkeleton rows={1} label="Loading map…" />,
-});
-
-const Scene3D = dynamic(() => import("@/components/three/Scene3D").then((mod) => mod.Scene3D), {
-  ssr: false,
-  loading: () => <LoadingSkeleton rows={1} label="Loading 3D map…" />,
 });
 
 const CLASS_OPTIONS = [
@@ -74,10 +64,6 @@ function MapPageContent() {
   const focusId = searchParams.get("focus") ?? undefined;
 
   const [selectedId, setSelectedId] = useState<string | undefined>(focusId);
-  const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
-  const [fitRequestId, setFitRequestId] = useState(0);
-  const reducedMotion = useReducedMotion();
-  const pageVisible = usePageVisible();
 
   function updateParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -92,7 +78,6 @@ function MapPageContent() {
     review_status: reviewStatus,
   });
   const { data: selectedDetection } = useDetection(selectedId);
-  const { data: activeJob } = useActiveJob(surveyId);
 
   // --- Time playback (Section 4.1.A / 4.2.A): replays the survey path and
   // reveals detections in chronological order instead of showing everything
@@ -164,37 +149,6 @@ function MapPageContent() {
     return { latitude: last.latitude, longitude: last.longitude, headingDeg };
   }, [playbackIndex, displayedTrack]);
 
-  const projected3D = useMemo(() => {
-    if (!data) return null;
-    const originPoint = data.track[0] ?? data.markers[0];
-    if (!originPoint) return null;
-    const originLat = originPoint.latitude;
-    const originLon = originPoint.longitude;
-
-    const project = (p: { latitude: number; longitude: number }) => projectLatLon(originLat, originLon, p.latitude, p.longitude);
-
-    const track = displayedTrack.map((p) => ({ ...project(p), range: p.range }));
-    const detections: Scene3DDetection[] = displayedMarkers.map((m) => {
-      const { x, z } = project(m);
-      return { id: m.detection_id, x, z, detectionClass: m.detection_class, priority: m.priority };
-    });
-    // Bounds stay fixed to the FULL survey extent so the camera framing
-    // doesn't jump around as playback reveals more of the track.
-    const bounds = computeBounds([...data.track.map(project), ...data.markers.map(project)]);
-
-    const last = track[track.length - 1];
-    const prev = track.length > 1 ? track[track.length - 2] : last;
-    const vessel = last
-      ? {
-          x: last.x,
-          z: last.z,
-          headingDeg: last === prev ? 0 : (Math.atan2(last.x - prev.x, last.z - prev.z) * 180) / Math.PI,
-        }
-      : null;
-
-    return { track, detections, bounds, vessel };
-  }, [data, displayedTrack, displayedMarkers]);
-
   return (
     <AppShell title="GIS Map">
       <div className="mb-4 flex flex-wrap items-end gap-4 panel p-4">
@@ -222,22 +176,6 @@ function MapPageContent() {
               {data.track.length > 1 ? ` · ${data.track.length} track points` : ""}
             </span>
           )}
-          <div className="flex overflow-hidden rounded-md border border-abyss-600 text-xs">
-            <button
-              type="button"
-              onClick={() => setViewMode("2d")}
-              className={clsx("px-3 py-1.5", viewMode === "2d" ? "bg-cyan-accent/10 text-cyan-accent" : "text-slate-400 hover:text-slate-200")}
-            >
-              2D
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("3d")}
-              className={clsx("px-3 py-1.5", viewMode === "3d" ? "bg-cyan-accent/10 text-cyan-accent" : "text-slate-400 hover:text-slate-200")}
-            >
-              3D View
-            </button>
-          </div>
         </div>
       </div>
 
@@ -295,46 +233,19 @@ function MapPageContent() {
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px]">
           <div className="relative h-[620px] overflow-hidden rounded-lg border border-abyss-600">
-            {viewMode === "2d" ? (
-              <>
-                <MapView
-                  markers={displayedMarkers}
-                  bounds={data.bounds}
-                  track={displayedTrack}
-                  selectedId={selectedId}
-                  onSelect={setSelectedId}
-                  vesselPosition={vesselDuringPlayback}
-                />
-                <div className="pointer-events-none absolute bottom-3 left-3 z-[1000]">
-                  <div className="pointer-events-auto">
-                    <MapLegend />
-                  </div>
-                </div>
-              </>
-            ) : projected3D ? (
-              <>
-                <Scene3D
-                  track={projected3D.track}
-                  detections={projected3D.detections}
-                  vessel={projected3D.vessel}
-                  bounds={projected3D.bounds}
-                  sonarActive={activeJob?.status === "PROCESSING"}
-                  selectedId={selectedId}
-                  onSelectDetection={setSelectedId}
-                  cameraMode="free"
-                  fitRequestId={fitRequestId}
-                  paused={reducedMotion || !pageVisible}
-                />
-                <button
-                  onClick={() => setFitRequestId((n) => n + 1)}
-                  className="pointer-events-auto absolute bottom-3 left-3 z-[1000] rounded-md border border-abyss-600 bg-abyss-900/85 px-3 py-1.5 text-xs text-slate-200 hover:border-cyan-accent/50 hover:text-cyan-accent"
-                >
-                  Fit Survey
-                </button>
-              </>
-            ) : (
-              <EmptyState title="No track data for this survey." description="Upload geotagged sonar frames to see the 3D map view." />
-            )}
+            <MapView
+              markers={displayedMarkers}
+              bounds={data.bounds}
+              track={displayedTrack}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              vesselPosition={vesselDuringPlayback}
+            />
+            <div className="pointer-events-none absolute bottom-3 left-3 z-[1000]">
+              <div className="pointer-events-auto">
+                <MapLegend />
+              </div>
+            </div>
           </div>
 
           <div className="flex h-[620px] flex-col overflow-hidden panel">

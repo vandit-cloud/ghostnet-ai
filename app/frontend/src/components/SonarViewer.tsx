@@ -1,9 +1,11 @@
 "use client";
 
-import { useRef, useState, type MouseEvent, type WheelEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type WheelEvent } from "react";
 
 import { useFrameImage } from "@/features/sonar/hooks";
 import { LoadingSkeleton } from "@/components/States";
+import { DETECTION } from "@/utils/palette";
+import { despeckleImage } from "@/utils/despeckle";
 import type { BBox } from "@/types";
 
 const MIN_ZOOM = 1;
@@ -18,6 +20,58 @@ export function SonarViewer({ frameId, bbox }: { frameId: string; bbox: BBox | n
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const dragging = useRef<{ startX: number; startY: number; panX: number; panY: number } | null>(null);
+
+  /* Despeckled view. Off by default and never persisted: the raw frame is the
+   * evidence of record, and a filter that can erase a small target should be
+   * something the operator turns on deliberately, on this frame, having
+   * already seen it unfiltered. See utils/despeckle.ts. */
+  const [despeckled, setDespeckled] = useState(false);
+  const [filteredUrl, setFilteredUrl] = useState<string | null>(null);
+  const [filtering, setFiltering] = useState(false);
+  const [filterFailed, setFilterFailed] = useState(false);
+
+  // A new frame invalidates the filtered copy. Revoke it rather than leaking a
+  // blob per frame viewed, and drop back to the raw view.
+  useEffect(() => {
+    setFilteredUrl((previous) => {
+      if (previous) URL.revokeObjectURL(previous);
+      return null;
+    });
+    setDespeckled(false);
+    setFilterFailed(false);
+  }, [url]);
+
+  // Revoke on unmount too.
+  useEffect(() => {
+    return () => {
+      if (filteredUrl) URL.revokeObjectURL(filteredUrl);
+    };
+  }, [filteredUrl]);
+
+  async function toggleDespeckle() {
+    if (despeckled) {
+      setDespeckled(false);
+      return;
+    }
+    // Filter once per frame, then the toggle is just a src swap.
+    if (filteredUrl) {
+      setDespeckled(true);
+      return;
+    }
+    if (!url) return;
+
+    setFiltering(true);
+    setFilterFailed(false);
+    try {
+      const next = await despeckleImage(url);
+      setFilteredUrl(next);
+      setDespeckled(true);
+    } catch {
+      setFilterFailed(true);
+    } finally {
+      setFiltering(false);
+    }
+  }
 
   function handleLoad() {
     const img = imgRef.current;
@@ -68,14 +122,52 @@ export function SonarViewer({ frameId, bbox }: { frameId: string; bbox: BBox | n
 
   return (
     <div className="relative inline-block max-w-full">
-      {zoom > 1 && (
+      <div className="absolute right-2 top-2 z-10 flex items-center gap-2">
+        {zoom > 1 && (
+          <button
+            type="button"
+            onClick={resetView}
+            className="rounded-md border border-abyss-600 bg-abyss-900/85 px-2 py-1 text-xs text-slate-200 hover:border-cyan-accent/50 hover:text-cyan-accent"
+          >
+            Reset
+          </button>
+        )}
         <button
           type="button"
-          onClick={resetView}
-          className="absolute right-2 top-2 z-10 rounded-md border border-abyss-600 bg-abyss-900/85 px-2 py-1 text-xs text-slate-200 hover:border-cyan-accent/50 hover:text-cyan-accent"
+          onClick={toggleDespeckle}
+          disabled={filtering}
+          aria-pressed={despeckled}
+          title={
+            despeckled
+              ? "Show the unfiltered frame"
+              : "Suppress speckle for viewing. Does not affect detection — the model has already scored the raw frame."
+          }
+          className="rounded-md border bg-abyss-900/85 px-2 py-1 text-xs transition disabled:opacity-60"
+          style={
+            despeckled
+              ? { borderColor: DETECTION, color: DETECTION }
+              : undefined
+          }
         >
-          Reset
+          {filtering ? "Filtering…" : despeckled ? "Despeckled" : "Despeckle"}
         </button>
+      </div>
+
+      {/* The filtered frame is a reading aid, not the record. Say so on screen
+        * for as long as it is the thing being looked at. */}
+      {despeckled && (
+        <div
+          className="absolute left-2 top-2 z-10 rounded-md border bg-abyss-900/85 px-2 py-1 text-[11px] uppercase tracking-[0.18em]"
+          style={{ borderColor: DETECTION, color: DETECTION }}
+        >
+          Filtered view · 3×3 median + sharpen
+        </div>
+      )}
+
+      {filterFailed && (
+        <div className="absolute left-2 top-2 z-10 rounded-md border border-alert-high bg-abyss-900/85 px-2 py-1 text-[11px] text-alert-high">
+          Despeckle failed — showing raw frame
+        </div>
       )}
       <div
         className="relative max-w-full overflow-hidden rounded-lg border border-abyss-600 bg-black"
@@ -97,7 +189,7 @@ export function SonarViewer({ frameId, bbox }: { frameId: string; bbox: BBox | n
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             ref={imgRef}
-            src={url}
+            src={despeckled && filteredUrl ? filteredUrl : url}
             onLoad={handleLoad}
             onError={() => setDecodeFailed(true)}
             alt="Sonar frame"
@@ -106,8 +198,9 @@ export function SonarViewer({ frameId, bbox }: { frameId: string; bbox: BBox | n
           />
           {hasBox && scale && (
             <div
-              className="pointer-events-none absolute border-2 border-cyan-accent shadow-[0_0_0_1px_rgba(0,0,0,0.6)]"
+              className="pointer-events-none absolute border-2 shadow-[0_0_0_1px_rgba(0,0,0,0.6)]"
               style={{
+                borderColor: DETECTION,
                 left: (bbox!.x as number) * scale.x,
                 top: (bbox!.y as number) * scale.y,
                 width: (bbox!.w as number) * scale.x,
