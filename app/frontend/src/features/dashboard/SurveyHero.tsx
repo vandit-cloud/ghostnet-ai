@@ -7,6 +7,11 @@ import { MapLegend } from "@/components/MapLegend";
 import { EmptyState, LoadingSkeleton } from "@/components/States";
 import { useSurveyMap } from "@/features/map/hooks";
 import { bearingDeg } from "@/utils/geo";
+import {
+  MAP_SLOT_BOTTOM_LEFT,
+  MAP_SLOT_BOTTOM_RIGHT,
+  MAP_SLOT_TOP_LEFT,
+} from "@/utils/mapSlots";
 import type { JobStatus, SurveyStatus } from "@/types";
 
 /** Leaflet touches `window` at import time, so the map can never be part of the
@@ -118,23 +123,24 @@ export function SurveyHero({
         vesselPosition={vesselDuringReplay}
       />
 
-      {/* Leaflet's own panes sit at z-index 400-700; the controls have to clear
-          that or they end up under the tiles. The GIS Map page uses the same
-          z-[1000] for its legend. */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-[1000] flex items-center justify-between p-3">
+      {/* Positions come from utils/mapSlots -- see that file for which corner
+          belongs to Leaflet, which to MapView, and which is ours. This panel
+          used to put the counter at top-3 and the legend at bottom-3, directly
+          over MapView's cursor read-out and Leaflet's scale bar. */}
+      <div className={`pointer-events-none ${MAP_SLOT_TOP_LEFT}`}>
         <span className="pointer-events-auto border border-abyss-600/80 bg-abyss-900/85 px-3 py-1.5 font-mono text-[10.5px] uppercase tracking-[0.12em] text-slate-300">
           {track.length} track points · {markers.length} detections
         </span>
       </div>
 
-      <div className="pointer-events-none absolute bottom-3 left-3 z-[1000]">
+      <div className={`pointer-events-none ${MAP_SLOT_BOTTOM_LEFT}`}>
         <div className="pointer-events-auto">
           <MapLegend />
         </div>
       </div>
 
       {canReplay && (
-        <div className="pointer-events-none absolute bottom-3 right-3 z-[1000]">
+        <div className={`pointer-events-none ${MAP_SLOT_BOTTOM_RIGHT}`}>
           <button
             onClick={startReplay}
             disabled={replayIndex !== null}

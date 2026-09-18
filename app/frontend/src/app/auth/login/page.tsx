@@ -92,7 +92,7 @@ export default function LoginPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 autoComplete="username"
-                className="w-full rounded-2xl border border-abyss-600/80 bg-skytint/42 px-3 py-3 text-sm text-slate-100 outline-none focus:border-cyan-accent focus:shadow-glow-cyan"
+                className="w-full rounded-2xl border border-abyss-600/80 bg-skytint/42 px-3 py-3 text-base text-ink outline-none focus:border-cyan-accent focus:shadow-glow-cyan"
               />
             </div>
             <div>
@@ -106,7 +106,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoComplete="current-password"
-                className="w-full rounded-2xl border border-abyss-600/80 bg-skytint/42 px-3 py-3 text-sm text-slate-100 outline-none focus:border-cyan-accent focus:shadow-glow-cyan"
+                className="w-full rounded-2xl border border-abyss-600/80 bg-skytint/42 px-3 py-3 text-base text-ink outline-none focus:border-cyan-accent focus:shadow-glow-cyan"
               />
             </div>
 

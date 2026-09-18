@@ -204,21 +204,45 @@ function BasemapSwitcher({ value, onChange }: { value: BasemapKey; onChange: (ne
   );
 }
 
-function CursorReadout({
-  onChange,
-}: {
-  onChange: (value: { latitude: number; longitude: number } | null) => void;
-}) {
+/**
+ * The live lat/lon under the pointer.
+ *
+ * This component holds the coordinate in its OWN state and renders its own
+ * box. It used to lift the value to MapView via an `onChange` prop, and that
+ * was a genuine defect rather than a style question: `mousemove` fires on
+ * every pixel of pointer travel, so MapView re-rendered continuously, and each
+ * of those renders rebuilt every marker's `divIcon` from scratch -- an HTML
+ * string that carries its own `<style>` block and the pulsing ring element.
+ * Recreating that element restarts its CSS animation from frame 0, so simply
+ * moving the mouse across the map made every critical marker's pulse stutter
+ * and the open popup flicker. Keeping the state here means a mousemove
+ * re-renders this one small box and nothing else.
+ */
+function CursorReadout() {
+  const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
+
   useMapEvents({
     mousemove(event) {
-      onChange({ latitude: event.latlng.lat, longitude: event.latlng.lng });
+      setPosition({ lat: event.latlng.lat, lng: event.latlng.lng });
     },
     mouseout() {
-      onChange(null);
+      setPosition(null);
     },
   });
 
-  return null;
+  // Rendered inside the Leaflet container, which is `position: relative`, so
+  // these offsets are relative to the map. See utils/mapSlots.ts for which
+  // corner belongs to whom.
+  return (
+    <div className="pointer-events-none absolute left-3 top-3 z-[1000] rounded-md border border-abyss-600 bg-abyss-900/85 px-2.5 py-1.5 text-[11px] text-slate-300 backdrop-blur">
+      <div className="font-semibold uppercase tracking-[0.18em] text-slate-500">Cursor</div>
+      <div className="mt-0.5 whitespace-nowrap">
+        {position
+          ? `${formatCoordinate(position.lat)}, ${formatCoordinate(position.lng)}`
+          : "Move on map"}
+      </div>
+    </div>
+  );
 }
 
 function FitAndFocus({
@@ -342,7 +366,6 @@ export function MapView({
 
   const [clusteringDisabled, setClusteringDisabled] = useState(false);
   const [basemap, setBasemap] = useState<BasemapKey>("marine");
-  const [cursorPosition, setCursorPosition] = useState<{ latitude: number; longitude: number } | null>(null);
 
   useEffect(() => {
     setClusteringDisabled(window.localStorage.getItem(MAP_CLUSTER_DISABLED_KEY) === "true");
@@ -380,27 +403,35 @@ export function MapView({
         }}
       >
         <Popup>
-          <div className="min-w-[200px] space-y-1 text-xs text-slate-800">
-            <p className="text-sm font-semibold">{marker.detection_ref}</p>
-            <p className="capitalize text-slate-600">{marker.detection_class.replace("_", " ")}</p>
+          {/* Ink tokens, not the legacy slate scale.
+              tailwind.config.ts INVERTED that scale for the Atlantic theme --
+              slate-800 now resolves to #DEE1E6 and slate-600 to #ABBDC9, which
+              the config itself flags as non-text. This popup was authored
+              against the old dark-on-light meaning, so its values rendered as
+              near-white on a white popup: present in the DOM, unreadable on
+              screen, and worst on exactly the fields an operator opens the
+              popup to read. */}
+          <div className="min-w-[200px] space-y-1 text-xs text-ink-2">
+            <p className="text-sm font-semibold text-ink">{marker.detection_ref}</p>
+            <p className="capitalize text-ink-3">{marker.detection_class.replace("_", " ")}</p>
             <dl className="grid grid-cols-2 gap-x-2 gap-y-0.5 pt-1">
-              <dt className="text-slate-500">Confidence</dt>
+              <dt className="text-ink-3">Confidence</dt>
               <dd>{formatConfidence(marker.calibrated_confidence)}</dd>
-              <dt className="text-slate-500">Uncertainty</dt>
+              <dt className="text-ink-3">Uncertainty</dt>
               <dd className="capitalize">{marker.uncertainty ?? "--"}</dd>
-              <dt className="text-slate-500">Priority</dt>
+              <dt className="text-ink-3">Priority</dt>
               <dd className="capitalize">{marker.priority}</dd>
-              <dt className="text-slate-500">Review</dt>
+              <dt className="text-ink-3">Review</dt>
               <dd className="capitalize">{marker.review_status.replace("_", " ")}</dd>
-              <dt className="text-slate-500">Position +/-</dt>
+              <dt className="text-ink-3">Position +/-</dt>
               <dd>{marker.position_error_m ? `${marker.position_error_m} m` : "--"}</dd>
-              <dt className="text-slate-500">Depth</dt>
+              <dt className="text-ink-3">Depth</dt>
               <dd>{marker.depth ? `${marker.depth} m` : "--"}</dd>
             </dl>
-            <p className="pt-1 text-[10px] text-slate-500">
+            <p className="pt-1 text-[10px] text-ink-3">
               {formatCoordinate(marker.latitude)}, {formatCoordinate(marker.longitude)}
             </p>
-            <p className="text-[10px] text-slate-500">{formatDateTime(marker.created_at)}</p>
+            <p className="text-[10px] text-ink-3">{formatDateTime(marker.created_at)}</p>
             <Link
               href={`/app/detections/${marker.detection_id}`}
               className="mt-2 inline-block rounded bg-cyan-700 px-2 py-1 text-[11px] font-medium text-paper hover:bg-cyan-600"
@@ -453,10 +484,15 @@ export function MapView({
           />
         ))}
 
+        {/* Leaflet places this itself, roughly 0-26px up from the bottom edge.
+            MAP_SLOT_BOTTOM_LEFT sits clear of it; anything a page overlays in
+            that corner must use the slot, or it hides the scale bar -- and a
+            hidden scale bar is worse than none, because the operator judging a
+            distance has no way to know it is missing. */}
         <ScaleControl position="bottomleft" imperial={false} />
         <FitAndFocus bounds={leafletBounds} focusPoint={focusPoint} />
         <RecenterOnResize center={center} zoom={zoom} active={isSingleMarkerFocus} />
-        {!compact && <CursorReadout onChange={setCursorPosition} />}
+        {!compact && <CursorReadout />}
 
         {leafletBounds && (
           <Rectangle
@@ -518,14 +554,8 @@ export function MapView({
         )
       ) : (
         <>
-          <div className="pointer-events-none absolute left-3 top-3 z-[1000] rounded-md border border-abyss-600 bg-abyss-900/85 px-2.5 py-1.5 text-[11px] text-slate-300 backdrop-blur">
-            <div className="font-semibold uppercase tracking-[0.18em] text-slate-500">Cursor</div>
-            <div className="mt-0.5 whitespace-nowrap">
-              {cursorPosition
-                ? `${formatCoordinate(cursorPosition.latitude)}, ${formatCoordinate(cursorPosition.longitude)}`
-                : "Move on map"}
-            </div>
-          </div>
+          {/* The cursor read-out renders itself, inside the map -- see
+              CursorReadout for why its state must not live up here. */}
           <BasemapSwitcher value={basemap} onChange={handleBasemapChange} />
         </>
       )}

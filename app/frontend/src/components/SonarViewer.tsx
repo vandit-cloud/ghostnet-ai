@@ -16,6 +16,10 @@ export function SonarViewer({ frameId, bbox }: { frameId: string; bbox: BBox | n
   const imgRef = useRef<HTMLImageElement>(null);
   const [scale, setScale] = useState<{ x: number; y: number } | null>(null);
   const [decodeFailed, setDecodeFailed] = useState(false);
+  /** The frame currently on screen, readable from an async callback without
+   *  capturing a stale render's value. */
+  const urlRef = useRef(url);
+  urlRef.current = url;
 
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -30,8 +34,14 @@ export function SonarViewer({ frameId, bbox }: { frameId: string; bbox: BBox | n
   const [filtering, setFiltering] = useState(false);
   const [filterFailed, setFilterFailed] = useState(false);
 
-  // A new frame invalidates the filtered copy. Revoke it rather than leaking a
-  // blob per frame viewed, and drop back to the raw view.
+  /* A new frame invalidates everything derived from the old one.
+   *
+   * `decodeFailed` belongs in here too, and its absence was a real trap: this
+   * component instance is KEPT MOUNTED while the selected detection changes
+   * (the GIS map swaps `frameId` on the same instance), so a single frame that
+   * failed to decode left the flag latched and every subsequent detection
+   * rendered "Sonar image unavailable" until a full remount. The failure is a
+   * property of one frame, so it has to be cleared with that frame. */
   useEffect(() => {
     setFilteredUrl((previous) => {
       if (previous) URL.revokeObjectURL(previous);
@@ -39,6 +49,7 @@ export function SonarViewer({ frameId, bbox }: { frameId: string; bbox: BBox | n
     });
     setDespeckled(false);
     setFilterFailed(false);
+    setDecodeFailed(false);
   }, [url]);
 
   // Revoke on unmount too.
@@ -60,16 +71,32 @@ export function SonarViewer({ frameId, bbox }: { frameId: string; bbox: BBox | n
     }
     if (!url) return;
 
+    /* Capture the url this run is filtering.
+     *
+     * despeckleImage is hundreds of milliseconds on a full frame, and the
+     * operator can move to the next detection inside that window. The `[url]`
+     * effect above has already reset the derived state by then, so a late
+     * resolution would publish the PREVIOUS frame's filtered blob against the
+     * new frame -- with the "Filtered view" badge asserting it belongs to the
+     * frame on screen. That is a wrong image presented as evidence, which is
+     * worse than no image, so a stale run revokes its own result and returns
+     * without touching state. */
+    const requestedUrl = url;
     setFiltering(true);
     setFilterFailed(false);
     try {
-      const next = await despeckleImage(url);
+      const next = await despeckleImage(requestedUrl);
+      if (requestedUrl !== urlRef.current) {
+        URL.revokeObjectURL(next);
+        return;
+      }
       setFilteredUrl(next);
       setDespeckled(true);
     } catch {
+      if (requestedUrl !== urlRef.current) return;
       setFilterFailed(true);
     } finally {
-      setFiltering(false);
+      if (requestedUrl === urlRef.current) setFiltering(false);
     }
   }
 

@@ -41,6 +41,16 @@ export function useDeleteFile(surveyId: string) {
       queryClient.invalidateQueries({ queryKey: ["survey-files", surveyId] });
       queryClient.invalidateQueries({ queryKey: ["survey", surveyId] });
       queryClient.invalidateQueries({ queryKey: ["detections"] });
+      /* And the map, which is a SEPARATE cache keyed ["survey-map", id,
+       * filters] and fed by its own endpoint. The GIS Map page and the
+       * dashboard survey panel both render from it, so without this a deleted
+       * file's track points and detection markers stay on screen until those
+       * components remount -- the one place a stale cache is not just a stale
+       * list but a map asserting gear is at a position that no longer has any
+       * evidence behind it. `useDeleteSurvey` already clears this key; the
+       * per-file delete was written before the map moved onto it. */
+      queryClient.invalidateQueries({ queryKey: ["survey-map", surveyId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
     },
   });
 }

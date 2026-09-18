@@ -16,6 +16,7 @@ import { useDetection } from "@/features/detections/hooks";
 import { useSurveyMap } from "@/features/map/hooks";
 import { useSurveys } from "@/features/surveys/hooks";
 import { bearingDeg } from "@/utils/geo";
+import { MAP_SLOT_BOTTOM_LEFT } from "@/utils/mapSlots";
 import { formatConfidence } from "@/utils/format";
 
 const MapView = dynamic(() => import("@/components/MapView").then((mod) => mod.MapView), {
@@ -241,7 +242,7 @@ function MapPageContent() {
               onSelect={setSelectedId}
               vesselPosition={vesselDuringPlayback}
             />
-            <div className="pointer-events-none absolute bottom-3 left-3 z-[1000]">
+            <div className={`pointer-events-none ${MAP_SLOT_BOTTOM_LEFT}`}>
               <div className="pointer-events-auto">
                 <MapLegend />
               </div>

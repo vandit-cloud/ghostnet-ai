@@ -19,7 +19,7 @@ export function RouteSparkline({ surveyId }: { surveyId: string }) {
     return <span className="inline-block h-[28px] w-[64px] animate-pulse rounded bg-abyss-700/50" />;
   }
   if (track.length < 2) {
-    return <span className="text-xs text-slate-600">—</span>;
+    return <span className="text-xs text-ink-3">—</span>;
   }
 
   const lats = track.map((p) => p.latitude);

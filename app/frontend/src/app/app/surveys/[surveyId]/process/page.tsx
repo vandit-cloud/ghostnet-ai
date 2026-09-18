@@ -132,7 +132,7 @@ export default function ProcessingPage() {
             <div className="mt-4 max-h-32 overflow-y-auto border border-abyss-700 bg-abyss-900/40 p-3 font-mono text-[11px] text-slate-400">
               {log.map((entry, i) => (
                 <div key={i} className="flex gap-2">
-                  <span className="shrink-0 text-slate-600">{entry.time}</span>
+                  <span className="shrink-0 text-ink-3">{entry.time}</span>
                   <span>{entry.message}</span>
                 </div>
               ))}
@@ -436,7 +436,7 @@ function RunComparison({ job, surveyId }: { job: ProcessingJob; surveyId: string
     <div className="mt-3 border border-abyss-600/70 bg-abyss-900/30 p-3">
       <p className="text-xs uppercase tracking-wide text-slate-500">
         vs. previous run
-        <span className="ml-2 font-mono normal-case tracking-normal text-slate-600">
+        <span className="ml-2 font-mono normal-case tracking-normal text-ink-3">
           {formatDateTime(previous.completed_at ?? previous.created_at)}
         </span>
       </p>
@@ -478,7 +478,7 @@ function DeltaStat({
         <span className={clsx("ml-1.5 text-xs", tone)}>
           {diff === 0 ? "no change" : `${diff > 0 ? "+" : ""}${diff}`}
         </span>
-        <span className="ml-1.5 text-xs text-slate-600">was {before}</span>
+        <span className="ml-1.5 text-xs text-ink-3">was {before}</span>
       </p>
     </div>
   );
