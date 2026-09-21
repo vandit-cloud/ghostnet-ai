@@ -1,0 +1,26 @@
+GhostNet-AI
+Copyright 2026 Vandit Doshi and the GhostNet-AI contributors
+
+This product includes software developed for Smart India Hackathon problem
+statement SIH26057.
+
+The software in this repository is licensed under the Apache License,
+Version 2.0 (see LICENSE).
+
+The data we produced ourselves -- the 425 ghost_net polygon annotations, the
+74 ghost_net bounding boxes, the 63 plane bounding boxes, the labelling
+conventions and the synthetic net imagery -- is licensed under
+Creative Commons Attribution 4.0 International (CC BY 4.0):
+https://creativecommons.org/licenses/by/4.0/
+
+  Cite as: Vandit Doshi, GhostNet-AI ghost_net annotations, 2026.
+  https://github.com/vandit-cloud/ghostnet-ai
+
+Third-party side-scan sonar imagery redistributed in this repository keeps its
+own terms and is NOT covered by either licence above. Every such file, its
+rights holder and its licence are listed in ATTRIBUTION.md. One source,
+GhostVision v1.0.0, is CC BY-SA 4.0: adaptations of those specific frames must
+themselves be shared under CC BY-SA 4.0.
+
+No ownership is claimed over any third-party imagery here. Any of it will be
+removed promptly on request from a rights holder.

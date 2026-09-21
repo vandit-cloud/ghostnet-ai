@@ -170,38 +170,43 @@ For a hackathon submission this is workable, but **record the provenance and cit
 every source** — that is what the `provenance/` directory is for, and it is why
 it is the one directory under `ai/data/` that git tracks.
 
-### The ghost_net chips: an open provenance question
+### The ghost_net chips: provenance RESOLVED
 
-The 73 real net chips (`ai/data/annotate/ghost_net_seg/images/`, named
-`quanzhou_HN_*` and `yantai_HN_*`) are **third-party side-scan imagery whose
-origin we have not been able to document.** They pre-date the provenance
-discipline described above: `ai/data/provenance/data_inventory.csv` has no row
-for them, they are not listed in `dataset_candidates.csv`, and the raw source
-directory they came from was pruned in commit `ad70122`. We are working to
-re-establish where they came from.
+**Superseded 2026-09-14.** This section previously said the origin of the 73
+real net chips (`quanzhou_HN_*`, `yantai_HN_*`) could not be documented. It can,
+and the answer was found by re-downloading the source and counting:
 
-What that means in practice, stated plainly rather than left implicit:
+**China Offshore SSS-AI v2, Zenodo record 20048164, CC BY 4.0.**
 
-- **The chips themselves are not published in this repository.** They are
-  gitignored and exist on local disk only.
-- **What is published is our own work over them:** 425 polygon annotations, the
-  labelling convention in `HOW_TO_LABEL.md`, and the dataset-build and training
-  scripts. Annotations are separable from the imagery they describe — the same
-  split COCO and Open Images use, where images keep their original terms and
-  the annotations carry their own licence.
-- **A small number of annotated crops are published**, under
-  `ai/data/annotate/*/_guide/`, because a labelling convention cannot be taught
-  without showing examples. These are low-resolution excerpts used to
-  illustrate method.
-- **We make no ownership claim over the underlying imagery**, and we will
-  remove any of it on request from a rights holder. Contact via the repository
-  owner.
+The chips are the release's `HN` class -- exactly 73, all of them held in our
+`GHOSTNET-HAND` set (quanzhou_HN_001-068 plus yantai_HN_001-005). They were hard
+to trace because that survey hunts pipelines and its `class_mapping.csv` files
+fishing net under the standard label **`hard_negative`**: our entire headline
+class is their clutter class, repurposed. The counts reconcile exactly against
+`interim/CHINA-OFFSHORE/import_report.json`.
 
-Until the origin is established, these chips are **not offered for
-redistribution to third parties**, including data platforms that would
-incorporate them into a trained model. See
-`docs/OUTREACH_GN0_REPLY.md` for how this constrains the GhostNetZero
-conversation.
+What this changes, stated plainly:
+
+- **Attribution is required, and redistribution is permitted.** CC BY 4.0. The
+  earlier "not offered for redistribution to third parties" restriction was a
+  consequence of not knowing the origin, and no longer applies.
+- **The chips may therefore be published** if we choose to. Whether to publish
+  them is a separate decision and is not settled here.
+- **The GhostNetZero upload objection still stands, on a different ground.**
+  We refused the GN0 upload partly because we could not honestly give its
+  uploader warranty for imagery of unknown origin. That specific reason is gone.
+  The remaining reason is sufficient by itself: GN0 asks for an irrevocable,
+  unlimited, **sublicensable** licence for all known and unknown uses, and CC
+  BY 4.0 material is not ours to relicense on those terms. The same is true, more
+  strongly, of the CC BY-SA 4.0 GhostVision imagery.
+- **The annotations remain ours** -- 425 polygons and 74 boxes, released CC BY
+  4.0 (see `NOTICE`), separable from the imagery they describe in the same way
+  COCO and Open Images separate them.
+
+Still to do: `ai/data/provenance/data_inventory.csv` and `dataset_candidates.csv`
+gained rows for this source on 2026-09-21; the raw source directory itself was
+pruned in commit `ad70122`, so the inventory row is reconstructed from the
+import report rather than measured on disk.
 
 ---
 
