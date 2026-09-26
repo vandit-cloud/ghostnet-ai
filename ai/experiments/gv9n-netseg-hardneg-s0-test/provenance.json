@@ -1,0 +1,25 @@
+{
+  "created_utc": "2026-09-24T03:31:13.047697+00:00",
+  "git_commit": "9fc9f1ad904828cc6303cb032e78be0f382169a1",
+  "kind": "evaluation-only (no training)",
+  "weights": "ai\\experiments\\gv9n-netseg-hardneg-s0\\weights\\best.pt",
+  "args": {
+    "weights": "ai/experiments/gv9n-netseg-hardneg-s0/weights/best.pt",
+    "data": "E:/New folder/ai/data/net_seg_hardneg/data.yaml",
+    "split": "test",
+    "name": "gv9n-netseg-hardneg-s0-test",
+    "imgsz": 640,
+    "batch": 4,
+    "device": "cpu",
+    "tta": false,
+    "conf": null,
+    "iou": null,
+    "allow_dataset_drift": true,
+    "dry_run": false
+  },
+  "device": "cpu",
+  "torch": "2.13.0+cu126",
+  "cuda_available": true,
+  "gpu": "NVIDIA GeForce RTX 3050 Laptop GPU",
+  "dataset_build": null
+}

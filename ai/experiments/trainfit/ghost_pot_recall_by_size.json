@@ -1,0 +1,63 @@
+{
+ "class": "ghost_pot",
+ "conf": 0.25,
+ "iou_match": 0.5,
+ "splits": {
+  "test": {
+   "frames": 334,
+   "boxes_per_frame_mean": 1.6976047904191616,
+   "boxes_per_frame_max": 10,
+   "bands": {
+    "<0.2%": {
+     "found": 28,
+     "total": 91,
+     "recall": 0.3076923076923077
+    },
+    "0.2-0.5%": {
+     "found": 18,
+     "total": 142,
+     "recall": 0.1267605633802817
+    },
+    "0.5-2%": {
+     "found": 71,
+     "total": 320,
+     "recall": 0.221875
+    },
+    ">2%": {
+     "found": 4,
+     "total": 14,
+     "recall": 0.2857142857142857
+    }
+   },
+   "overall_recall": 0.21340388007054673
+  },
+  "train": {
+   "frames": 600,
+   "boxes_per_frame_mean": 1.7983333333333333,
+   "boxes_per_frame_max": 11,
+   "bands": {
+    "<0.2%": {
+     "found": 47,
+     "total": 273,
+     "recall": 0.17216117216117216
+    },
+    "0.2-0.5%": {
+     "found": 44,
+     "total": 268,
+     "recall": 0.16417910447761194
+    },
+    "0.5-2%": {
+     "found": 170,
+     "total": 460,
+     "recall": 0.3695652173913043
+    },
+    ">2%": {
+     "found": 45,
+     "total": 78,
+     "recall": 0.5769230769230769
+    }
+   },
+   "overall_recall": 0.283595922150139
+  }
+ }
+}

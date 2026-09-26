@@ -1,0 +1,275 @@
+{
+  "weights": "ai/experiments/gv9n-netseg-hardneg-s0/weights/best.pt",
+  "model": "yolo-seg",
+  "data": "E:\\New folder\\ai\\data\\net_seg_hardneg",
+  "tolerance": 0.1,
+  "min_blob_share": null,
+  "by_conf": {
+    "0.25": {
+      "test": {
+        "dice_pooled": 0.5129781958438288,
+        "iou_pooled": 0.3449701910288562,
+        "dice_per_chip_mean": 0.4454699472230285,
+        "centroid_detection_rate": 0.64,
+        "centroid_precision": 0.5818181818181818,
+        "centroid_hits": 32,
+        "truth_nets": 50,
+        "centroid_false_alarms": 23,
+        "centroid_bootstrap": {
+          "resamples": 1000,
+          "ci95_low": 0.41304347826086957,
+          "ci95_high": 0.8,
+          "median": 0.64,
+          "unit": "chip (nets on one chip are not independent draws)"
+        },
+        "box_recall_iou50": 0.4576271186440678,
+        "box_precision_iou50": 0.3176470588235294,
+        "box_tp": 27,
+        "truth_boxes": 59,
+        "pred_boxes": 85,
+        "per_image": [
+          {
+            "image": "quanzhou_HN_011.png",
+            "truth_nets": 5,
+            "predictions": 10,
+            "hits": 5,
+            "misses": 0,
+            "false_alarms": 0
+          },
+          {
+            "image": "quanzhou_HN_012.png",
+            "truth_nets": 7,
+            "predictions": 10,
+            "hits": 6,
+            "misses": 1,
+            "false_alarms": 0
+          },
+          {
+            "image": "quanzhou_HN_017.png",
+            "truth_nets": 7,
+            "predictions": 7,
+            "hits": 5,
+            "misses": 2,
+            "false_alarms": 0
+          },
+          {
+            "image": "quanzhou_HN_033.png",
+            "truth_nets": 3,
+            "predictions": 13,
+            "hits": 3,
+            "misses": 0,
+            "false_alarms": 3
+          },
+          {
+            "image": "quanzhou_HN_039.png",
+            "truth_nets": 8,
+            "predictions": 9,
+            "hits": 7,
+            "misses": 1,
+            "false_alarms": 1
+          },
+          {
+            "image": "quanzhou_HN_047.png",
+            "truth_nets": 3,
+            "predictions": 0,
+            "hits": 0,
+            "misses": 3,
+            "false_alarms": 0
+          },
+          {
+            "image": "quanzhou_HN_051.png",
+            "truth_nets": 4,
+            "predictions": 0,
+            "hits": 0,
+            "misses": 4,
+            "false_alarms": 0
+          },
+          {
+            "image": "quanzhou_HN_056.png",
+            "truth_nets": 2,
+            "predictions": 3,
+            "hits": 1,
+            "misses": 1,
+            "false_alarms": 1
+          },
+          {
+            "image": "quanzhou_HN_060.png",
+            "truth_nets": 5,
+            "predictions": 25,
+            "hits": 3,
+            "misses": 2,
+            "false_alarms": 12
+          },
+          {
+            "image": "quanzhou_HN_061.png",
+            "truth_nets": 3,
+            "predictions": 7,
+            "hits": 1,
+            "misses": 2,
+            "false_alarms": 6
+          },
+          {
+            "image": "yantai_HN_005.png",
+            "truth_nets": 3,
+            "predictions": 1,
+            "hits": 1,
+            "misses": 2,
+            "false_alarms": 0
+          }
+        ]
+      },
+      "negatives": {
+        "images": 100,
+        "frames_with_false_alarm": 3,
+        "false_alarm_frame_rate": 0.03,
+        "false_outlines_per_frame": 0.04,
+        "by_group": {
+          "dongying_SS": "0/10",
+          "quanzhou_RP": "1/10",
+          "quanzhou_SS": "0/10",
+          "quanzhou_SW": "0/10",
+          "quanzhou_TG": "0/10",
+          "shenzhen_RP": "0/10",
+          "shenzhen_SM": "0/10",
+          "shenzhen_SS": "0/10",
+          "shenzhen_TG": "0/9",
+          "yantai_SS": "1/9",
+          "yantai_SW": "1/2"
+        }
+      }
+    },
+    "0.5": {
+      "test": {
+        "dice_pooled": 0.26037633924552084,
+        "iou_pooled": 0.1496739467963979,
+        "dice_per_chip_mean": 0.23702912897242967,
+        "centroid_detection_rate": 0.28,
+        "centroid_precision": 0.7368421052631579,
+        "centroid_hits": 14,
+        "truth_nets": 50,
+        "centroid_false_alarms": 5,
+        "centroid_bootstrap": {
+          "resamples": 1000,
+          "ci95_low": 0.11320754716981132,
+          "ci95_high": 0.4523809523809524,
+          "median": 0.275,
+          "unit": "chip (nets on one chip are not independent draws)"
+        },
+        "box_recall_iou50": 0.2542372881355932,
+        "box_precision_iou50": 0.6521739130434783,
+        "box_tp": 15,
+        "truth_boxes": 59,
+        "pred_boxes": 23,
+        "per_image": [
+          {
+            "image": "quanzhou_HN_011.png",
+            "truth_nets": 5,
+            "predictions": 0,
+            "hits": 0,
+            "misses": 5,
+            "false_alarms": 0
+          },
+          {
+            "image": "quanzhou_HN_012.png",
+            "truth_nets": 7,
+            "predictions": 3,
+            "hits": 3,
+            "misses": 4,
+            "false_alarms": 0
+          },
+          {
+            "image": "quanzhou_HN_017.png",
+            "truth_nets": 7,
+            "predictions": 4,
+            "hits": 4,
+            "misses": 3,
+            "false_alarms": 0
+          },
+          {
+            "image": "quanzhou_HN_033.png",
+            "truth_nets": 3,
+            "predictions": 8,
+            "hits": 3,
+            "misses": 0,
+            "false_alarms": 1
+          },
+          {
+            "image": "quanzhou_HN_039.png",
+            "truth_nets": 8,
+            "predictions": 3,
+            "hits": 3,
+            "misses": 5,
+            "false_alarms": 0
+          },
+          {
+            "image": "quanzhou_HN_047.png",
+            "truth_nets": 3,
+            "predictions": 0,
+            "hits": 0,
+            "misses": 3,
+            "false_alarms": 0
+          },
+          {
+            "image": "quanzhou_HN_051.png",
+            "truth_nets": 4,
+            "predictions": 0,
+            "hits": 0,
+            "misses": 4,
+            "false_alarms": 0
+          },
+          {
+            "image": "quanzhou_HN_056.png",
+            "truth_nets": 2,
+            "predictions": 1,
+            "hits": 1,
+            "misses": 1,
+            "false_alarms": 0
+          },
+          {
+            "image": "quanzhou_HN_060.png",
+            "truth_nets": 5,
+            "predictions": 4,
+            "hits": 0,
+            "misses": 5,
+            "false_alarms": 4
+          },
+          {
+            "image": "quanzhou_HN_061.png",
+            "truth_nets": 3,
+            "predictions": 0,
+            "hits": 0,
+            "misses": 3,
+            "false_alarms": 0
+          },
+          {
+            "image": "yantai_HN_005.png",
+            "truth_nets": 3,
+            "predictions": 0,
+            "hits": 0,
+            "misses": 3,
+            "false_alarms": 0
+          }
+        ]
+      },
+      "negatives": {
+        "images": 100,
+        "frames_with_false_alarm": 2,
+        "false_alarm_frame_rate": 0.02,
+        "false_outlines_per_frame": 0.02,
+        "by_group": {
+          "dongying_SS": "0/10",
+          "quanzhou_RP": "1/10",
+          "quanzhou_SS": "0/10",
+          "quanzhou_SW": "0/10",
+          "quanzhou_TG": "0/10",
+          "shenzhen_RP": "0/10",
+          "shenzhen_SM": "0/10",
+          "shenzhen_SS": "0/10",
+          "shenzhen_TG": "0/9",
+          "yantai_SS": "0/9",
+          "yantai_SW": "1/2"
+        }
+      }
+    }
+  }
+}
