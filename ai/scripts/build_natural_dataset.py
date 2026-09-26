@@ -135,13 +135,24 @@ def natural_class(code: str, site: str) -> str | None:
 
     Returning None for a code drops it, and the report counts what was dropped.
     """
-    # TODO(vandit): implement the mapping. Roughly 5-10 lines.
+    # Decided 26 Sep 2026 after looking at 8 chips per code across sites
+    # (Vandit delegated the call). Three classes, each spanning >= 2 sites, so
+    # no class can be learned purely as a site fingerprint:
     #
-    # e.g. return {"TG": "trench_gully", "SM": "scour_mark", ...}.get(code)
-    raise NotImplementedError(
-        "natural_class() is unimplemented -- see the docstring above. "
-        "This is a labelling decision, not boilerplate, so it is left to a human."
-    )
+    #   sediment     SS + SW  812 chips, 4 sites. SS is NOT "plain seabed":
+    #                quanzhou's is flat, but dongying's is textured sediment with
+    #                dune scarps, the same bedform family as SW sand waves. So
+    #                "open sediment surface, flat or textured", and SW joins it
+    #                rather than standing alone at 49 chips.
+    #   erosion      TG + SM  905 chips, 2 sites. Gullies and scour marks are
+    #                both erosion; SM alone is shenzhen-only.
+    #   rock_armour  RP       355 chips, 2 sites. Kept, not dropped: it is the
+    #                best false-alarm bait in the project. PLACED rock is
+    #                man-made, so whatever serves this classifier must report it
+    #                as contract class `unknown`, never `natural`.
+    return {"SS": "sediment", "SW": "sediment",
+            "TG": "erosion", "SM": "erosion",
+            "RP": "rock_armour"}.get(code)
 
 
 def parse_chip(name: str) -> tuple[str, str] | None:
@@ -152,11 +163,11 @@ def parse_chip(name: str) -> tuple[str, str] | None:
     return m.group("site"), m.group("code").upper()
 
 
-def collect() -> dict[str, list[tuple[Path, str, str]]]:
+def collect(processed: Path = PROCESSED) -> dict[str, list[tuple[Path, str, str]]]:
     """Gather every CHINA-OFFSHORE chip, keyed by the split it already lives in."""
     found: dict[str, list[tuple[Path, str, str]]] = {s: [] for s in SPLITS}
     for split in SPLITS:
-        images = PROCESSED / split / "images"
+        images = processed / split / "images"
         if not images.is_dir():
             raise SystemExit(
                 f"! {images} does not exist.\n"
@@ -180,10 +191,14 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true",
                     help="report the parse and write a contact sheet; copy nothing")
     ap.add_argument("--force", action="store_true", help="overwrite an existing output root")
+    ap.add_argument("--processed", default=str(PROCESSED),
+                    help="detector dataset whose splits are inherited (the training tree's "
+                         "ai/data/processed; this checkout has none)")
     args = ap.parse_args()
 
     out_root = Path(args.out) if args.out else OUT_ROOT
-    found = collect()
+    processed = Path(args.processed)
+    found = collect(processed)
 
     # --- the parse, checked against the provenance count before anything moves
     by_code: Counter[str] = Counter()
@@ -248,7 +263,7 @@ def main() -> int:
     report = {
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "source": "CHINA-OFFSHORE, labels recovered from filenames",
-        "splits_inherited_from": str(PROCESSED),
+        "splits_inherited_from": str(processed),
         "codes_parsed": dict(by_code),
         "site_matrix": {c: dict(s) for c, s in site_matrix.items()},
         "classes_written": dict(written),

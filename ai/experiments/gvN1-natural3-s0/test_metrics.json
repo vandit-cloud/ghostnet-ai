@@ -1,0 +1,103 @@
+{
+  "n": 310,
+  "accuracy": 0.9354838709677419,
+  "per_class": {
+    "erosion": {
+      "n": 115,
+      "correct": 108,
+      "accuracy": 0.9391304347826087
+    },
+    "rock_armour": {
+      "n": 58,
+      "correct": 50,
+      "accuracy": 0.8620689655172413
+    },
+    "sediment": {
+      "n": 137,
+      "correct": 132,
+      "accuracy": 0.9635036496350365
+    }
+  },
+  "per_site": {
+    "quanzhou": {
+      "n": 51,
+      "correct": 49,
+      "accuracy": 0.9607843137254902
+    },
+    "shenzhen": {
+      "n": 148,
+      "correct": 133,
+      "accuracy": 0.8986486486486487
+    },
+    "dongying": {
+      "n": 93,
+      "correct": 91,
+      "accuracy": 0.978494623655914
+    },
+    "yantai": {
+      "n": 18,
+      "correct": 17,
+      "accuracy": 0.9444444444444444
+    }
+  },
+  "per_class_per_site": {
+    "erosion": {
+      "quanzhou": {
+        "n": 7,
+        "correct": 7,
+        "accuracy": 1.0
+      },
+      "shenzhen": {
+        "n": 108,
+        "correct": 101,
+        "accuracy": 0.9351851851851852
+      }
+    },
+    "rock_armour": {
+      "quanzhou": {
+        "n": 27,
+        "correct": 27,
+        "accuracy": 1.0
+      },
+      "shenzhen": {
+        "n": 31,
+        "correct": 23,
+        "accuracy": 0.7419354838709677
+      }
+    },
+    "sediment": {
+      "dongying": {
+        "n": 93,
+        "correct": 91,
+        "accuracy": 0.978494623655914
+      },
+      "quanzhou": {
+        "n": 17,
+        "correct": 15,
+        "accuracy": 0.8823529411764706
+      },
+      "shenzhen": {
+        "n": 9,
+        "correct": 9,
+        "accuracy": 1.0
+      },
+      "yantai": {
+        "n": 18,
+        "correct": 17,
+        "accuracy": 0.9444444444444444
+      }
+    }
+  },
+  "confusion": {
+    "erosion->erosion": 108,
+    "erosion->rock_armour": 5,
+    "erosion->sediment": 2,
+    "rock_armour->erosion": 8,
+    "rock_armour->rock_armour": 50,
+    "sediment->erosion": 1,
+    "sediment->rock_armour": 4,
+    "sediment->sediment": 132
+  },
+  "holdout_site": null,
+  "seed": 0
+}

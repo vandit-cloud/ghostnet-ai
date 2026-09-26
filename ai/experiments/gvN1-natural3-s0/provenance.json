@@ -1,0 +1,86 @@
+{
+  "created_utc": "2026-09-26T09:14:58.927327+00:00",
+  "git_commit": "346330a",
+  "weights_init": "E:\\ghostnet-docker-demo\\ai\\models\\pretrained\\yolo11s-cls.pt",
+  "task": "chip-level natural classification (second stage, not a detector class)",
+  "args": {
+    "model": "yolo11s-cls",
+    "data": "E:/New folder/ai/data/natural",
+    "name": "gvN1-natural3-s0",
+    "epochs": 60,
+    "imgsz": 224,
+    "batch": 32,
+    "patience": 12,
+    "seed": 0,
+    "device": null,
+    "holdout_site": null,
+    "force": false,
+    "dry_run": false
+  },
+  "device": "0",
+  "torch": "2.13.0+cu126",
+  "cuda_available": true,
+  "gpu": "NVIDIA GeForce RTX 3050 Laptop GPU",
+  "build_report": {
+    "created_utc": "2026-09-26T09:11:03.628203+00:00",
+    "source": "CHINA-OFFSHORE, labels recovered from filenames",
+    "splits_inherited_from": "E:\\New folder\\ai\\data\\processed",
+    "codes_parsed": {
+      "SS": 763,
+      "RP": 355,
+      "SW": 49,
+      "TG": 782,
+      "SM": 123
+    },
+    "site_matrix": {
+      "SS": {
+        "dongying": 523,
+        "quanzhou": 80,
+        "shenzhen": 80,
+        "yantai": 80
+      },
+      "RP": {
+        "quanzhou": 134,
+        "shenzhen": 221
+      },
+      "SW": {
+        "quanzhou": 43,
+        "yantai": 6
+      },
+      "TG": {
+        "quanzhou": 67,
+        "shenzhen": 715
+      },
+      "SM": {
+        "shenzhen": 123
+      }
+    },
+    "classes_written": {
+      "sediment": 812,
+      "rock_armour": 355,
+      "erosion": 905
+    },
+    "per_split": {
+      "train": {
+        "sediment": 547,
+        "rock_armour": 235,
+        "erosion": 671
+      },
+      "val": {
+        "sediment": 128,
+        "rock_armour": 62,
+        "erosion": 119
+      },
+      "test": {
+        "sediment": 137,
+        "rock_armour": 58,
+        "erosion": 115
+      }
+    },
+    "dropped_by_code": {},
+    "single_site_classes": [
+      "SM"
+    ],
+    "unparsed": 0
+  }
+}
