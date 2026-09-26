@@ -131,6 +131,10 @@ def main() -> int:
                          "see the D-geom note in the docstring")
     ap.add_argument("--mosaic", type=float, default=1.0,
                     help="0 to disable; needed for the D-geom control run")
+    ap.add_argument("--no-colour-aug", action="store_true",
+                    help="hsv_h=hsv_s=0. Required for engineered-channel input "
+                         "(build_net_seg_ridge.py): on a grey image these are no-ops, "
+                         "on engineered channels a hue shift mixes them together")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--device", default=None, help="default: cuda if available, else cpu")
     ap.add_argument("--resume", action="store_true")
@@ -185,6 +189,7 @@ def main() -> int:
         degrees=0.0,          # NOT a free choice -- see the module docstring
         fliplr=0.5,
         flipud=0.5,
+        **({"hsv_h": 0.0, "hsv_s": 0.0} if args.no_colour_aug else {}),
         rect=args.rect,
         mosaic=args.mosaic,
         close_mosaic=50,   # last 50 epochs mosaic-free. Raised from 15 when the
@@ -210,6 +215,7 @@ def main() -> int:
         "imgsz": args.imgsz,
         "rect": args.rect,
         "mosaic": 0.0 if args.rect else args.mosaic,
+        "no_colour_aug": args.no_colour_aug,
         "device": str(device),
         "git_commit": git_commit(),
         "cli": " ".join(sys.argv),

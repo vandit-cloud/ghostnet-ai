@@ -25,7 +25,10 @@ DEST = AI_ROOT / "models" / "pretrained"
 # yolo11s-seg is the Track D / D2 ghost_net segmentation backbone: a net is a
 # long thin fragmented shape that a box describes badly, so that class trains as
 # a single-class segmentation model of its own. See EXPERIMENT_GV7_PLAN.md 10.2.
-WEIGHTS = ["yolo11n.pt", "yolo11s.pt", "yolo11s-seg.pt"]
+# yolo11s-cls backs the chip-level `natural` classifier -- a gully field has no
+# discrete object to box, so that question is a whole-chip one. It is a SECOND
+# STAGE beside the detector, never a detector class; see train_natural.py.
+WEIGHTS = ["yolo11n.pt", "yolo11s.pt", "yolo11s-seg.pt", "yolo11s-cls.pt"]
 
 
 def main() -> int:

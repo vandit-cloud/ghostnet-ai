@@ -22,11 +22,28 @@ SCRIPT = AI_ROOT / "scripts" / "train.py"
 
 @pytest.fixture(scope="module")
 def mod():
+    # train.py imports its siblings (_fingerprint) the way a script does, from
+    # its own directory. Loading it by path does not put that directory on
+    # sys.path, so do it here, exactly as `python ai/scripts/train.py` would.
+    # Removed again on teardown, so script modules (_screening, _fingerprint)
+    # cannot shadow same-named imports in whatever test module runs next.
+    sys.path.insert(0, str(SCRIPT.parent))
     spec = importlib.util.spec_from_file_location("train_script", SCRIPT)
     m = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = m
     spec.loader.exec_module(m)
-    return m
+    yield m
+    sys.path.remove(str(SCRIPT.parent))
+    sys.modules.pop(spec.name, None)
+
+
+def fake_pretrained(tmp_path: Path) -> Path:
+    """A --model path that exists. A dry run checks the file is there but never
+    loads it, and the real yolo11s.pt lives only in the training tree -- so
+    without this the dry-run tests fail on any other checkout."""
+    p = tmp_path / "yolo11s.pt"
+    p.write_bytes(b"placeholder: a dry run never loads it")
+    return p
 
 
 def make_dataset(tmp_path: Path) -> Path:
@@ -55,7 +72,11 @@ def test_resume_points_at_the_checkpoint_not_the_pretrained_weights(mod, tmp_pat
     exp = tmp_path / "experiments"
     ckpt = exp / "run1" / "weights" / "last.pt"
     ckpt.parent.mkdir(parents=True, exist_ok=True)
-    ckpt.write_bytes(b"not a real checkpoint")
+    # A run killed mid-flight: optimiser state and a 0-indexed epoch are still
+    # in last.pt. train.py refuses anything else (a finished, stripped run, or
+    # an unreadable file), so a placeholder byte string no longer stands in.
+    torch = pytest.importorskip("torch")
+    torch.save({"optimizer": {"state": {}}, "epoch": 4}, ckpt)
     monkeypatch.setattr(mod, "EXPERIMENTS", exp)
     monkeypatch.setattr(sys, "argv",
                         ["train.py", "--data", str(data), "--name", "run1", "--resume", "--dry-run"])
@@ -75,7 +96,7 @@ def test_missing_dataset_is_reported_before_torch_is_imported(mod, tmp_path, mon
 def test_dry_run_trains_nothing(mod, tmp_path, monkeypatch, capsys):
     data = make_dataset(tmp_path)
     monkeypatch.setattr(mod, "EXPERIMENTS", tmp_path / "experiments")
-    monkeypatch.setattr(sys, "argv", ["train.py", "--data", str(data), "--dry-run"])
+    monkeypatch.setattr(sys, "argv", ["train.py", "--data", str(data), "--model", str(fake_pretrained(tmp_path)), "--dry-run"])
     assert mod.main() == 0
     assert "dry run: nothing trained" in capsys.readouterr().out
 
@@ -117,6 +138,7 @@ def test_force_allows_the_overwrite_when_it_is_deliberate(mod, tmp_path, monkeyp
 
     monkeypatch.setattr(mod, "EXPERIMENTS", exp)
     monkeypatch.setattr(sys, "argv",
-                        ["train.py", "--data", str(data), "--name", "gv5", "--force", "--dry-run"])
+                        ["train.py", "--data", str(data), "--name", "gv5", "--force",
+                         "--model", str(fake_pretrained(tmp_path)), "--dry-run"])
     assert mod.main() == 0
     assert "already has a checkpoint" not in capsys.readouterr().out
