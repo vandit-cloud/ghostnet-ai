@@ -3,6 +3,13 @@
 # becomes unreviewable -- a real problem when two machines share a branch.
 * text=auto eol=lf
 
+# ...except Windows batch files, which cmd.exe must read with CRLF: its label
+# parser can miss a GOTO/CALL target in an LF-only file (the 512-byte boundary
+# bug). The repository copy stays LF like everything else; only the checkout
+# gets CRLF, so diffs are unaffected.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
 # Binary-ish assets git should never try to diff or convert.
 *.png binary
 *.jpg binary
