@@ -193,8 +193,8 @@ These are real survey-scale raw sonar files and should be treated differently fr
 
 ## 4.1 PINTA N-09.1/N-09.2/N-09.3/N-09.4
 
-Example:
-https://pinta.bsh.de/N-9.1?lang=en&tab=daten
+Portal: https://pinta.bsh.de — select site **N-9.1**, tab *Daten*.
+(BSH's linking policy asks for the portal root, not a deep link.)
 
 The archive exposes raw SSS in **JSF** plus processed SSS and target lists.
 
@@ -258,8 +258,8 @@ process only those
 
 # 5. PINTA N-03.6 / N-03.5 NEW SOURCE
 
-Example:
-https://pinta.bsh.de/N-3.6?lang=en
+Portal: https://pinta.bsh.de — select site **N-3.6**.
+(BSH's linking policy asks for the portal root, not a deep link.)
 
 The site provides:
 - processed SSS
