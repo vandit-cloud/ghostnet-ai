@@ -36,12 +36,16 @@ export default function SonarInvestigationPage() {
     );
   }
 
+  const hasOutline = (detection.mask_polygon?.length ?? 0) >= 3;
+
   return (
     <AppShell title={`Sonar Investigation — ${detection.detection_ref}`}>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
         <div>
-          <h3 className="mb-2 text-sm font-semibold text-slate-200">Sonar Image (bounding box overlay)</h3>
-          <SonarViewer frameId={detection.frame_id} bbox={detection.bbox} />
+          <h3 className="mb-2 text-sm font-semibold text-slate-200">
+            Sonar Image ({hasOutline ? "outline overlay" : "bounding box overlay"})
+          </h3>
+          <SonarViewer frameId={detection.frame_id} bbox={detection.bbox} polygon={detection.mask_polygon} />
         </div>
 
         <div className="space-y-4 panel p-4">
@@ -79,7 +83,14 @@ export default function SonarInvestigationPage() {
           </div>
           <div>
             <p className="text-xs uppercase tracking-wide text-slate-500">Mask</p>
-            <p className="text-slate-400">{detection.mask_reference ?? "Not available for this detection."}</p>
+            {/* mask_polygon is what SonarViewer draws. This line used to read
+                only the legacy mask_reference string, which the AI never fills,
+                so it said "Not available" right beside a drawn outline. */}
+            <p className="text-slate-400">
+              {hasOutline
+                ? `Outline traced by the net segmentation model (${detection.mask_polygon!.length} points)`
+                : detection.mask_reference ?? "Not available for this detection."}
+            </p>
           </div>
 
           {/* "Why did the system flag this?" is the question this workspace

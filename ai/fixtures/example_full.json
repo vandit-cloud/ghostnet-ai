@@ -6,18 +6,36 @@
       "detection_id": "D-00027AB1",
       "raw_score": 0.91,
       "calibrated_confidence": 0.83,
-      "uncertainty": "low",
+      "uncertainty": "medium",
       "bbox": [
         320,
         180,
         190,
         120
       ],
-      "mask": null,
+      "mask": [
+        [
+          330,
+          290
+        ],
+        [
+          345,
+          298
+        ],
+        [
+          508,
+          192
+        ],
+        [
+          494,
+          182
+        ]
+      ],
       "latitude": 20.123456,
       "longitude": 70.123456,
       "position_error_m": 4.5,
       "localization": "frame-level",
+      "review_only": true,
       "dimensions": {
         "width": 3.2,
         "length": 8.4,
@@ -48,6 +66,7 @@
       "longitude": 70.12288,
       "position_error_m": 6.1,
       "localization": "frame-level",
+      "review_only": false,
       "dimensions": {
         "width": 11.0,
         "length": 6.2,
@@ -71,5 +90,6 @@
     "calibration_version": "none"
   },
   "warnings": [],
-  "contract_version": "1.0.0"
+  "contract_version": "1.3.0",
+  "frame_position": null
 }

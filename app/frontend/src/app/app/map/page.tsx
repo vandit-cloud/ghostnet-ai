@@ -261,7 +261,7 @@ function MapPageContent() {
                     Full Investigation →
                   </Link>
                 </div>
-                <SonarViewer frameId={selectedDetection.frame_id} bbox={selectedDetection.bbox} />
+                <SonarViewer frameId={selectedDetection.frame_id} bbox={selectedDetection.bbox} polygon={selectedDetection.mask_polygon} />
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                   <span>{formatConfidence(selectedDetection.calibrated_confidence)}</span>
                   <UncertaintyLabel level={selectedDetection.uncertainty} />

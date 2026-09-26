@@ -62,6 +62,15 @@ class Settings:
     models_dir: Path = field(default_factory=lambda: _env_path("GHOSTNET_MODELS_DIR", AI_ROOT / "models"))
     data_dir: Path = field(default_factory=lambda: _env_path("GHOSTNET_DATA_DIR", AI_ROOT / "data"))
     weights_path: Path | None = None
+    #: Optional ghost_net SEGMENTATION model (ghostnet.netseg). When it
+    #: resolves, it replaces the box detector's ghost_net output. Resolution:
+    #: GHOSTNET_NET_WEIGHTS, then a promoted models/trained/ghostnet_net.pt,
+    #: then nothing -- and nothing means detect() behaves exactly as before.
+    net_weights_path: Path | None = None
+    #: channels.json for a model trained on engineered input
+    #: (build_net_seg_ridge.py). GHOSTNET_NET_CHANNELS, then
+    #: `<net weights>.channels.json`; absent means plain greyscale input.
+    net_channels_path: Path | None = None
 
     # --- inference ---------------------------------------------------------
     device: str = field(default_factory=resolve_device)
@@ -128,6 +137,25 @@ class Settings:
     #: there is no net data to tune it against (11 test frames).
     raw_conf_threshold_net: float = 0.03
 
+    #: Raw score floor for the net SEGMENTATION model, when one is configured.
+    #: 0.25 is the threshold every published D2/D3 figure was measured at
+    #: (centroid_metric.py --conf default), so what ships is what was measured.
+    #: Replaces raw_conf_threshold_net for nets; that one stays for the
+    #: detector-only path.
+    net_conf_threshold: float = 0.25
+
+    #: Pixel threshold for a U-Net net model: a pixel at or above it is "net",
+    #: and each connected blob of such pixels is one candidate. 0.5 was fixed in
+    #: ai/experiments/unet-scoring/PLAN.md before any U-Net was trained, and
+    #: every published U-Net figure is at 0.5. It is also robust: gvU1n's Dice
+    #: moves 0.589 / 0.588 / 0.583 across 0.25 / 0.5 / 0.75.
+    #:
+    #: Deliberately NOT zeroed by for_evaluation(). It is the segmentation
+    #: boundary, not a reporting gate: at 0.0 every pixel is "net" and the
+    #: whole frame becomes one blob, which is no measurement at all. U-Net
+    #: evaluation sweeps it explicitly (evaluate_net_unet.py --conf).
+    net_unet_threshold: float = 0.5
+
     # --- tile-edge artifacts ----------------------------------------------
     #: Suppress detections that are thin strips welded to a frame border.
     #: See decision.is_edge_sliver for what this costs and why it is on.
@@ -168,6 +196,7 @@ class Settings:
             review_floor_net=0.0,
             raw_conf_threshold=0.0,
             raw_conf_threshold_net=0.0,
+            net_conf_threshold=0.0,
         )
 
     # --- versioning (§34: every inference identifies its provenance) -------
@@ -185,6 +214,8 @@ class Settings:
     #: the same way.
     preprocessing: str = "none"
     calibration_version: str = "none"
+    #: Version of the net segmentation model, or "none" when not configured.
+    net_model_version: str = "none"
 
     def __post_init__(self) -> None:
         if self.weights_path is None:
@@ -263,8 +294,52 @@ class Settings:
                 except (TypeError, ValueError):
                     pass  # leave the sentinel; an unparseable file is "unknown"
 
+        self._resolve_net_model()
+
         if self.device == "cpu":
             self.half = False  # fp16 on CPU is slower, not faster
+
+    def _resolve_net_model(self) -> None:
+        """Same resolution order and naming rules as the detector's weights."""
+        if self.net_weights_path is None:
+            env = os.environ.get("GHOSTNET_NET_WEIGHTS")
+            # An explicit OFF. Without it a promoted ghostnet_net.pt could only
+            # be switched off by deleting the file: None and "" both mean
+            # "resolve", and resolving finds the promoted model. The test suite
+            # sets this (ai/tests/conftest.py) so results do not depend on
+            # whether a model happens to be promoted on the machine running it.
+            if env and env.strip().lower() in ("none", "off"):
+                self.net_weights_path = None
+                return
+            if env:
+                self.net_weights_path = Path(env).expanduser().resolve()
+            else:
+                promoted = AI_ROOT / "models" / "trained" / "ghostnet_net.pt"
+                self.net_weights_path = promoted if promoted.exists() else None
+        else:
+            self.net_weights_path = Path(self.net_weights_path)
+        if self.net_weights_path is None:
+            return
+
+        if self.net_channels_path is None:
+            env = os.environ.get("GHOSTNET_NET_CHANNELS")
+            sidecar = self.net_weights_path.with_suffix(".channels.json")
+            if env:
+                self.net_channels_path = Path(env).expanduser().resolve()
+            elif sidecar.exists():
+                self.net_channels_path = sidecar
+        else:
+            self.net_channels_path = Path(self.net_channels_path)
+
+        if self.net_model_version == "none":
+            w = self.net_weights_path
+            meta = _read_json(w.with_suffix(".json"))
+            if meta.get("model_version"):
+                self.net_model_version = str(meta["model_version"])
+            elif w.parent.name == "weights" and w.parent.parent.name:
+                self.net_model_version = w.parent.parent.name
+            else:
+                self.net_model_version = w.stem
 
     def quantize(self) -> int:
         """Ultralytics >= 8.4 replaced the boolean `half` with `quantize`,
@@ -274,13 +349,18 @@ class Settings:
         return 16 if self.half else 32
 
     def provenance(self) -> dict[str, str]:
-        return {
+        out = {
             "model_id": self.model_id,
             "model_version": self.model_version,
             "dataset_version": self.dataset_version,
             "preprocessing_version": self.preprocessing,
             "calibration_version": self.calibration_version,
         }
+        # Only when configured, so a detector-only payload is byte-for-byte
+        # what it was before the net model existed.
+        if self.net_weights_path is not None:
+            out["net_model_version"] = self.net_model_version
+        return out
 
 
 SETTINGS = Settings()

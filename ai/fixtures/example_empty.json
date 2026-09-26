@@ -9,5 +9,6 @@
   "warnings": [
     "no trained weights available; returning empty detections."
   ],
-  "contract_version": "1.0.0"
+  "contract_version": "1.3.0",
+  "frame_position": null
 }

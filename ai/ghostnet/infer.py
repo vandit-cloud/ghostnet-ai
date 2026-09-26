@@ -16,6 +16,7 @@ can be built and demoed before the model exists.
 
 from __future__ import annotations
 
+import logging
 import threading
 import uuid
 from pathlib import Path
@@ -33,12 +34,17 @@ from .dropout import (
 from .shadow import shadow_context
 from .decision import (
     apply_decision_policy,
+    assess_uncertainty,
     is_review_only,
     calibration_mismatch,
     escalate_uncertainty,
     is_edge_sliver,
+    normalise_class,
 )
+from .netseg import load_net_model, net_model_error, predict_nets
 from .geo import SonarGeometry, geotag_pixel, pixel_to_ground_offset, position_error_m
+
+logger = logging.getLogger(__name__)
 
 # One model, loaded once, guarded by a lock.
 # Two reasons this matters: 4 GB of VRAM cannot hold a second copy, and
@@ -93,8 +99,19 @@ def load_model(settings: Settings = SETTINGS):
 
 
 def warmup(settings: Settings = SETTINGS) -> bool:
-    """Call from the FastAPI lifespan handler so the first request is not slow."""
-    return load_model(settings) is not None
+    """Call from the FastAPI lifespan handler so the first request is not slow.
+
+    Also loads the net segmentation model when one is configured, so a broken
+    or missing net model is reported in the server log at startup instead of
+    surfacing as a warning on the first survey someone processes. The return
+    value is still about the box detector alone: without it nothing is
+    detected at all, whereas a failed net model only falls back.
+    """
+    loaded = load_model(settings) is not None
+    if settings.net_weights_path is not None:
+        if load_net_model(settings) is None and net_model_error():
+            logger.warning("%s", net_model_error())
+    return loaded
 
 
 #: Metadata keys this package reads as numbers. Anything here that is present
@@ -219,6 +236,24 @@ def modality_warning(gray) -> str | None:
     return None
 
 
+def _detector_conf(settings: Settings) -> float:
+    """The box detector's confidence floor for this configuration.
+
+    Without a net model: the lower of the two floors, so weak `ghost_net` boxes
+    exist for the policy to consider. Every other class is re-gated back to
+    raw_conf_threshold in apply_decision_policy, so this widens what is
+    CONSIDERED without widening what is REPORTED.
+
+    With a working net model: the normal floor. detect() discards every
+    detector ghost_net box in favour of the net model's, so surfacing weak ones
+    only spends max_detections slots that a real debris or wreck box on a busy
+    frame could have used.
+    """
+    if settings.net_weights_path is not None and load_net_model(settings) is not None:
+        return settings.raw_conf_threshold
+    return min(settings.raw_conf_threshold, settings.raw_conf_threshold_net)
+
+
 def _predict_many(model, paths: list[str], settings: Settings) -> list:
     """One model call for many frames.
 
@@ -241,11 +276,7 @@ def _predict_many(model, paths: list[str], settings: Settings) -> list:
         return list(model.predict(
             source=paths,
             imgsz=settings.imgsz,
-            # Lower of the two, so weak `ghost_net` boxes exist for the policy
-            # to consider. Every other class is re-gated back to
-            # raw_conf_threshold in apply_decision_policy, so this widens what
-            # is CONSIDERED without widening what is REPORTED.
-            conf=min(settings.raw_conf_threshold, settings.raw_conf_threshold_net),
+            conf=_detector_conf(settings),
             iou=settings.iou_threshold,
             max_det=settings.max_detections,
             device=settings.device,
@@ -392,6 +423,36 @@ def detect(
                 }
             )
 
+    # ghost_net from the SEGMENTATION model, when one is configured.
+    #
+    # It REPLACES the detector's nets rather than adding to them: the
+    # detector's net scores are as high on the seabed around a chain as on the
+    # chain itself (see ghostnet.netseg), so mixing the two would put back the
+    # candidates this model exists to remove. A configured-but-broken model
+    # says so and leaves the detector's candidates in place -- degrading, not
+    # silently losing the class.
+    if settings.net_weights_path is not None:
+        net_ran = False
+        net_model = load_net_model(settings) if gray is not None else None
+        if net_model is not None:
+            try:
+                nets = predict_nets(net_model, gray, settings, lock=_PREDICT_LOCK)
+            except Exception as exc:
+                result.warnings.append(
+                    f"net segmentation model failed on this frame ({type(exc).__name__}); "
+                    "ghost_net candidates are from the box detector"
+                )
+            else:
+                raw = [d for d in raw if normalise_class(d["cls"]) != "ghost_net"] + nets
+                net_ran = True
+        elif net_model_error():
+            result.warnings.append(net_model_error())
+        if not net_ran:
+            # Provenance must not name a model that produced nothing in this
+            # payload: every ghost_net here came from the box detector, and
+            # tracing results by provenance would credit them to the net model.
+            result.provenance["net_model_version"] = "none (configured net model did not run on this frame)"
+
     # Tile-edge artifacts, removed before the confidence policy runs.
     #
     # Reported in `warnings` rather than dropped quietly: this rule can also
@@ -411,11 +472,22 @@ def detect(
 
     suppressed = 0
     for item in raw:
-        decision = apply_decision_policy(item["cls"], item["score"], settings)
-        if decision is None:
-            suppressed += 1
-            continue  # below the policy floor; never shown to a reviewer
-        cls_out, calibrated, uncertainty = decision
+        from_net_model = item.get("source") == "net_seg"
+        if from_net_model:
+            # Already gated at net_conf_threshold inside predict_nets. The
+            # calibrator was fitted on the BOX detector, so its temperature is
+            # not applied here: the score is reported as-is, and the band is
+            # never allowed to claim "low" uncertainty on an uncalibrated number.
+            cls_out, calibrated = "ghost_net", item["score"]
+            uncertainty = assess_uncertainty(calibrated, settings)
+            if uncertainty == "low":
+                uncertainty = "medium"
+        else:
+            decision = apply_decision_policy(item["cls"], item["score"], settings)
+            if decision is None:
+                suppressed += 1
+                continue  # below the policy floor; never shown to a reviewer
+            cls_out, calibrated, uncertainty = decision
 
         # A detection standing on dead pings is suspect for the same reason a
         # detection in the water column is: the pixels underneath it are not
@@ -481,6 +553,9 @@ def detect(
                 calibrated_confidence=round(calibrated, 4),
                 uncertainty=uncertainty,
                 bbox=item["bbox"],
+                # Pixel polygon, same frame and origin as bbox. Only the net
+                # segmentation model produces one; the detector leaves it None.
+                mask=item.get("mask"),
                 # A candidate, not a claim -- see decision.is_review_only.
                 review_only=is_review_only(cls_out),
                 latitude=lat,
@@ -488,7 +563,7 @@ def detect(
                 position_error_m=err,
                 localization=localization,
                 dimensions=dims,
-                model_version=settings.model_version,
+                model_version=settings.net_model_version if from_net_model else settings.model_version,
                 evidence_summary=EvidenceSummary(
                     artificial_verification="positive" if cls_out != "natural" else "negative",
                     shadow_context=(
@@ -502,7 +577,9 @@ def detect(
                     # lost -- free text, so no schema change, and the reviewer
                     # sees what the model really said.
                     notes=(drop_note + " | " if not drop_note.startswith("clear") else "") + (
-                        "detector class: " + item["cls"]
+                        "net segmentation model; confidence is uncalibrated"
+                        if from_net_model
+                        else "detector class: " + item["cls"]
                         if item["cls"].strip().lower() != cls_out
                         else ""
                     ),

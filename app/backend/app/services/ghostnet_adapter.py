@@ -90,16 +90,27 @@ def _survey_meta(survey_id: str, frame_id: str, metadata: AIFrameMetadata) -> di
     return meta
 
 
+#: The AI contract and the backend name one class differently. The contract
+#: (contracts/ai-output.schema.json) says `natural`; the database, the
+#: validator (detection_service.VALID_CLASSES), the filters and the map icons
+#: have always said `natural_object`. Translated here, at the one seam between
+#: the two vocabularies -- renaming either side would touch stored rows or a
+#: frozen contract. Before this mapping every `natural` detection was rejected
+#: at ingest as an unrecognised class.
+_CLASS_FROM_AI = {"natural": "natural_object"}
+
+
 def _to_detection(raw: dict[str, Any]) -> AIDetection:
     dims = raw.get("dimensions") or {}
     return AIDetection(
         detection_id=raw["detection_id"],
-        **{"class": raw["class"]},
+        **{"class": _CLASS_FROM_AI.get(raw["class"], raw["class"])},
         raw_score=raw.get("raw_score"),
         calibrated_confidence=raw.get("calibrated_confidence"),
         uncertainty=raw.get("uncertainty"),
         bbox=raw.get("bbox"),
         mask=raw.get("mask"),
+        review_only=bool(raw.get("review_only", False)),
         latitude=raw.get("latitude"),
         longitude=raw.get("longitude"),
         position_error_m=raw.get("position_error_m"),

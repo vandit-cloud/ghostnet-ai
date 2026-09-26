@@ -2,7 +2,8 @@ import uuid
 from datetime import datetime
 
 from geoalchemy2 import Geometry
-from sqlalchemy import String, DateTime, ForeignKey, Float, JSON, UniqueConstraint, func
+from sqlalchemy import Boolean, String, DateTime, ForeignKey, Float, JSON, UniqueConstraint, func
+from sqlalchemy import false as sa_false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
@@ -45,6 +46,11 @@ class Detection(Base):
     bbox_w: Mapped[float | None] = mapped_column(Float, nullable=True)
     bbox_h: Mapped[float | None] = mapped_column(Float, nullable=True)
     mask_reference: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    #: Outline polygon [[x, y], ...] in frame pixels (AI contract 1.3.0).
+    #: JSON, not mask_reference: a polygon does not fit a 1000-char string.
+    mask_polygon: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    #: A review candidate, not a claim. Nets are review-only (contract 1.2.0).
+    review_only: Mapped[bool] = mapped_column(Boolean, default=False, server_default=sa_false(), nullable=False)
 
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)

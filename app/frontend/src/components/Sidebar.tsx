@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import clsx from "clsx";
 
 import { NAV_ITEMS } from "@/utils/nav";
+import { CONTRACT_VERSION } from "@/utils/contract";
 
 /* The console's left rail, in Atlantic.
  *
@@ -82,7 +83,7 @@ export function Sidebar() {
 
       <div className="mt-auto px-6 pb-6 pt-8">
         <div className="border-t border-skytint/22 pt-3 font-mono text-[10.5px] leading-[1.9] tracking-[0.06em] text-paper/74">
-          <p>SIH26057 · contract v1.2.0</p>
+          <p>SIH26057 · contract v{CONTRACT_VERSION}</p>
           <p>All detections review_only</p>
         </div>
       </div>

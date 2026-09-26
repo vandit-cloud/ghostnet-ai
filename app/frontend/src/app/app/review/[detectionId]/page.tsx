@@ -64,7 +64,7 @@ export default function ReviewWorkspacePage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div>
           <h3 className="mb-2 text-sm font-semibold text-slate-200">Sonar Image</h3>
-          <SonarViewer frameId={detection.frame_id} bbox={detection.bbox} />
+          <SonarViewer frameId={detection.frame_id} bbox={detection.bbox} polygon={detection.mask_polygon} />
         </div>
 
         <div>

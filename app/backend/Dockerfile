@@ -32,6 +32,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # No GPU in this container -- ghostnet.config.resolve_device() falls back to
 # CPU by design, just slower.
 #
+# segmentation-models-pytorch runs the ghost_net U-Net (ghostnet.unet), which
+# the promoted ai/models/trained/ghostnet_net.pt holds. Without it that model
+# fails to load and ghost_net falls back to the box detector's candidates.
+#
 # numpy/pyproj/opencv are also installed explicitly for the same reason
 # ai/requirements.txt's exact pins (numpy==2.5.1 etc) target the dev's Python
 # 3.12 machine and won't resolve on this image's 3.11 -- ai/pyproject.toml's
@@ -42,6 +46,7 @@ RUN pip install --no-cache-dir \
         torch==2.13.0 torchvision==0.28.0 \
     && pip install --no-cache-dir \
         "numpy>=1.26" "pyproj>=3.6" "opencv-python-headless>=4.10" "ultralytics>=8.3" \
+        "segmentation-models-pytorch>=0.5" \
     && pip install --no-cache-dir -e ./ai --no-deps
 
 COPY app/backend/ .

@@ -29,6 +29,8 @@ def _to_out(d: Detection, survey_name: str | None = None) -> DetectionOut:
         uncertainty=d.uncertainty,
         bbox=BBox(x=d.bbox_x, y=d.bbox_y, w=d.bbox_w, h=d.bbox_h),
         mask_reference=d.mask_reference,
+        mask_polygon=d.mask_polygon,
+        review_only=bool(d.review_only),
         latitude=d.latitude,
         longitude=d.longitude,
         position_error_m=d.position_error_m,

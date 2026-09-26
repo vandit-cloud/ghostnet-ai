@@ -18,7 +18,13 @@ from typing import Any, Literal
 #: 1.1.0 adds the optional `frame_position` block below. Additive and optional,
 #: so by the versioning rules in docs/HANDOFF.md section 7 this is a MINOR bump:
 #: a consumer pinned to major 1 keeps working untouched and simply ignores it.
-CONTRACT_VERSION = "1.2.0"
+#:
+#: 1.3.0: `Detection.mask` can now be NON-NULL. The key and its type are
+#: unchanged since 1.0, but no producer ever filled it, so a consumer may have
+#: typed it wrongly without anything failing -- the backend had it as a
+#: string. The bump is the signal to check. Filled only by the optional net
+#: segmentation model (ghostnet.netseg).
+CONTRACT_VERSION = "1.3.0"
 
 # Closed vocabularies. Member 2's DB uses these as enum values, so adding a
 # member is a breaking change for them -- never silently emit something else.
@@ -59,6 +65,8 @@ class Detection:
     calibrated_confidence: float
     uncertainty: Uncertainty
     bbox: list[int]  # [x, y, w, h] in pixels, top-left origin
+    #: Outline polygon, [[x, y], ...] in the same pixel frame as bbox. None
+    #: from the box detector; filled for nets when the segmentation model runs.
     mask: list[list[int]] | None = None
 
     # Geospatial. None when metadata was missing -- never fabricate a position.

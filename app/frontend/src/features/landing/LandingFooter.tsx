@@ -6,6 +6,8 @@
  * which is what the demo does and is the honest state of them. The links that
  * DO resolve — the console, the review queue, the map — are wired. */
 
+import { CONTRACT_VERSION } from "@/utils/contract";
+
 const PRODUCT = [
   ["Detections", "#detection"],
   ["Outputs", "#outputs"],
@@ -128,7 +130,7 @@ export function LandingFooter() {
       </p>
 
       <div className="foot-base">
-        <span>GhostNet-AI · SIH26057 · contract v1.2.0</span>
+        <span>GhostNet-AI · SIH26057 · contract v{CONTRACT_VERSION}</span>
         <span>All detections review_only</span>
         <span className="sp">
           <a href="#">Privacy</a>
