@@ -104,7 +104,7 @@ only by a 156-second gap in the timestamps. It measures whether the model can
 follow a pipeline through seabed it has not seen. It does **not** measure
 generalisation to debris elsewhere.
 
-The only independent debris is **14 boxes** from sonar_detect. Report both, or
+The only independent debris is **14 boxes** from sonar_detect.[^sonardetect] Report both, or
 say "one held-out survey track".
 
 ### `ghost_net` does not work **as a box detector** — superseded in part, 2026-09-13
@@ -261,3 +261,5 @@ rejections of empty seabed and 3 false positives, with a live confidence
 slider. It is not a highlight reel -- the failures are in there on purpose,
 because a reviewer who has seen the failure modes can build a UI that handles
 them.
+
+[^sonardetect]: Reviewed frame by frame on 26 Sep 2026 (`ai/experiments/sonardetect-review/REVIEW.md`). 7 of these 14 boxes are in two frames that are not clean sonar: `SONARDETECT__000163` is a slide with photographs and `SONARDETECT__000183` is a composed figure with a zoomed inset. They stay in the test split, so every run remains scored on the same data, but only **7 boxes from 5 frames** are clean independent debris. Quote it as "14 boxes, 7 of them from clean frames".
