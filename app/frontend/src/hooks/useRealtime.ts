@@ -13,8 +13,16 @@ export type ConnectionStatus = "connecting" | "connected" | "reconnecting" | "of
  * relevant React Query caches so the UI updates without a full reload. On
  * disconnect it reconnects and reconciles by refetching current state rather
  * than assuming missed events (spec section 42). */
-export function useSurveyRealtime(surveyId: string | undefined) {
+export function useSurveyRealtime(
+  surveyId: string | undefined,
+  /** Optional raw-event listener, called after the cache invalidation. The
+   *  processing page uses it for per-frame detail (which frame finished, and
+   *  whether it failed) that the refetched job counts cannot tell it. */
+  onEvent?: (event: RealtimeEvent) => void
+) {
   const queryClient = useQueryClient();
+  const onEventRef = useRef(onEvent);
+  onEventRef.current = onEvent;
   const token = useAuthStore((s) => s.token);
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
   const retryRef = useRef(0);
@@ -42,6 +50,7 @@ export function useSurveyRealtime(surveyId: string | undefined) {
         try {
           const payload = JSON.parse(event.data) as RealtimeEvent;
           handleEvent(payload);
+          onEventRef.current?.(payload);
         } catch {
           // ignore malformed frames
         }

@@ -4,27 +4,29 @@ import clsx from "clsx";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { ApiError } from "@/api/client";
 import { AppShell } from "@/components/AppShell";
-import {
-  formatDuration,
-  PipelineStagePreview,
-  ProcessingProgress,
-  STAGE_DESCRIPTIONS,
-} from "@/components/ProcessingProgress";
+import { formatDuration, PipelineStagePreview } from "@/components/ProcessingProgress";
 import { StatusIndicator } from "@/components/StatusIndicator";
 import { LoadingSkeleton } from "@/components/States";
 import { useToastStore } from "@/components/Toast";
 import { useDetections } from "@/features/detections/hooks";
-import { useCancelJob, useLatestJob, useStartProcessing, useSurveyJobs } from "@/features/processing/hooks";
+import {
+  useCancelJob,
+  useLatestJob,
+  useStartProcessing,
+  useSurveyFrames,
+  useSurveyJobs,
+} from "@/features/processing/hooks";
+import { ProcessingSplitView } from "@/features/processing/ProcessingSplitView";
 import { useCreateReport } from "@/features/reports/hooks";
 import { useFrameImage } from "@/features/sonar/hooks";
 import { useSurvey } from "@/features/surveys/hooks";
 import { useSurveyFiles } from "@/features/upload/hooks";
 import { useSurveyRealtime } from "@/hooks/useRealtime";
-import type { Detection, JobStage, ProcessingJob, SurveyFile } from "@/types";
+import type { Detection, ProcessingJob, RealtimeEvent, SurveyFile } from "@/types";
 import { formatConfidence, formatDateTime } from "@/utils/format";
 
 const HeroWaterBackdrop = dynamic(
@@ -65,13 +67,29 @@ export default function ProcessingPage() {
   const startProcessing = useStartProcessing(surveyId);
   const cancelJob = useCancelJob(surveyId);
   const push = useToastStore((s) => s.push);
-  const connectionStatus = useSurveyRealtime(surveyId);
+  // One socket for the page. The split view needs the raw per-frame events
+  // (which frame finished, did it fail), so they are fanned out to it here
+  // rather than opening a second connection.
+  const listeners = useRef(new Set<(e: RealtimeEvent) => void>());
+  const connectionStatus = useSurveyRealtime(surveyId, (e) => listeners.current.forEach((fn) => fn(e)));
+  const subscribe = useCallback((fn: (e: RealtimeEvent) => void) => {
+    listeners.current.add(fn);
+    return () => {
+      listeners.current.delete(fn);
+    };
+  }, []);
+  const { data: frames } = useSurveyFrames(job ? surveyId : undefined);
+  // Every detection of the run, for the markers and the summary. The page
+  // size is the API's ceiling; the job's own count stays the source of truth.
+  const { data: detectionPage } = useDetections({ survey_id: surveyId, page_size: 200 }, { enabled: Boolean(job) });
+
+  // The results below the scene wait until the scene has shown the run
+  // finishing, so the page reads top to bottom in the order things happened.
+  const [presented, setPresented] = useState(false);
 
   const isRunning = Boolean(job && RUNNING_STATUSES.includes(job.status));
   const isFinished = Boolean(job && FINISHED_STATUSES.includes(job.status));
   const isStopped = Boolean(job && (job.status === "FAILED" || job.status === "CANCELLED"));
-
-  const log = useStageLog(job);
 
   async function handleStart(forceRestart = false) {
     try {
@@ -125,36 +143,22 @@ export default function ProcessingPage() {
           starting={startProcessing.isPending}
         />
       ) : (
-        <div className="panel p-6">
-          <ProcessingProgress job={job} />
+        <div className="space-y-6">
+          <ProcessingSplitView
+            job={job}
+            surveyId={surveyId}
+            frames={frames}
+            detections={detectionPage?.items ?? []}
+            subscribe={subscribe}
+            onCancel={() => cancelJob.mutate(job.id)}
+            cancelling={cancelJob.isPending || !isRunning}
+            onPresented={setPresented}
+          />
 
-          {log.length > 0 && (
-            <div className="mt-4 max-h-32 overflow-y-auto border border-abyss-700 bg-abyss-900/40 p-3 font-mono text-[11px] text-slate-400">
-              {log.map((entry, i) => (
-                <div key={i} className="flex gap-2">
-                  <span className="shrink-0 text-ink-3">{entry.time}</span>
-                  <span>{entry.message}</span>
-                </div>
-              ))}
-            </div>
-          )}
+          {isFinished && presented && <CompletionPanel job={job} surveyId={surveyId} onReprocess={handleReprocess} />}
 
-          {isRunning && (
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={() => cancelJob.mutate(job.id)}
-                disabled={cancelJob.isPending}
-                className="rounded-md border border-alert-critical/50 px-4 py-1.5 text-sm text-alert-critical hover:bg-alert-critical/10"
-              >
-                Cancel Processing
-              </button>
-            </div>
-          )}
-
-          {isFinished && <CompletionPanel job={job} surveyId={surveyId} onReprocess={handleReprocess} />}
-
-          {isStopped && (
-            <div className="mt-6 rounded-md border border-abyss-600 bg-abyss-800/40 p-5">
+          {isStopped && presented && (
+            <div className="rounded-md border border-abyss-600 bg-abyss-800/40 p-5">
               <p className="text-sm text-slate-200">
                 {job.status === "CANCELLED" ? "This run was cancelled before it finished." : "This run failed."}{" "}
                 {job.frames_processed > 0 &&
@@ -184,36 +188,6 @@ export default function ProcessingPage() {
       )}
     </AppShell>
   );
-}
-
-/** Tracks stage transitions as they're observed from the polled/pushed job
- * object and turns them into a small live log -- there is no backend event
- * history to read, so this is a client-observed timeline, not a server-logged
- * one, and it resets whenever a new job (a fresh run) starts. */
-function useStageLog(job: ProcessingJob | null | undefined) {
-  const [log, setLog] = useState<{ time: string; message: string }[]>([]);
-  const prevStageRef = useRef<JobStage | null>(null);
-  const prevJobIdRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!job) return;
-    if (prevJobIdRef.current !== job.id) {
-      prevJobIdRef.current = job.id;
-      prevStageRef.current = null;
-      setLog([]);
-    }
-    if (prevStageRef.current !== job.stage) {
-      prevStageRef.current = job.stage;
-      setLog((entries) =>
-        [
-          { time: new Date().toLocaleTimeString(), message: `${job.stage} — ${STAGE_DESCRIPTIONS[job.stage]}` },
-          ...entries,
-        ].slice(0, 20)
-      );
-    }
-  }, [job]);
-
-  return log;
 }
 
 /** The pre-launch screen: what's about to be processed, a preview of the
@@ -344,7 +318,7 @@ function CompletionPanel({
 
   return (
     <div
-      className={`mt-6 rounded-md border p-5 ${
+      className={`rounded-md border p-5 ${
         partial ? "border-alert-high/40 bg-alert-high/10" : "border-emerald-500/40 bg-emerald-400/5"
       }`}
     >

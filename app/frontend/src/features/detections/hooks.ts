@@ -25,11 +25,12 @@ function buildQuery(filters: DetectionFilters): string {
   return params.toString();
 }
 
-export function useDetections(filters: DetectionFilters) {
+export function useDetections(filters: DetectionFilters, options: { enabled?: boolean } = {}) {
   const query = buildQuery({ page: 1, page_size: 50, ...filters });
   return useQuery({
     queryKey: ["detections", filters],
     queryFn: () => apiFetch<Page<Detection>>(`/detections?${query}`),
+    enabled: options.enabled ?? true,
   });
 }
 

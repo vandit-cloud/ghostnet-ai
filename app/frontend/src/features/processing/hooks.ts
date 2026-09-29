@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "@/api/client";
-import type { ProcessingJob } from "@/types";
+import type { ProcessingJob, SurveyFrame } from "@/types";
 
 const ACTIVE_STATUSES: ProcessingJob["status"][] = ["QUEUED", "VALIDATING", "PROCESSING"];
 
@@ -96,5 +96,16 @@ export function useCancelJob(surveyId: string) {
       queryClient.invalidateQueries({ queryKey: ["active-job", surveyId] });
       queryClient.invalidateQueries({ queryKey: ["latest-job", surveyId] });
     },
+  });
+}
+
+/** The survey's frames in the order a run processes them. Fixed for the life
+ * of the survey's uploads, so it is fetched once and never polled. */
+export function useSurveyFrames(surveyId: string | undefined) {
+  return useQuery({
+    queryKey: ["survey-frames", surveyId],
+    queryFn: () => apiFetch<SurveyFrame[]>(`/surveys/${surveyId}/frames`),
+    enabled: Boolean(surveyId),
+    staleTime: 5 * 60 * 1000,
   });
 }

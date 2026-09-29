@@ -196,6 +196,14 @@ export interface SystemStatus {
   checked_at: string;
 }
 
+/** A survey frame positioned in processing order: `index` is the
+ *  `frame_index` that frame.processed / detection.created events carry. */
+export interface SurveyFrame {
+  id: string;
+  index: number;
+  frame_id: string;
+}
+
 export interface RealtimeEvent {
   event: "job.updated" | "frame.processed" | "detection.created" | "detection.updated" | "report.completed";
   survey_id: string;
