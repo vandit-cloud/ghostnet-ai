@@ -180,7 +180,7 @@ export default function SurveyDetailPage() {
             Optional metadata applied to files uploaded below. Leave blank if unavailable — coordinates are never
             invented. Sonar range (per-side scan width) drives the map&apos;s coverage-corridor overlay.
           </p>
-          <UploadDropzone onFilesSelected={handleFiles} accept=".xtf,.jsf,.tif,.tiff,.png,.jpg,.jpeg" />
+          <UploadDropzone onFilesSelected={handleFiles} accept=".xtf,.sdf,.jsf,.tif,.tiff,.png,.jpg,.jpeg" />
         </section>
 
         <section className="panel p-4">

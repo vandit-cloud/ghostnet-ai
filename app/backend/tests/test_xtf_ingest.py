@@ -17,10 +17,11 @@ import pytest
 from app.services.xtf_ingest import SUPPORTED, _parse_time, ingest_xtf
 
 
-def test_only_xtf_is_claimed_as_supported():
+def test_only_readable_containers_are_claimed_as_supported():
     """.jsf is on the upload whitelist but there is no JSF reader. Claiming it
-    here would mean accepting a file and producing nothing."""
-    assert SUPPORTED == {".xtf"}
+    here would mean accepting a file and producing nothing. .sdf has one
+    (`ghostnet.sdf`, Klein System 5000 V2)."""
+    assert SUPPORTED == {".xtf", ".sdf"}
 
 
 @pytest.mark.parametrize("name", ["survey.jsf", "notes.txt", "line01", "scan.tif"])
@@ -28,7 +29,7 @@ def test_a_container_we_cannot_split_says_so_and_names_the_alternative(name):
     created, warnings = ingest_xtf(None, uuid.uuid4(), uuid.uuid4(), name)
     assert created == 0
     assert warnings and len(warnings) == 1
-    assert "only .xtf is supported" in warnings[0]
+    assert "only .xtf and Klein .sdf are supported" in warnings[0]
 
 
 def test_a_missing_ai_package_is_reported_with_the_fix(monkeypatch):
@@ -112,6 +113,33 @@ def test_frames_are_created_with_navigation_from_the_ping_headers(tmp_path, monk
     # can be left off the track rather than drawn at (0, 0).
     assert added[2].quality_status == "no_navigation"
     assert any("no usable navigation" in w for w in warnings)
+
+
+def test_an_sdf_upload_is_tiled_and_labelled_as_sdf(tmp_path, monkeypatch):
+    """A Klein file goes through the same tiler and says where its geometry came from."""
+    class Pos:
+        latitude, longitude, heading_deg = 42.97, -70.64, 233.0
+        timestamp = "2019-07-30T16:21:00"
+
+    class Frame:
+        frame_id, meta, position, ping_offset = "L__p000000__x00000", {}, Pos(), 0
+        image_path = tmp_path / "0.png"
+
+    seen = {}
+
+    def frames(p, **kw):
+        seen["path"] = p
+        return iter([Frame()])
+
+    monkeypatch.setitem(
+        __import__("sys").modules, "ghostnet", type("m", (), {"iter_survey_frames": staticmethod(frames)})
+    )
+    added = []
+    db = type("Db", (), {"add": lambda self, row: added.append(row)})()
+    created, _ = ingest_xtf(db, uuid.uuid4(), uuid.uuid4(), str(tmp_path / "sonar_data190730122100.sdf"))
+    assert created == 1
+    assert str(seen["path"]).endswith(".sdf")
+    assert added[0].metadata_source == "sdf"
 
 
 def test_a_frame_time_that_will_not_parse_still_sorts():

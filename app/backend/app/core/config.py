@@ -37,7 +37,7 @@ class Settings(BaseSettings):
 
     storage_root: str = "./uploads"
     max_upload_size_mb: int = 200
-    allowed_upload_extensions: tuple[str, ...] = (".xtf", ".jsf", ".tif", ".tiff", ".png", ".jpg", ".jpeg", ".json", ".csv")
+    allowed_upload_extensions: tuple[str, ...] = (".xtf", ".sdf", ".jsf", ".tif", ".tiff", ".png", ".jpg", ".jpeg", ".json", ".csv")
 
     # Both spellings of the dev frontend. An origin is matched as a literal
     # string, so a browser opened at 127.0.0.1:3000 is a different origin from

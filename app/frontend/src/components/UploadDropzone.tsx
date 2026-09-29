@@ -41,7 +41,7 @@ export function UploadDropzone({
       }`}
     >
       <p className="text-sm font-medium text-slate-200">Drag &amp; drop sonar files here</p>
-      <p className="mt-1 text-xs text-slate-500">or click to browse. Supports XTF, JSF, TIFF, PNG, JPG.</p>
+      <p className="mt-1 text-xs text-slate-500">or click to browse. Supports XTF, Klein SDF, JSF, TIFF, PNG, JPG.</p>
       <input
         ref={inputRef}
         type="file"
