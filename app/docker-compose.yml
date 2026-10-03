@@ -25,15 +25,16 @@ services:
     # --no-deps, alongside the lightweight numpy/pyproj/opencv it needs to
     # split a .xtf into frames (ghostnet/xtf.py, ghostnet/survey.py).
     #
-    # torch, torchvision and ultralytics are still NOT installed here -- that
-    # is a ~2.6 GB layer nobody has committed to baking into this image yet.
-    # `GhostNetAdapter.__init__`'s `warmup()` therefore can't load a model and
-    # `try_build()` falls back to MockAIAdapter: every detection payload is
-    # still stamped model_version "mock-ghostnet-dev-v0" and must never be
-    # shown as a real result. Only .xtf frame splitting became real here.
+    # CPU-only torch, torchvision, ultralytics and segmentation-models-pytorch
+    # ARE installed (see backend/Dockerfile), so `try_build()` loads the real
+    # GhostNetAdapter; MockAIAdapter is only the fallback when that fails, and
+    # its payloads say so (model_version "mock-ghostnet-dev-v0").
     #
-    # Full real detection needs the local setup in README.md -- a venv with
-    # the complete AI package (including torch) installed editable from ai/.
+    # Which models run depends on what is on disk when the image is built:
+    # ai/models/trained/ghostnet.pt (the detector) is in git, but the ghost_net
+    # U-Net, ghostnet_net.pt, is gitignored -- a fresh clone builds an image
+    # without it, and net segmentation is then off. Inference is CPU-only here;
+    # the demo runs natively (docs/DEMO_RUNBOOK.md).
     build:
       context: ..
       dockerfile: app/backend/Dockerfile

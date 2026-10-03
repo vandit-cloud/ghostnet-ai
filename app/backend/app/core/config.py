@@ -27,7 +27,15 @@ class Settings(BaseSettings):
     # login-specific one, both enforced via slowapi's in-memory store --
     # correct for the single-uvicorn-worker deployment this repo ships
     # (docker-compose.yml has no Redis).
-    rate_limit_default: str = "60/minute"
+    #
+    # The default was 60/minute, and the console's own processing page broke
+    # it: one run refetches the job on every frame event, fetches every frame's
+    # image and refetches detections as they land, so a 41-frame survey hit
+    # 429s within seconds (measured 29 Sep 2026: request 61 in a minute is
+    # refused). The page then stopped receiving job updates, the scene sat in
+    # VALIDATING, and frame images failed. 600/minute (10/s) still caps a
+    # runaway client; the login limit below is what guards brute force.
+    rate_limit_default: str = "600/minute"
     rate_limit_login: str = "5/minute"
 
     max_concurrent_jobs_per_user: int = 2

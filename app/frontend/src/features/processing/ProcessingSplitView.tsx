@@ -23,7 +23,7 @@ import {
   settleAtEnd,
   surveyLength,
 } from "./scene/model";
-import type { SceneHandle } from "./scene/surveyScene";
+import type { SceneHandle, SonarPaletteName } from "./scene/surveyScene";
 import css from "./ProcessingSplitView.module.css";
 
 /** Above this many frames only the frames with detections are fetched for the
@@ -69,6 +69,7 @@ export function ProcessingSplitView({
   onCancel,
   cancelling,
   onPresented,
+  palette,
 }: {
   job: ProcessingJob;
   surveyId: string;
@@ -81,6 +82,9 @@ export function ProcessingSplitView({
   /** True once the story has reached the end, so the page can hold back the
    *  results card until the scene has actually shown the run finishing. */
   onPresented?: (presented: boolean) => void;
+  /** Sonar colour map. Omitted everywhere except /lab/sonar-palette, so the
+   *  processing page keeps the scene's default. */
+  palette?: SonarPaletteName;
 }) {
   const model = useRef(createModel()).current;
   const refs = useSceneRefs();
@@ -118,20 +122,28 @@ export function ProcessingSplitView({
   }, []);
 
   // ---- mount the scene once
+  const handleRef = useRef<SceneHandle | null>(null);
+  const paletteRef = useRef(palette);
+  paletteRef.current = palette;
   useEffect(() => {
     let handle: SceneHandle | null = null;
     let cancelled = false;
     import("./scene/surveyScene").then(({ mountSurveyScene }) => {
       if (cancelled || !refs.ready()) return;
-      handle = mountSurveyScene(model, refs.elements());
+      handle = mountSurveyScene(model, refs.elements(), { palette: paletteRef.current });
+      handleRef.current = handle;
       setWebgl(handle.webgl);
     });
     return () => {
       cancelled = true;
       handle?.dispose();
+      handleRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  useEffect(() => {
+    if (palette) handleRef.current?.setPalette(palette);
+  }, [palette]);
 
   // ---- callbacks the controller fires from the animation loop
   useEffect(() => {
@@ -204,10 +216,20 @@ export function ProcessingSplitView({
       model.dets = [];
       model.painted = new Set();
       model.failed = new Set();
+      // Images are cached by frame INDEX. A new run after a file was added,
+      // removed or swapped has different frames at the same indices, so the
+      // old cache would paint the previous file's sonar into this run (or
+      // nothing, because the index counted as already requested).
+      model.images = new Map();
+      model.imageMissing = new Set();
+      requested.current = new Set();
+      queue.current = [];
+      imageGen.current++;
       model.version++;
       model.job = {
         status: job.status, stageIdx, framesDone: job.frames_processed, framesFailed: job.frames_failed,
         detCount: job.detections_found, lastFrameAt: finished ? t : 0, frameDur: 1300, stageAt: t,
+        runMs: runDuration(job),
       };
       prevStageRef.current = { idx: stageIdx, at: t, stage: job.stage };
       setStageTimes([]);
@@ -255,6 +277,7 @@ export function ProcessingSplitView({
     const becameTerminal = isTerminal(job.status) && !isTerminal(j.status);
     Object.assign(j, {
       status: job.status, stageIdx, framesDone: job.frames_processed, framesFailed: job.frames_failed, detCount: job.detections_found,
+      runMs: runDuration(job),
     });
     if (becameTerminal) {
       if (isStopped(job.status)) {
@@ -319,6 +342,9 @@ export function ProcessingSplitView({
   const objectUrls = useRef<string[]>([]);
   const queue = useRef<number[]>([]);
   const inFlight = useRef(0);
+  /** Bumped per run, so a fetch still in flight from the previous run cannot
+   *  land its image in this one. */
+  const imageGen = useRef(0);
   useEffect(() => {
     if (!frames?.length) return;
     const wanted = new Set<number>(model.dets.map((d) => d.frame));
@@ -330,17 +356,18 @@ export function ProcessingSplitView({
     const pump = () => {
       while (inFlight.current < IMAGE_CONCURRENCY && queue.current.length) {
         const i = queue.current.shift()!;
+        const gen = imageGen.current;
         inFlight.current++;
         apiFetchBlob(`/frames/${frames[i].id}/image`)
           .then((blob) => new Promise<void>((resolve) => {
             const url = URL.createObjectURL(blob);
             objectUrls.current.push(url);
             const im = new Image();
-            im.onload = () => { model.images.set(i, im); resolve(); };
-            im.onerror = () => { model.imageMissing.add(i); resolve(); };
+            im.onload = () => { if (gen === imageGen.current) model.images.set(i, im); resolve(); };
+            im.onerror = () => { if (gen === imageGen.current) model.imageMissing.add(i); resolve(); };
             im.src = url;
           }))
-          .catch(() => { model.imageMissing.add(i); })
+          .catch(() => { if (gen === imageGen.current) model.imageMissing.add(i); })
           .finally(() => { inFlight.current--; pump(); });
       }
     };
@@ -493,6 +520,12 @@ export function ProcessingSplitView({
           </div>
         )}
 
+        {presented && !summaryOpen && (
+          <button type="button" className={css.reopen} onClick={() => setSummaryOpen(true)} aria-label="Show run summary">
+            ▤ Run summary
+          </button>
+        )}
+
         {scrubbing && (
           <div className={css.scrubbar}>
             <span>SURVEY REPLAY</span>
@@ -581,6 +614,12 @@ export function ProcessingSplitView({
       </aside>
     </div>
   );
+}
+
+/** The run's real duration in ms, or 0 while it has not finished. */
+function runDuration(job: ProcessingJob) {
+  if (!job.started_at || !job.completed_at) return 0;
+  return Math.max(0, new Date(job.completed_at).getTime() - new Date(job.started_at).getTime());
 }
 
 function terminalLine(job: ProcessingJob) {

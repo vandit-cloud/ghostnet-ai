@@ -111,7 +111,32 @@ def warmup(settings: Settings = SETTINGS) -> bool:
     if settings.net_weights_path is not None:
         if load_net_model(settings) is None and net_model_error():
             logger.warning("%s", net_model_error())
+    if loaded:
+        _prime(settings)
     return loaded
+
+
+def _prime(settings: Settings) -> None:
+    """Score one blank tile, so the first real frame is not the slow one.
+
+    Loading weights is not the expensive part on a GPU: the first inference
+    also creates the CUDA context and selects kernels for both models. Measured
+    29 Sep 2026 on the RTX 3050, a 40-frame survey took 19.2 s as the first
+    run after a restart against 9.6 s warm. A blank tile scores nothing, and
+    any failure here is logged, never raised: priming is an optimisation.
+    """
+    import tempfile
+
+    try:
+        import cv2
+        import numpy as np
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "prime.png"
+            cv2.imwrite(str(path), np.full((640, 640), 60, np.uint8))
+            detect(path, {}, settings)
+    except Exception:  # pragma: no cover - priming must never block startup
+        logger.warning("model priming failed; the first frame will be slower", exc_info=True)
 
 
 #: Metadata keys this package reads as numbers. Anything here that is present

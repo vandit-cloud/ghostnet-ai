@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import threading
 import uuid
 from datetime import datetime, timezone
 
@@ -21,6 +22,17 @@ logger = logging.getLogger("ghostnet.processing")
 
 _running_tasks: dict[str, asyncio.Task] = {}
 _cancel_flags: set[str] = set()
+
+#: Inference runs on a worker thread (see `_analyze`), and this keeps it to one
+#: frame at a time across all jobs -- which is what running it on the event
+#: loop used to guarantee implicitly. The models are shared module-level
+#: objects, and two jobs scoring at once would contend for one 4 GB GPU anyway.
+_INFERENCE_LOCK = threading.Lock()
+
+
+def _analyze(adapter: AIServiceAdapter, **kwargs):
+    with _INFERENCE_LOCK:
+        return adapter.analyze_frame(**kwargs)
 
 ACTIVE_JOB_STATUSES = (JobStatus.QUEUED, JobStatus.VALIDATING, JobStatus.PROCESSING)
 
@@ -270,7 +282,14 @@ async def _run_job(job_id: uuid.UUID) -> None:
                     layback_m=frame.layback_m,
                     nadir_row=frame.nadir_row,
                 )
-                result = adapter.analyze_frame(
+                # Off the event loop. Called directly, inference blocked every
+                # other request for the whole run: frame images the processing
+                # page needs for its waterfall took 0.6-1.1 s instead of
+                # 0.12 s (measured 29 Sep 2026), so the first run showed
+                # "LOADING RETURNS" while the towfish ran ahead of its pictures.
+                result = await asyncio.to_thread(
+                    _analyze,
+                    adapter,
                     survey_id=str(survey_id),
                     frame_id=frame.frame_id,
                     image_path=frame.image_reference,

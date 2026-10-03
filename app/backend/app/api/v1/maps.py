@@ -55,11 +55,30 @@ def get_survey_detections(
         for f in frames
     ]
 
-    bounds_lats = [m.latitude for m in markers] + [t.latitude for t in track]
-    bounds_lons = [m.longitude for m in markers] + [t.longitude for t in track]
+    # Unfiltered, the view frames the whole survey: markers plus the track.
+    # Filtered, it frames what the filter kept -- the track is never filtered,
+    # so including it would zoom out to the entire survey around an empty
+    # result (B5 in docs/KNOWN_ISSUES.md). A filter that keeps nothing falls
+    # back to the requested bbox, then to the track.
+    bbox = (min_lat, min_lon, max_lat, max_lon)
+    filtered = any(v is not None for v in bbox) or any((detection_class, priority, review_status))
+    if not filtered:
+        points = [(m.latitude, m.longitude) for m in markers] + [(t.latitude, t.longitude) for t in track]
+    elif markers:
+        points = [(m.latitude, m.longitude) for m in markers]
+    elif all(v is not None for v in bbox):
+        points = [(min_lat, min_lon), (max_lat, max_lon)]
+    else:
+        points = [(t.latitude, t.longitude) for t in track]
+
     bounds = (
-        MapBounds(min_lat=min(bounds_lats), min_lon=min(bounds_lons), max_lat=max(bounds_lats), max_lon=max(bounds_lons))
-        if bounds_lats
+        MapBounds(
+            min_lat=min(p[0] for p in points),
+            min_lon=min(p[1] for p in points),
+            max_lat=max(p[0] for p in points),
+            max_lon=max(p[1] for p in points),
+        )
+        if points
         else None
     )
 

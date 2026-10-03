@@ -83,6 +83,7 @@ ai/experiments/*/*
 # KB each; plots and weights beside them stay ignored.
 !ai/experiments/*/*.md
 !ai/experiments/unet-scoring/*.json
+!ai/experiments/robustness/robustness_metrics.json
 # notes.md is REQUIRED by EXPERIMENT_GV7_PLAN.md 5 -- "a run with no notes.md
 # is not a result" -- and was being dropped by the rule above, which quietly
 # made every run unaccountable in the one file that says what it meant.

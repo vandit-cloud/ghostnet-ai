@@ -133,6 +133,18 @@
 }
 .scrubbar input { flex: 1; }
 
+/* Brings the run summary back once it has been closed: closing it used to be
+   final, so the counts and the detection table could only be seen once. */
+.reopen {
+  position: absolute; right: 18px; bottom: 18px; z-index: 5; display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border: 1px solid rgba(196, 248, 255, 0.45); background: rgba(7, 32, 58, 0.78); color: var(--paper);
+  font-family: var(--mono); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer;
+  backdrop-filter: blur(6px); animation: tin 0.3s ease-out;
+}
+.reopen:hover { background: rgba(7, 32, 58, 0.92); border-color: var(--sky); }
+.reopen:focus-visible { outline: 2px solid var(--sky); outline-offset: 2px; }
+.scrubbing .reopen { bottom: 60px; }
+
 /* ---- rail ---- */
 .rail { border: 1px solid var(--rule); background: #fff; display: flex; flex-direction: column; min-height: 0; overflow: auto; color: var(--ink); }
 .sec { padding: 16px 18px; border-bottom: 1px solid var(--rule2); flex-shrink: 0; }

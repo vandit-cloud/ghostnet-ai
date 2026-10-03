@@ -1,5 +1,11 @@
 # Ghost nets in side-scan sonar: box formulation vs segmentation
 
+> **Superseded as the ship candidate, 26 Sep 2026.** This is the YOLO-seg
+> (gv7d3) result and stays correct as a record. The model that serves
+> `ghost_net` now is a U-Net, `gvU1n`: Dice 0.600 ± 0.011, centroid detection
+> rate 0.807 ± 0.042, 1.3% on empty chips, on the same 11-chip test split
+> (`ai/experiments/unet-scoring/RESULTS.md`). Quote those, with the same caveat.
+
 **An independent reproduction of GhostNetZero's task-formulation finding on
 Chinese coastal side-scan imagery.**
 

@@ -1,4 +1,9 @@
 import os
+
+# The app warms the AI models on startup (app.main._warm_ai); every test client
+# starts the app, and the suite must not load GPU models for that.
+os.environ.setdefault("GHOSTNET_SKIP_WARMUP", "1")
+
 import uuid
 
 import pytest

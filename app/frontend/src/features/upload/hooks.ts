@@ -25,6 +25,10 @@ export function useUploadFile(surveyId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["survey-files", surveyId] });
       queryClient.invalidateQueries({ queryKey: ["survey", surveyId] });
+      // A new file brings new frames. The processing page caches the frame
+      // list for minutes on the assumption it never changes, which let it map
+      // a fresh run onto the old frames and judge the last run still current.
+      queryClient.invalidateQueries({ queryKey: ["survey-frames", surveyId] });
     },
   });
 }
@@ -51,6 +55,8 @@ export function useDeleteFile(surveyId: string) {
        * per-file delete was written before the map moved onto it. */
       queryClient.invalidateQueries({ queryKey: ["survey-map", surveyId] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+      // Its frames go with it -- see useUploadFile.
+      queryClient.invalidateQueries({ queryKey: ["survey-frames", surveyId] });
     },
   });
 }

@@ -83,6 +83,13 @@ export function useStartProcessing(surveyId: string) {
       queryClient.setQueryData(["job", job.id], job);
       // A new run means a new row in the history the comparison reads.
       queryClient.invalidateQueries({ queryKey: ["survey-jobs", surveyId] });
+      // force_restart deleted the previous run's detections on the server.
+      // Detections only refetch on `detection.created`, so a fresh run that
+      // finds nothing kept drawing the discarded ones as contacts in its scene.
+      queryClient.invalidateQueries({ queryKey: ["detections"] });
+      queryClient.invalidateQueries({ queryKey: ["survey-map", surveyId] });
+      queryClient.invalidateQueries({ queryKey: ["survey", surveyId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
     },
   });
 }

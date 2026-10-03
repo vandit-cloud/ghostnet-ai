@@ -29,15 +29,20 @@ export interface StageDef {
   sub: string;
 }
 
+// `min` is only what a caption needs to be read. The backend's validate,
+// decode and preprocess stages take ~50 ms each, so anything longer here is
+// the scene inventing time: these used to hold 1.0 / 1.0 / 3.2 s, and with
+// detection pinned to 0.75 s a frame a one-image run played for ~13 s and a
+// 40-frame run for ~30 s whatever the model actually took.
 export const SCENE_STAGES: StageDef[] = [
-  { key: "VALIDATING", p: [0.0, 0.07], min: 1.0, cap: "Vessel on station", sub: "Reading file headers · towfish stowed" },
-  { key: "DECODING", p: [0.07, 0.14], min: 1.0, cap: "Decoding pings", sub: "Waterfall assembled from port + starboard" },
-  { key: "PREPROCESSING", p: [0.14, 0.42], min: 3.2, cap: "Deploying towfish", sub: "Winch paying out · frames being normalized" },
+  { key: "VALIDATING", p: [0.0, 0.07], min: 0.7, cap: "Vessel on station", sub: "Reading file headers · towfish stowed" },
+  { key: "DECODING", p: [0.07, 0.14], min: 0.7, cap: "Decoding pings", sub: "Waterfall assembled from port + starboard" },
+  { key: "PREPROCESSING", p: [0.14, 0.42], min: 1.4, cap: "Deploying towfish", sub: "Winch paying out · frames being normalized" },
   { key: "DETECTION", p: [0.42, 0.86], min: 0, cap: "Searching the seabed", sub: "" },
-  { key: "VERIFICATION", p: [0.86, 0.9], min: 0.8, cap: "Verifying contacts", sub: "Dropout · edge-sliver · shadow evidence" },
-  { key: "CALIBRATION", p: [0.9, 0.94], min: 0.8, cap: "Calibrating confidence", sub: "Raw scores → calibrated probability" },
-  { key: "GEOTAGGING", p: [0.94, 0.97], min: 0.8, cap: "Geotagging", sub: "Slant-range corrected · error radius attached" },
-  { key: "SAVING", p: [0.97, 1.0], min: 0.8, cap: "Saving results", sub: "Detections written · review queue updated" },
+  { key: "VERIFICATION", p: [0.86, 0.9], min: 0.6, cap: "Verifying contacts", sub: "Dropout · edge-sliver · shadow evidence" },
+  { key: "CALIBRATION", p: [0.9, 0.94], min: 0.6, cap: "Calibrating confidence", sub: "Raw scores → calibrated probability" },
+  { key: "GEOTAGGING", p: [0.94, 0.97], min: 0.6, cap: "Geotagging", sub: "Slant-range corrected · error radius attached" },
+  { key: "SAVING", p: [0.97, 1.0], min: 0.6, cap: "Saving results", sub: "Detections written · review queue updated" },
 ];
 export const DETECTION_STAGE = 3;
 
@@ -73,6 +78,10 @@ export interface SceneJobState {
   /** Smoothed seconds-per-frame, in ms. */
   frameDur: number;
   stageAt: number;
+  /** How long the real run took, started_at -> completed_at, in ms; 0 while it
+   *  is still running. Paces the detection stage when a finished run is
+   *  played back, so the replay lasts as long as the model really worked. */
+  runMs: number;
 }
 
 export interface SceneView {
@@ -169,8 +178,20 @@ function realFraction(m: SceneModel, vIdx: number, t: number): number {
   return stopped ? 0 : 0.85 * (1 - Math.exp(-(t - j.stageAt) / 1400));
 }
 
+/** Detection is never shorter than this on screen: long enough to see the
+ *  towfish pass over a one-image survey and the contact appear. */
+export const DETECTION_MIN_S = 2.5;
+/** A long run is not replayed in full: past this it is compressed. */
+export const DETECTION_REPLAY_MAX_S = 45;
+
 function stageMin(m: SceneModel, vIdx: number) {
-  return vIdx === DETECTION_STAGE ? Math.max(4.2, m.N * 0.75) : SCENE_STAGES[vIdx].min;
+  if (vIdx !== DETECTION_STAGE) return SCENE_STAGES[vIdx].min;
+  // While the job runs, realFraction() already holds the scene to the frames
+  // actually finished, so only the floor applies. Once it has finished, the
+  // replay takes as long as the run did -- it used to take 0.75 s a frame
+  // regardless, so a 40-frame run scored in 14 s still played for 30 s.
+  const run = (m.job?.runMs ?? 0) / 1000;
+  return Math.min(DETECTION_REPLAY_MAX_S, Math.max(DETECTION_MIN_S, run));
 }
 
 /** How many frames the towfish has finished surveying in the scene. The rail
@@ -231,7 +252,11 @@ export function tick(m: SceneModel, dt: number) {
   if (!j) return;
   const V = m.V;
   const t = now();
-  const ease = 1 - Math.exp(-dt * 4);
+  // How fast p closes on the stage target. At 4/s each stage overran its
+  // minimum by ~0.5 s waiting for p to settle within 0.3 % of the slice end, so
+  // a one-image run's three 50 ms setup stages filled ~5 s; 7/s halves the
+  // lag and stays smooth, since the target itself moves continuously.
+  const ease = 1 - Math.exp(-dt * 7);
 
   if (V.scrub) {
     if (V.replay) {
@@ -278,7 +303,7 @@ export function tick(m: SceneModel, dt: number) {
       V.doneAt = t;
       V.p = 1;
     }
-    if (V.done && !V.scrub && t - V.doneAt > 2200) {
+    if (V.done && !V.scrub && t - V.doneAt > 1200) {
       V.scrub = true;
       m.onFinished?.();
     }

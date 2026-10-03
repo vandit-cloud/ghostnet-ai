@@ -3,11 +3,14 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
+import { ApiError } from "@/api/client";
 import { AppShell } from "@/components/AppShell";
+import { FilterSelect } from "@/components/FilterBar";
 import { Panel } from "@/components/Panel";
 import { ReportCard } from "@/components/ReportCard";
 import { EmptyState, ErrorState, LoadingSkeleton } from "@/components/States";
 import { useToastStore } from "@/components/Toast";
+import { CLASS_OPTIONS, PRIORITY_OPTIONS, REVIEW_OPTIONS } from "@/features/detections/filterOptions";
 import { useCreateReport, useReports } from "@/features/reports/hooks";
 import { useSurveys } from "@/features/surveys/hooks";
 import type { ReportFormat, ReportType } from "@/types";
@@ -28,7 +31,14 @@ function ReportsPageContent() {
   const { data: surveys } = useSurveys(1, 100);
   const [surveyId, setSurveyId] = useState(initialSurveyId ?? "");
   const selectedSurvey = surveys?.items.find((s) => s.id === surveyId) ?? null;
-  const [type, setType] = useState<ReportType>(detectionId ? "selected_detection" : "full_survey");
+  const [type, setType] = useState<ReportType>(
+    detectionId ? "selected_detection" : searchParams.get("type") === "filtered_detections" ? "filtered_detections" : "full_survey"
+  );
+  // Seeded from the Detections page's "Report on these filters" link. Keys are
+  // the backend's report filter keys, which call the class filter `class`.
+  const [filterClass, setFilterClass] = useState(searchParams.get("detection_class") ?? "");
+  const [filterPriority, setFilterPriority] = useState(searchParams.get("priority") ?? "");
+  const [filterReview, setFilterReview] = useState(searchParams.get("review_status") ?? "");
   const [format, setFormat] = useState<ReportFormat>("csv");
 
   const { data: reports, isLoading, isError, refetch } = useReports(surveyId || undefined);
@@ -40,16 +50,25 @@ function ReportsPageContent() {
       push("Select a survey first.", "error");
       return;
     }
+    const filters: Record<string, string> = {};
+    if (filterClass) filters.class = filterClass;
+    if (filterPriority) filters.priority = filterPriority;
+    if (filterReview) filters.review_status = filterReview;
+    if (type === "filtered_detections" && Object.keys(filters).length === 0) {
+      push("Choose at least one filter for a filtered report.", "error");
+      return;
+    }
     try {
       await createReport.mutateAsync({
         survey_id: surveyId,
         type,
         format,
+        filters: type === "filtered_detections" ? filters : undefined,
         detection_id: type === "selected_detection" ? detectionId : undefined,
       });
       push("Report generation started.", "success");
-    } catch {
-      push("Unable to generate report.", "error");
+    } catch (error) {
+      push(error instanceof ApiError ? error.message : "Unable to generate report.", "error");
     }
   }
 
@@ -145,6 +164,17 @@ function ReportsPageContent() {
             </div>
           </div>
         </Panel>
+
+        {type === "filtered_detections" ? (
+          <Panel className="p-5">
+            <div className="flex flex-wrap items-end gap-4">
+              <FilterSelect label="Class" value={filterClass} options={CLASS_OPTIONS} onChange={setFilterClass} />
+              <FilterSelect label="Priority" value={filterPriority} options={PRIORITY_OPTIONS} onChange={setFilterPriority} />
+              <FilterSelect label="Review Status" value={filterReview} options={REVIEW_OPTIONS} onChange={setFilterReview} />
+              <p className="ml-auto text-sm text-slate-400">The report covers only the detections these filters keep.</p>
+            </div>
+          </Panel>
+        ) : null}
 
         {isLoading ? (
           <Panel className="p-6">

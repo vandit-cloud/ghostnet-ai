@@ -91,6 +91,22 @@ export default function ProcessingPage() {
   const isFinished = Boolean(job && FINISHED_STATUSES.includes(job.status));
   const isStopped = Boolean(job && (job.status === "FAILED" || job.status === "CANCELLED"));
 
+  // Has the file set changed since the last run? The page always shows the
+  // survey's latest job, so after a file was added, removed or replaced it
+  // used to open on that OLD run, already finished -- a replay of files that
+  // are no longer the survey. Frames are created at upload, so a different
+  // frame count means a file came or went, and a file uploaded after the run
+  // was created means one was added (or swapped for another of the same size).
+  const checkingFiles = Boolean(job && !isRunning && (!files || !frames));
+  const filesChanged = Boolean(
+    job &&
+      !isRunning &&
+      files &&
+      frames &&
+      (frames.length !== job.frames_total ||
+        files.some((f) => f.validation_status === "VALID" && new Date(f.created_at) > new Date(job.created_at)))
+  );
+
   async function handleStart(forceRestart = false) {
     try {
       await startProcessing.mutateAsync(forceRestart);
@@ -104,6 +120,26 @@ export default function ProcessingPage() {
         push("Unable to start processing.", "error");
       }
     }
+  }
+
+  /** Run the survey again because its files changed. The backend refuses a
+   *  second run while the old detections exist (the 409 guard), so this sends
+   *  force_restart when there are any, and asks first only when doing so would
+   *  throw away review decisions -- not for a survey nobody has reviewed. */
+  function handleRunChanged() {
+    const detections = survey?.detection_count ?? 0;
+    const reviewed = Math.max(0, detections - (survey?.review_count ?? 0));
+    if (
+      reviewed > 0 &&
+      !window.confirm(
+        `The files changed since the last run. Running again replaces its ${detections} detection` +
+          `${detections === 1 ? "" : "s"}, including ${reviewed} review decision${reviewed === 1 ? "" : "s"}.
+
+Continue?`
+      )
+    )
+      return;
+    void handleStart(detections > 0);
   }
 
   function handleReprocess() {
@@ -128,19 +164,20 @@ export default function ProcessingPage() {
         </p>
       )}
 
-      {jobLoading ? (
+      {jobLoading || checkingFiles ? (
         <div className="panel p-6">
           <LoadingSkeleton rows={3} label="Restoring processing status…" />
         </div>
-      ) : !job ? (
+      ) : !job || filesChanged ? (
         <NotStarted
           surveyId={surveyId}
           fileCount={survey?.file_count ?? 0}
           source={survey?.source ?? null}
           sonarType={survey?.sonar_type ?? null}
           files={files}
-          onStart={() => handleStart()}
+          onStart={() => (job ? handleRunChanged() : handleStart())}
           starting={startProcessing.isPending}
+          previousRun={job && filesChanged ? job : null}
         />
       ) : (
         <div className="space-y-6">
@@ -201,6 +238,7 @@ function NotStarted({
   files,
   onStart,
   starting,
+  previousRun = null,
 }: {
   surveyId: string;
   fileCount: number;
@@ -209,6 +247,9 @@ function NotStarted({
   files: SurveyFile[] | undefined;
   onStart: () => void;
   starting: boolean;
+  /** Set when the survey was processed before but its files have changed
+   *  since: the screen then offers a fresh run instead of the stale one. */
+  previousRun?: ProcessingJob | null;
 }) {
   return (
     <div className="space-y-6">
@@ -218,17 +259,30 @@ function NotStarted({
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-atlantic-deep via-atlantic/55 to-atlantic/10" />
         <div className="relative z-10 flex flex-col items-center gap-4 px-6 py-12 text-center">
-          <p className="text-[11px] uppercase tracking-[0.28em] text-skytint/85">Ready To Launch</p>
+          <p className="text-[11px] uppercase tracking-[0.28em] text-skytint/85">
+            {previousRun ? "Files Changed" : "Ready To Launch"}
+          </p>
           <p className="max-w-lg text-sm leading-6 text-paper/85">
-            This survey has not been processed yet. A run decodes every uploaded file into frames, scores each one
-            against the trained model, and geotags whatever clears the detection threshold.
+            {previousRun ? (
+              <>
+                The survey&apos;s files changed after the last run ({previousRun.frames_total} frame
+                {previousRun.frames_total === 1 ? "" : "s"}, {previousRun.detections_found} detection
+                {previousRun.detections_found === 1 ? "" : "s"}), so that run no longer describes it. Processing again
+                scores the current files from scratch and replaces the old results.
+              </>
+            ) : (
+              <>
+                This survey has not been processed yet. A run decodes every uploaded file into frames, scores each one
+                against the trained model, and geotags whatever clears the detection threshold.
+              </>
+            )}
           </p>
           <button
             onClick={onStart}
             disabled={starting || fileCount === 0}
             className="rounded-md bg-cyan-accent px-5 py-2 text-sm font-medium text-abyss-950 hover:bg-cyan-accent/90 disabled:opacity-50"
           >
-            {starting ? "Starting…" : "Start Processing"}
+            {starting ? "Starting…" : previousRun ? "Process Current Files" : "Start Processing"}
           </button>
           {fileCount === 0 && (
             <p className="text-xs text-paper/70">

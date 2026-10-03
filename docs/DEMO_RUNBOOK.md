@@ -209,15 +209,23 @@ All true, all verifiable on screen.
 
 | if asked | say |
 |---|---|
-| "Does it find ghost nets?" | Not yet, and we can prove we tried. `ghost_net` scores mAP50 0.009 on 36 held-out real boxes. We spent a full GPU run (gv6) testing whether synthetic nets fix it — recall stayed at exactly 0.000. The cause is acoustic: a net lies flat, giving one faint curvilinear cue and almost no shadow, unlike a pot which is rigid and casts a clean shadow. Written up in `docs/EXPERIMENT_GV6.md`. |
-| "What does it detect well?" | Seabed **pipelines** at mAP50 **0.869** on 615 held-out boxes, derelict crab pots at 0.314 on 567, shipwrecks 0.279 on 836. |
+| "Does it find ghost nets?" | Not as a box detector, and we can prove we tried: `ghost_net` scores mAP50 0.009 on 36 held-out real boxes, and a full GPU run on synthetic nets (gv6) left recall at exactly 0.000. The cause is acoustic: a net lies flat, giving one faint curvilinear cue and almost no shadow. Recast as segmentation, a U-Net finds 0.807 of held-out nets by centroid and fires on 1.3% of empty chips — but on 11 test chips from 2 sites, so every net it outlines is review-only, a candidate for a human. `docs/EXPERIMENT_GV6.md`, `ai/experiments/unet-scoring/RESULTS.md`. |
+| "What does it detect well?" | Seabed **pipelines** at mAP50 **0.869** on 629 held-out `debris` boxes — 615 of them from one held-out SubPipe track, so say "one survey track", derelict crab pots at 0.314 on 567, shipwrecks 0.279 on 836. |
 | "How accurate are the positions?" | 4.3–4.5 m error radius here, drawn on the map rather than hidden. Coordinates come from the ping headers with a slant-range correction; a detection with missing geometry is reported *without* a position rather than with a guessed one. |
 | "What about false alarms?" | On 2,930 held-out tiles carrying no annotation, 7.8% flagged at the deployed operating point. Say "tiles carrying no annotation", not "verified-empty seabed" — roughly half come from survey lines the source dataset left entirely unannotated, so it is an upper bound. |
 | "Is the confidence calibrated?" | Yes, temperature scaling. ECE 0.218 → 0.089. The maximum calibrated confidence this model ever produces is 0.728, so a 90% reading is not something it can output — and the UI keys off the uncertainty band, not a hardcoded number. |
 | "Why is everything low priority?" | Because it should be. All five are `uncertainty: high` at 34–36%. The system is telling you it is unsure, and it is right. |
 
 **Do not claim:** `plane` numbers (n=9 in test — one box is 11% of recall),
-"verified-empty seabed", or that Docker output is real.
+"verified-empty seabed", or anything shown from the Docker stack — it runs
+CPU-only and, on a fresh clone, without the ghost_net U-Net; demo natively.
+
+**Keep the network on.** Sonar reading, the models, the database and the API
+all run locally, but the map's background is live OpenStreetMap tiles; offline,
+the track and detections draw over an empty grey page. OSM's tile policy
+forbids offline use and pre-downloading, so there is no cache to fall back on.
+If asked: "everything but the basemap runs on the laptop; a ship install would
+use a self-hosted map extract."
 
 ---
 
@@ -233,10 +241,23 @@ demo**, one per object class:
 
 | file | contents | detections |
 |---|---|---|
-| `wrecks_demo_fixture.xtf` | 4 shipwrecks + 2 clean seabed | 6 |
-| `aircraft_demo_fixture.xtf` | 4 aircraft + 2 clean seabed | 7 |
-| `debris_demo_fixture.xtf` | 4 pipeline frames + 2 clean seabed | 4 |
-| `ghost_gear_demo_fixture.xtf` | 1 ghost net + 3 crab pots + 2 clean seabed | 13, incl. the net |
+| `wrecks_demo_fixture.xtf` | 4 shipwrecks + 2 clean seabed | 8: 6 debris, **2 ghost_net** |
+| `aircraft_demo_fixture.xtf` | 4 aircraft + 2 clean seabed | 8: 7 debris, **1 ghost_net** |
+| `debris_demo_fixture.xtf` | 4 pipeline frames + 2 clean seabed | 4 debris |
+| `ghost_gear_demo_fixture.xtf` | 1 ghost net + 3 crab pots + 2 clean seabed | 20: 12 debris, 8 ghost_net |
+
+*Counts re-measured 26 Sep with the U-Net serving `ghost_net` (they were 6 / 7
+/ 4 / 13 on the box detector alone).* Two things a judge will see:
+
+- **The U-Net outlines "nets" on a wreck tile (2) and an aircraft tile (1)**,
+  at scores 0.88–0.94. Those scores are uncalibrated mean pixel probability,
+  so they read higher than any detector score (the detector's calibrated
+  maximum is 0.728), and a `ghost_net` at medium uncertainty ranks HIGH
+  priority, above the wreck it sits on. They are review-only. Say so before
+  a judge asks, or avoid those two files.
+- **The one net comes out as 8 separate outlines** on its tile: the U-Net
+  finds connected blobs, and a net's return is a broken line. Nothing merges
+  them yet.
 
 New Survey → drop the file → Start Processing. Six tiles, ~10 seconds, then the
 completion panel and the detections.

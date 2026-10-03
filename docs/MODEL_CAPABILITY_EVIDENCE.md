@@ -115,6 +115,13 @@ formulation the class reaches box recall 0.492 ± 0.074 and a centroid detection
 rate of 0.607 ± 0.031 across three seeds (`gv7d3`, see
 `docs/D2_SEGMENTATION_SUMMARY.md` and EXPERIMENT_GV7_PLAN.md §12).
 
+**Update, 26 Sep:** a U-Net trained with empty-seabed negatives (`gvU1n`, three
+seeds) beats gv7d3 on the same 11 chips: Dice 0.600 ± 0.011 against 0.525,
+centroid detection rate 0.807 ± 0.042 against 0.607 (paired bootstrap 95% CI on
+the gain [+0.105, +0.325]), and it fires on 1.3% of empty chips against 42%.
+Seed 1 now outlines `ghost_net` in the app, review-only
+(`ai/experiments/unet-scoring/RESULTS.md`, `docs/HANDOFF.md`).
+
 That result is measured on **11 chips from 2 sites** and remains Tier 1 —
 review-queue only, never a detection claim — so this section's conclusion stands
 for anything gv5 ships. Do not quote the segmentation numbers without their
@@ -140,20 +147,26 @@ convention. At 215 training boxes the detector does not yet learn the class."*
 This is the problem statement's own framing, and it is where the model is
 genuinely good.
 
-On 2,930 held-out frames carrying **no annotation**, at the deployed review
-floor (calibrated confidence 0.20):
+On 2,930 held-out frames carrying **no annotation**, at the deployed operating
+point (detector floor raw 0.10, which is calibrated 0.308):
 
 ```
-16.5% of empty frames put at least one box in front of a reviewer
+7.8% of empty frames put at least one box in front of a reviewer
 ```
 
-Raise the floor and it falls steeply, at a measured cost in recall:
+Reproduce: `python ai/scripts/evaluate_background.py` (the raw 0.10 row, 229
+of 2,930; the full sweep is in `docs/AI_TRAINING_HANDOFF.md`).
+
+Raise the floor and it falls steeply, at a measured cost in recall. This sweep
+is by calibrated floor, taken with the detector floor lowered to 0.02 so the
+low rows exist at all:
 
 | calibrated floor | recall | recall retained | false alarms |
 |---|---|---|---|
-| **0.20** (deployed) | 0.670 | 98.9% | 16.48% |
+| 0.20 | 0.670 | 98.9% | 16.48% |
 | 0.25 | 0.606 | 89.4% | 11.81% |
 | 0.30 | 0.534 | 78.8% | 8.29% |
+| *0.308 (deployed)* | | | *7.82%* |
 | 0.35 | 0.464 | 68.4% | 5.15% |
 | 0.40 | 0.408 | 60.3% | 2.94% |
 
@@ -161,9 +174,12 @@ Reproduce: `python ai/scripts/derive_review_floor.py`
 
 **Two traps in that number.** "No annotation" is not "verified empty" -- some
 frames come from survey lines the source dataset never annotated at all, so
-16.5% is an upper bound. And `evaluate_background.py` sweeps RAW detector
-scores, which are a different scale: the 0.20 floor is a raw score of 0.0225.
-Do not read a rate off the raw table and quote it as the deployed one.
+7.8% is an upper bound. And the calibrated 0.20 review floor in the config is
+**inert**: the detector is never asked for boxes below raw 0.10, and raw 0.10
+is already calibrated 0.308. The 0.20 and 0.25 rows describe a detector floor
+that does not ship, so 16.5% is not the deployed rate -- an earlier version of
+this page said it was. The two sweeps agree: 7.82% at calibrated 0.308 sits
+just under 8.29% at 0.30.
 
 The negatives it is scored against are deliberately hard: 2,072 China-Offshore
 frames of gully fields, riprap, scour patches and sand waves -- the natural
@@ -203,16 +219,23 @@ rejection, so it **warns rather than blocks**.
 
 ### Degradation
 
-| | holds to | collapses at |
-|---|---|---|
-| speckle noise | sigma 0.20 | **sigma 0.35** -- zero detections |
-| contrast | 0.4x | **0.2x** -- zero detections |
-| blur | kernel 31 | does not collapse |
+Measured on the full 4,346-frame test split (`ai/scripts/robustness_report.py`,
+26 Sep; the clean row reproduces gv5's record exactly):
 
-Blur barely hurts it; speckle kills it. That is the argument for despeckling
-being the preprocessing worth testing, and for resolution normalisation being
-lower priority. Caveat: these curves were measured on a single tile and are
-indicative, not measured.
+| condition | mAP50 | recall | false alarms on empty seabed |
+|---|---|---|---|
+| clean | 0.352 | 0.361 | 7.82% |
+| speckle 0.20 / 0.35 / 0.50 | 0.310 / 0.263 / 0.221 | 0.316 / 0.246 / 0.212 | 4.91% / 2.32% / 1.37% |
+| contrast 0.5x / 0.25x | 0.305 / 0.085 | 0.313 / 0.115 | 5.84% / 3.65% |
+| blur kernel 9 / 21 | 0.206 / 0.061 | 0.228 / 0.083 | **9.97%** / 5.80% |
+| 10% of rows dropped | 0.099 | 0.243 | **26.42%** |
+
+Two failure modes. Speckle, low contrast and heavy blur make the model **quiet**:
+recall and false alarms fall together, so a bad survey reads as an empty one.
+Dropped rows make it **loud**: false alarms more than triple. An earlier version
+of this page quoted a single-tile curve ("speckle kills it at 0.35, blur barely
+hurts"); the full split says the opposite on both counts. Details and per-class
+rows: `ai/experiments/robustness/REPORT.md` and `notes.md`.
 
 ### Out of distribution
 

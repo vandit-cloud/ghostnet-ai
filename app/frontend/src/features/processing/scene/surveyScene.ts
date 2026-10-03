@@ -186,6 +186,8 @@ export interface SceneElements {
 export interface SceneHandle {
   /** False when WebGL could not start: the controller still runs, nothing draws. */
   webgl: boolean;
+  /** Recolour the sonar returns (seabed strip and waterfall) in place. */
+  setPalette(name: SonarPaletteName): void;
   dispose(): void;
 }
 
@@ -194,10 +196,25 @@ const span = (p: number, a: number, b: number) => clamp01((p - a) / (b - a));
 const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
 const descentPitch = (d: number) => -Math.sin(Math.PI * d) * 0.26;
 
-/** Sonar colour map: black → bronze → cream, as a 256-entry RGB lookup. */
-const LUT = (() => {
+/** Sonar colour maps for the returns painted on the seabed and in the
+ * waterfall. The processing page uses DEFAULT_SONAR_PALETTE (viridis, chosen
+ * 29 Sep 2026 in /lab/sonar-palette over the original bronze, which read as
+ * gold); the others stay so the lab can keep comparing them. `box` is the detection-box colour in the waterfall, chosen to stand
+ * out against each map. */
+export const SONAR_PALETTES = {
+  bronze: { label: "Bronze (original)", box: "#FFB547", stops: [[0, [0, 0, 0]], [0.25, [46, 22, 4]], [0.5, [140, 74, 16]], [0.75, [226, 160, 60]], [1, [255, 240, 190]]] },
+  ice: { label: "Ice cyan", box: "#FF6B5B", stops: [[0, [0, 0, 0]], [0.25, [3, 34, 48]], [0.5, [18, 104, 132]], [0.75, [96, 206, 228]], [1, [236, 252, 255]]] },
+  abyss: { label: "Abyss blue", box: "#FFD166", stops: [[0, [0, 0, 0]], [0.25, [6, 16, 58]], [0.5, [26, 58, 150]], [0.75, [98, 150, 232]], [1, [226, 238, 255]]] },
+  grey: { label: "Greyscale", box: "#FFB547", stops: [[0, [0, 0, 0]], [0.5, [118, 118, 118]], [1, [250, 250, 250]]] },
+  viridis: { label: "Viridis (current)", box: "#FF4D8D", stops: [[0, [68, 1, 84]], [0.25, [59, 82, 139]], [0.5, [33, 145, 140]], [0.75, [94, 201, 98]], [1, [253, 231, 37]]] },
+} satisfies Record<string, { label: string; box: string; stops: [number, number[]][] }>;
+export type SonarPaletteName = keyof typeof SONAR_PALETTES;
+/** What the processing page paints with when no palette is passed. */
+export const DEFAULT_SONAR_PALETTE: SonarPaletteName = "viridis";
+
+/** A palette's stops as a 256-entry RGB lookup. */
+function makeLut(stops: [number, number[]][]) {
   const a = new Uint8ClampedArray(256 * 3);
-  const stops: [number, number[]][] = [[0, [0, 0, 0]], [0.25, [46, 22, 4]], [0.5, [140, 74, 16]], [0.75, [226, 160, 60]], [1, [255, 240, 190]]];
   for (let i = 0; i < 256; i++) {
     const v = i / 255;
     let k = 0;
@@ -206,9 +223,15 @@ const LUT = (() => {
     for (let c = 0; c < 3; c++) a[i * 3 + c] = c0[c] + (c1[c] - c0[c]) * t;
   }
   return a;
-})();
+}
 
-export function mountSurveyScene(m: SceneModel, el: SceneElements): SceneHandle {
+export function mountSurveyScene(
+  m: SceneModel,
+  el: SceneElements,
+  opts: { palette?: SonarPaletteName } = {},
+): SceneHandle {
+  let LUT = makeLut(SONAR_PALETTES[opts.palette ?? DEFAULT_SONAR_PALETTE].stops);
+  let boxColor: string = SONAR_PALETTES[opts.palette ?? DEFAULT_SONAR_PALETTE].box;
   let raf = 0;
   let disposed = false;
   let visible = true;
@@ -235,7 +258,7 @@ export function mountSurveyScene(m: SceneModel, el: SceneElements): SceneHandle 
       writeScrub();
     };
     raf = requestAnimationFrame(loop);
-    return { webgl: false, dispose: () => { disposed = true; cancelAnimationFrame(raf); } };
+    return { webgl: false, setPalette: () => {}, dispose: () => { disposed = true; cancelAnimationFrame(raf); } };
   }
   const R = renderer;
 
@@ -504,13 +527,35 @@ export function mountSurveyScene(m: SceneModel, el: SceneElements): SceneHandle 
 
   // ---- mini waterfall (2D), newest pings at the top
   const wf = el.waterfall, wfx = wf.getContext("2d")!;
+  const wfPanel = wf.parentElement;
+  if (wfPanel) { wfPanel.style.transition = "opacity 0.5s"; wfPanel.style.opacity = "0"; }
+  /** A line of status text in the empty waterfall, instead of a black box. */
+  function waterfallNote(text: string) {
+    wfx.fillStyle = "rgba(196,248,255,0.55)"; wfx.font = "10px ui-monospace, monospace"; wfx.textAlign = "center";
+    wfx.fillText(text, wf.width / 2, wf.height / 2);
+  }
   function drawWaterfall(travel: number, on: boolean) {
+    // Hidden until the sonar comes on. Through validating, decoding and
+    // preprocessing there is nothing to show, and the panel used to sit there
+    // as an empty black box for the whole opening of the first run.
+    if (wfPanel) { const o = on ? "1" : "0"; if (wfPanel.style.opacity !== o) wfPanel.style.opacity = o; }
     wfx.fillStyle = "#000"; wfx.fillRect(0, 0, wf.width, wf.height);
     if (!on) { el.waterfallFrame.textContent = "—"; return; }
     const rowsPerM = TILE / m.frameM, rowNow = travel * rowsPerM, view = TILE * 1.25, y0 = rowNow - view;
-    wfx.save(); wfx.translate(0, wf.height); wfx.scale(1, -1);
     const src0 = Math.max(0, y0), destOff = ((src0 - y0) / view) * wf.height, h = rowNow - src0;
-    if (h > 1) wfx.drawImage(wfCanvas, 0, src0, TILE, h, 0, destOff, wf.width, (h / view) * wf.height);
+    // Any frame in view with a return painted yet? On a live run a frame's
+    // image is fetched only after the backend has scored it, so the leading
+    // rows can be empty for a moment: say so rather than draw black.
+    let anyPainted = false;
+    for (let i = Math.floor(src0 / TILE); i <= Math.floor(rowNow / TILE) && !anyPainted; i++)
+      anyPainted = paintedSeen.has(i) || failedSeen.has(i) || missingSeen.has(i);
+    if (h <= 1 || !anyPainted) {
+      waterfallNote(h <= 1 ? "AWAITING RETURNS" : "LOADING RETURNS…");
+      el.waterfallFrame.textContent = h <= 1 ? "—" : `frame ${Math.min(m.N, Math.floor(travel / m.frameM) + 1)}/${m.N}`;
+      return;
+    }
+    wfx.save(); wfx.translate(0, wf.height); wfx.scale(1, -1);
+    wfx.drawImage(wfCanvas, 0, src0, TILE, h, 0, destOff, wf.width, (h / view) * wf.height);
     for (const d of m.dets) {
       if (!d.shownAt) continue;
       const fs = m.images.get(d.frame);
@@ -518,7 +563,7 @@ export function mountSurveyScene(m: SceneModel, el: SceneElements): SceneHandle 
       const rTop = d.frame * TILE + (d.bbox.y / fh) * TILE, rBot = rTop + (d.bbox.h / fh) * TILE;
       const yA = ((rTop - y0) / view) * wf.height, yB = ((rBot - y0) / view) * wf.height;
       if (yB < 0 || yA > wf.height) continue;
-      wfx.strokeStyle = "#FFB547"; wfx.lineWidth = 2;
+      wfx.strokeStyle = boxColor; wfx.lineWidth = 2;
       wfx.strokeRect((d.bbox.x / fw) * wf.width, yA, (d.bbox.w / fw) * wf.width, yB - yA);
     }
     wfx.restore();
@@ -700,6 +745,13 @@ export function mountSurveyScene(m: SceneModel, el: SceneElements): SceneHandle 
 
   return {
     webgl: true,
+    setPalette(name) {
+      LUT = makeLut(SONAR_PALETTES[name].stops);
+      boxColor = SONAR_PALETTES[name].box;
+      // Forget what was painted: the paint loop repaints every frame it has
+      // an image for on the next animation frame, now in the new colours.
+      paintedSeen = new Set(); failedSeen = new Set(); missingSeen = new Set();
+    },
     dispose() {
       disposed = true;
       cancelAnimationFrame(raf);
