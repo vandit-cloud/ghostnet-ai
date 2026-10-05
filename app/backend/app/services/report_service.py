@@ -53,12 +53,6 @@ FORMAT_MEDIA = {
     ReportFormat.GEOJSON: ("application/geo+json", "geojson"),
 }
 
-#: Contract classes the AI may only offer for review, never claim. The backend
-#: does not persist the contract's per-detection `review_only` flag, so the
-#: GeoJSON export re-derives it from the class. This MIRRORS
-#: ai/ghostnet/decision.py REVIEW_ONLY_CLASSES -- keep the two in step.
-REVIEW_ONLY_CLASSES = frozenset({"ghost_net"})
-
 # infer.py folds the detector's finer class into evidence_summary.notes as
 # "detector class: wreck" when the contract vocabulary is coarser (a wreck
 # reports as `debris`). Pulled out so a GIS user can style on it.
@@ -259,7 +253,7 @@ def _geojson_feature(d: Detection) -> dict:
             "uncertainty": d.uncertainty,
             "priority": d.priority,
             "review_status": d.review_status,
-            "review_only": d.detection_class in REVIEW_ONLY_CLASSES,
+            "review_only": d.review_only,
             # Kept as plain properties too, so a null-geometry row still says
             # what was stored. position_error_m is the radius a GIS user
             # buffers the point by to draw its uncertainty circle.

@@ -44,6 +44,7 @@ def _fake_detection(ref, lat, lon, **overrides):
         dimension_status="estimated",
         priority="low",
         review_status="pending",
+        review_only=False,
         model_version="gv5-yolo11s",
         evidence_summary={"notes": "detector class: wreck"},
         created_at=datetime(2026, 9, 5, tzinfo=timezone.utc),
@@ -156,7 +157,7 @@ def test_geojson_keeps_unlocated_detections_with_null_geometry():
         _fake_detection("D-OK", 21.0, 71.0),
         _fake_detection("D-NOPOS", None, None, localization_method="none"),
         _fake_detection("D-NAN", float("nan"), 71.0, position_error_m=float("nan")),
-        _fake_detection("D-RANGE", 95.0, 71.0, detection_class="ghost_net", evidence_summary={}),
+        _fake_detection("D-RANGE", 95.0, 71.0, detection_class="ghost_net", review_only=True, evidence_summary={}),
     ]
     # Strict parse: a bare NaN anywhere in the output fails here.
     doc = json.loads(_render_geojson(_fake_report(), detections), parse_constant=_reject_nan)
