@@ -52,8 +52,7 @@ def download_report(
     if report.status != ReportStatus.COMPLETED or not report.storage_reference:
         raise ApiError(409, "REPORT_NOT_READY", "Report has not finished generating.")
 
-    media_type = "text/csv" if report.format == ReportFormat.CSV else "application/json"
-    ext = "csv" if report.format == ReportFormat.CSV else "json"
+    media_type, ext = report_service.FORMAT_MEDIA[ReportFormat(report.format)]
     stream = storage.open(report.storage_reference)
     return StreamingResponse(
         stream,

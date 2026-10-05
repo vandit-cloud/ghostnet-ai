@@ -25,7 +25,7 @@ export type Uncertainty = "low" | "medium" | "high";
 export type Priority = "low" | "medium" | "high" | "critical";
 export type ReviewStatus = "pending" | "unknown" | "accepted_artificial" | "rejected_natural";
 export type ReportType = "full_survey" | "filtered_detections" | "selected_detection";
-export type ReportFormat = "csv" | "json";
+export type ReportFormat = "csv" | "json" | "geojson";
 export type ReportStatus = "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED";
 export type FileValidationStatus = "PENDING" | "VALID" | "INVALID";
 
