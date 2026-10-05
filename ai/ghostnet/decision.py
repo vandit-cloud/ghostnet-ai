@@ -3,8 +3,10 @@
 Two separable concerns live here on purpose:
 
   1. CALIBRATION -- mechanical. A raw YOLO score is not a probability; it is
-     systematically overconfident. Temperature scaling fits a single scalar T
-     on the validation set and divides the logit by it. Nothing to decide.
+     systematically overconfident. Temperature scaling fits a scalar T on the
+     validation set and divides the logit by it -- one T PER DETECTOR CLASS
+     where a class has enough matched detections to fit one, the global T
+     otherwise. Nothing to decide.
 
   2. POLICY -- a judgement call. Given a calibrated probability, do we report
      this detection at all, and how much confidence do we claim? That depends
@@ -27,6 +29,34 @@ from .taxonomy import TRAINING_TO_CONTRACT, source_to_training, training_to_cont
 # exists. T == 1.0 means "uncalibrated", i.e. raw scores pass through.
 _TEMPERATURE: float = 1.0
 _CALIBRATION_LOADED = False
+
+#: Per-class calibration maps, keyed by the DETECTOR's class name (wreck,
+#: plane, debris, ghost_pot, ghost_net) -- not the contract class, because four
+#: of the five collapse to `debris` in the contract and are miscalibrated by
+#: different amounts underneath it. Empty means "global temperature for
+#: everything", which is exactly what a format-1 file gives.
+#:
+#: Why per class at all: one temperature has to compromise between classes
+#: that are miscalibrated in different directions. The old global T = 2.72 was
+#: set by val ghost_pot -- half the val boxes, correct 69% of the time at a
+#: mean raw score of 0.16 -- and it dragged every class toward 0.5, capping
+#: calibrated scores at 0.728. wreck, the class the detector is good at, was
+#: nearly calibrated RAW (test ECE 0.021) and the shared T made it 0.174.
+#: Per class, test ECE goes 0.147 -> 0.046 pooled, wreck 0.174 -> 0.042. A
+#: rival team saw the same direction (0.052 global -> 0.037 per class). Full
+#: before/after: ai/experiments/calib-perclass/RESULTS.md.
+_CLASS_PARAMS: dict[str, dict] = {}
+
+#: Highest calibrator file format this code understands. 1 is the original
+#: {"temperature": T}; 2 adds "classes". Every format keeps the top-level
+#: "temperature", so an OLDER reader handed a newer file still gets a sane
+#: global correction instead of crashing.
+CALIBRATOR_FORMAT = 2
+
+#: sha256 of the weights the calibrator was fitted for, when the file records
+#: it (format 2). Lets the mismatch check compare CONTENT even when the path
+#: it was fitted at does not exist on this machine.
+_CALIBRATION_SHA256: str | None = None
 
 
 _CALIBRATION_WEIGHTS: str | None = None
@@ -54,18 +84,26 @@ def load_calibration(settings: Settings = SETTINGS) -> float:
     Member 2's API.
     """
     global _TEMPERATURE, _CALIBRATION_LOADED, _CALIBRATION_WEIGHTS, _CALIBRATION_ERROR
+    global _CLASS_PARAMS, _CALIBRATION_SHA256
     if _CALIBRATION_LOADED:
         return _TEMPERATURE
     path = Path(settings.models_dir) / "calibrator" / "temperature.json"
     if path.exists():
         try:
             blob = json.loads(path.read_text())
-            _TEMPERATURE = float(blob["temperature"])
+            _TEMPERATURE, _CLASS_PARAMS = parse_calibrator(blob)
             _CALIBRATION_WEIGHTS = blob.get("weights")
+            _CALIBRATION_SHA256 = blob.get("weights_sha256")
             _CALIBRATION_ERROR = None
         except Exception as exc:
+            # All-or-nothing: a file whose per-class table is malformed is not
+            # trusted for its global temperature either. Half-applying it
+            # would leave some classes raw and others calibrated on one map,
+            # with nothing saying which.
             _TEMPERATURE = 1.0
+            _CLASS_PARAMS = {}
             _CALIBRATION_WEIGHTS = None
+            _CALIBRATION_SHA256 = None
             _CALIBRATION_ERROR = (
                 "calibrator at " + path.name + " exists but could not be read ("
                 + type(exc).__name__ + "); scores are RAW and uncertainty is capped "
@@ -125,6 +163,22 @@ def calibration_mismatch(settings: Settings = SETTINGS) -> str | None:
     except OSError:
         same = str(fitted) == str(active)
 
+    # A recorded digest is the strongest evidence there is, and it decides the
+    # question both ways: a calibrator fitted at a path that later held a
+    # DIFFERENT model is caught even though the paths agree, and one fitted on
+    # another machine is accepted even though its path does not exist here.
+    if _CALIBRATION_SHA256 and active.exists():
+        try:
+            if _digest(active) == _CALIBRATION_SHA256:
+                return None
+        except OSError:
+            return None  # cannot read the weights; inference will say so louder
+        return (
+            "calibration was fitted for weights with sha256 " + _CALIBRATION_SHA256[:12]
+            + " but the active weights (" + active.name + ") differ; confidences may be "
+            "miscalibrated. Re-run ai/scripts/fit_calibration.py against the current model."
+        )
+
     # Paths first because it is free, then CONTENT, because a model is its
     # bytes and not its location. Promoting a run copies best.pt to
     # models/trained/ghostnet.pt, and Member 2 will deploy it somewhere else
@@ -147,18 +201,103 @@ def calibration_mismatch(settings: Settings = SETTINGS) -> str | None:
     )
 
 
-def calibrate(raw_score: float, settings: Settings = SETTINGS) -> float:
-    """Temperature-scale a raw score into a better-behaved probability.
+def class_key(model_class: str) -> str:
+    """The spelling a detector class is stored under in the calibrator file."""
+    return model_class.strip().lower().replace("-", "_").replace(" ", "_")
 
-    Invert the sigmoid to recover the logit, divide by T, re-apply the sigmoid.
-    T > 1 softens overconfident scores; T == 1 is a no-op.
+
+def _check_map(params: dict) -> dict:
+    """Validate one class's map; raise on anything this code cannot apply."""
+    method = params.get("method", "temperature")
+    if method == "temperature":
+        t = float(params["temperature"])
+        if not (t > 0 and math.isfinite(t)):
+            raise ValueError("temperature must be positive and finite")
+        return {"method": "temperature", "temperature": t}
+    if method == "platt":
+        a, b = float(params["a"]), float(params["b"])
+        # a <= 0 would invert or flatten the ranking inside the class -- a
+        # higher raw score reported as LESS likely -- which no fit on real
+        # data should produce and no reader should apply.
+        if not (a > 0 and math.isfinite(a) and math.isfinite(b)):
+            raise ValueError("platt slope must be positive and finite")
+        return {"method": "platt", "a": a, "b": b}
+    raise ValueError("unknown calibration method " + repr(method))
+
+
+def parse_calibrator(blob: dict) -> tuple[float, dict[str, dict]]:
+    """(global temperature, per-class maps) from a calibrator file, any format.
+
+    Format 1 (no "format_version") is {"temperature": T, ...}: global only.
+    Format 2 adds "classes": {name: {"method": ..., ...}}. A class marked
+    "fallback" is listed for the record -- why it has no map of its own -- and
+    uses the global temperature, exactly as an absent class does.
     """
-    t = load_calibration(settings)
-    if t == 1.0:
+    version = int(blob.get("format_version", 1))
+    if version > CALIBRATOR_FORMAT:
+        raise ValueError(f"calibrator format {version} is newer than this code ({CALIBRATOR_FORMAT})")
+    temperature = float(blob["temperature"])
+    if not (temperature > 0 and math.isfinite(temperature)):
+        raise ValueError("temperature must be positive and finite")
+    classes: dict[str, dict] = {}
+    for name, params in (blob.get("classes") or {}).items():
+        if params.get("fallback"):
+            continue
+        classes[class_key(name)] = _check_map(params)
+    return temperature, classes
+
+
+def apply_map(params: dict, raw_score: float) -> float:
+    """Apply one calibration map to one raw score.
+
+    temperature: sigmoid(logit / T). Monotonic, one parameter, T == 1 is an
+                 exact no-op.
+    platt:       sigmoid(a * logit + b). Temperature is the special case
+                 a = 1/T, b = 0; the intercept lets a class whose scores are
+                 SHIFTED, not just stretched, be corrected.
+    """
+    method = params.get("method", "temperature")
+    if method == "temperature" and float(params["temperature"]) == 1.0:
         return raw_score
     p = min(max(raw_score, 1e-6), 1 - 1e-6)
     logit = math.log(p / (1 - p))
-    return 1.0 / (1.0 + math.exp(-logit / t))
+    if method == "platt":
+        z = float(params["a"]) * logit + float(params["b"])
+    else:
+        z = logit / float(params["temperature"])
+    # Split by sign so a steep Platt slope cannot overflow math.exp.
+    if z >= 0:
+        return 1.0 / (1.0 + math.exp(-z))
+    e = math.exp(z)
+    return e / (1.0 + e)
+
+
+def calibrator_for(blob: dict, model_class: str | None = None) -> dict:
+    """The map a calibrator file applies to one class. For scripts and tests."""
+    temperature, classes = parse_calibrator(blob)
+    if model_class is not None and class_key(model_class) in classes:
+        return classes[class_key(model_class)]
+    return {"method": "temperature", "temperature": temperature}
+
+
+def calibrate(
+    raw_score: float,
+    settings: Settings = SETTINGS,
+    model_class: str | None = None,
+) -> float:
+    """Map a raw score into a better-behaved probability.
+
+    Uses the class's own map when the calibrator has one for `model_class`
+    (the DETECTOR's class name), and the global temperature otherwise --
+    for every class of a format-1 file, for a class that fell back at fit
+    time, and whenever no class is given.
+    """
+    t = load_calibration(settings)
+    if model_class is not None:
+        params = _CLASS_PARAMS.get(class_key(model_class))
+        if params is not None:
+            return apply_map(params, raw_score)
+    return apply_map({"method": "temperature", "temperature": t}, raw_score)
 
 
 # Net-like names never appear in a training set today -- no public side-scan
@@ -233,9 +372,11 @@ def is_calibrated(settings: Settings = SETTINGS) -> bool:
     """True once a temperature has actually been fitted on a validation set.
 
     T == 1.0 is the sentinel for 'never fitted', so raw scores are passing
-    through untouched and are known to be overconfident.
+    through untouched and are known to be overconfident. A per-class table
+    counts on its own: the global T could land on 1.0 while the classes that
+    matter carry maps of their own.
     """
-    return load_calibration(settings) != 1.0
+    return load_calibration(settings) != 1.0 or bool(_CLASS_PARAMS)
 
 
 def assess_uncertainty(confidence: float, settings: Settings = SETTINGS) -> str:
@@ -315,11 +456,13 @@ def apply_decision_policy(
 
     5. The gate that matters for nets is the RAW one, not the calibrated one.
        A calibrated floor cannot recover a box the detector never emitted, and
-       with raw_conf_threshold = 0.10 and T = 2.72 the minimum calibrated
-       confidence reaching this function is ~0.309 -- above review_floor_
-       artificial, which has therefore been inert since calibration was fitted.
-       Both floors are applied, but only the raw one changes what a reviewer
-       sees.
+       with raw_conf_threshold = 0.10 the minimum calibrated confidence
+       reaching this function is 0.128 (wreck, T = 1.145; 0.139 for the
+       global T = 1.202) -- above review_floor_artificial (0.12), which is
+       inert by design. Under the old global T = 2.72 it was 0.309 against a
+       floor of 0.20; the floor was lowered with the per-class calibrator so
+       the recalibration did not quietly start suppressing detections. Both
+       floors are applied, but only the raw one changes what a reviewer sees.
     """
     cls = normalise_class(model_class)
 
@@ -337,7 +480,10 @@ def apply_decision_policy(
     if raw_score < raw_floor:
         return None
 
-    confidence = calibrate(raw_score, settings)
+    # Per DETECTOR class (model_class), not per contract class: wreck, plane,
+    # debris and ghost_pot all report as `debris` but are miscalibrated by
+    # different amounts underneath it.
+    confidence = calibrate(raw_score, settings, model_class=model_class)
 
     if is_review_only(cls):
         # Lower bar, because the output is a candidate and not a claim. See

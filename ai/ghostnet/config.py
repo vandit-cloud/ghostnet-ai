@@ -100,7 +100,21 @@ class Settings:
     # IMPORTANT: evaluation scripts must set both to 0.0. Metrics computed on
     # policy-filtered output measure recall after the very filter that damaged
     # it -- the "filtering twice hides recall problems" trap noted above.
-    review_floor_artificial: float = 0.20
+    #
+    # 0.20 -> 0.12 with per-class calibration, to keep what a reviewer sees
+    # EXACTLY as it was. Under the old global T = 2.72 the lowest calibrated
+    # score that could reach the policy was 0.309, so 0.20 never bound. The
+    # per-class calibrator maps the raw gate (0.10) to 0.128 for wreck
+    # (T = 1.145) and 0.139 for everything else (T = 1.202), and left at 0.20
+    # this floor would have started binding silently -- measured on test:
+    # ghost_pot recall 0.429 -> 0.303, wreck 0.355 -> 0.318, false alarms on
+    # empty frames 7.75% -> 4.91%. 0.12 sits just under 0.128 and reproduces
+    # the shipped recall and false-alarm rate to the box. The floor sweep is in
+    # ai/experiments/calib-perclass/RESULTS.md: tightening it IS now a real
+    # lever, but that is a policy decision to take on purpose, not a side
+    # effect of a recalibration. tests/test_review_only.py fails if a refit
+    # makes this floor bind again.
+    review_floor_artificial: float = 0.12
     review_floor_natural: float = 0.45
 
     #: `ghost_net` clears a LOWER bar than the other artificial classes, and
@@ -113,13 +127,16 @@ class Settings:
     #: floor, so the choice is between surfacing weak candidates for a human
     #: and surfacing nothing at all.
     #:
-    #: NOTE this floor is currently NON-BINDING and kept only for symmetry:
-    #: with raw_conf_threshold = 0.10 and T = 2.72, the lowest calibrated
-    #: confidence that can reach the policy at all is ~0.309, already above
-    #: even review_floor_artificial. The lever that actually decides what a
-    #: reviewer sees is raw_conf_threshold_net below. Setting a calibrated
-    #: floor here and expecting it to surface more nets would be a no-op.
-    review_floor_net: float = 0.10
+    #: NOTE this floor is NON-BINDING and kept only for symmetry; the lever
+    #: that actually decides what a reviewer sees is raw_conf_threshold_net
+    #: below. It was 0.10, which the old global T = 2.72 made inert (raw 0.03
+    #: calibrated to 0.218). ghost_net falls back to the global T = 1.202 in
+    #: the per-class calibrator (1 matched val box), which maps raw 0.03 to
+    #: 0.053 -- so 0.10 would have started suppressing detector net boxes with
+    #: raw 0.03-0.066 (21 test boxes, the one true net hit among them). 0.05
+    #: keeps it inert. Setting a calibrated floor here and expecting it to
+    #: surface more nets would be a no-op.
+    review_floor_net: float = 0.05
 
     #: The lever that actually works. `conf` is passed to the detector, so a
     #: box scoring below it is never emitted and no downstream floor can
@@ -171,6 +188,27 @@ class Settings:
     edge_sliver_min_extent: float = 0.40
 
     # Uncertainty band edges on calibrated confidence.
+    #
+    # The edges are PROBABILITIES, and the rule that sets them is that each
+    # band's held-out precision must fall inside the band: 'low' means "at
+    # least 3 in 4 of these are right", 'high' means "fewer than 1 in 2 are".
+    # Re-derived for the per-class calibrator (ai/experiments/calib-perclass/
+    # RESULTS.md) and the values hold. On test, the 2,394 reported detections:
+    #     low  (>= 0.75)       precision 0.939    15.1%
+    #     medium (0.45-0.75)   precision 0.726    17.7%
+    #     high (< 0.45)        precision 0.262    67.2%
+    # (val: 0.5% / 10.6% / 88.8% -- 4 'low', all wrecks, all correct.)
+    # What was broken was the CALIBRATION, not the edges: the global T = 2.72
+    # capped every score at 0.728, so 'low' -- and with it Priority.HIGH for
+    # non-nets and CRITICAL for nets -- was unreachable. The per-class map
+    # reaches 0.79 on val and 0.91 on test.
+    #
+    # Not re-derived from val's precision curve, on purpose: "lowest score
+    # above which val precision >= 0.80 / 0.50" gives 0.467 / 0.128, because
+    # val's ghost_pot boxes are 69% correct against test's 30% (an
+    # unrepresentative survey; see the calibrator's ghost_pot fallback). On
+    # test those edges put 67% of detections in 'medium' at precision 0.27 and
+    # call wrecks 'low' at 0.68 -- the bands stop meaning what they say.
     uncertainty_low_edge: float = 0.75
     uncertainty_medium_edge: float = 0.45
 
@@ -286,12 +324,21 @@ class Settings:
             cal = _read_json(Path(self.models_dir) / "calibrator" / "temperature.json")
             if cal.get("temperature") is not None:
                 try:
-                    self.calibration_version = "T%.4f-%s-n%s" % (
+                    # Format 2 names the classes that carry their own map, so
+                    # a stored detection says whether its score went through
+                    # the global T or a class-specific one:
+                    #   T1.2020+wreck-val-n1239
+                    own = sorted(
+                        name for name, entry in (cal.get("classes") or {}).items()
+                        if isinstance(entry, dict) and not entry.get("fallback")
+                    )
+                    self.calibration_version = "T%.4f%s-%s-n%s" % (
                         float(cal["temperature"]),
+                        "".join("+" + name for name in own),
                         cal.get("fitted_on", "unknown"),
                         cal.get("n_predictions", "?"),
                     )
-                except (TypeError, ValueError):
+                except (TypeError, ValueError, AttributeError):
                     pass  # leave the sentinel; an unparseable file is "unknown"
 
         self._resolve_net_model()

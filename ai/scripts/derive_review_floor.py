@@ -115,7 +115,10 @@ def main() -> int:
             dets = []
             if pred.boxes is not None and len(pred.boxes):
                 for b in pred.boxes:
-                    dets.append((int(b.cls[0]), calibrate(float(b.conf[0]), settings),
+                    # Per-class map, exactly as apply_decision_policy applies it.
+                    dets.append((int(b.cls[0]),
+                                 calibrate(float(b.conf[0]), settings,
+                                           model_class=str(model.names[int(b.cls[0])])),
                                  tuple(float(v) for v in b.xyxy[0].tolist())))
 
             if not gt:

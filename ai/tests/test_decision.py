@@ -33,8 +33,9 @@ from ghostnet.geo import (  # noqa: E402
 
 @pytest.fixture
 def uncalibrated(monkeypatch):
-    """The state the project is actually in today: T == 1.0, never fitted."""
+    """A model that was never calibrated: T == 1.0, no per-class maps."""
     monkeypatch.setattr(decision, "_TEMPERATURE", 1.0)
+    monkeypatch.setattr(decision, "_CLASS_PARAMS", {})
     monkeypatch.setattr(decision, "_CALIBRATION_LOADED", True)
     return Settings()
 
@@ -43,6 +44,7 @@ def uncalibrated(monkeypatch):
 def calibrated(monkeypatch):
     """A model whose temperature has been fitted. T > 1 softens scores."""
     monkeypatch.setattr(decision, "_TEMPERATURE", 1.6)
+    monkeypatch.setattr(decision, "_CLASS_PARAMS", {})
     monkeypatch.setattr(decision, "_CALIBRATION_LOADED", True)
     return Settings()
 
@@ -69,7 +71,12 @@ def test_unknown_is_treated_as_artificial(uncalibrated):
 
 
 def test_below_artificial_floor_is_suppressed(uncalibrated):
-    assert apply_decision_policy("ghost_net", 0.05, uncalibrated) is None
+    # Under review_floor_artificial (0.12) but above the raw gate (0.10). The
+    # floor is non-binding for the SHIPPED calibrator on purpose; uncalibrated
+    # it still bites, and that is the mechanism this pins.
+    assert apply_decision_policy("debris", 0.11, uncalibrated) is None
+    # ...and a net under its own floor (0.05) but above its raw gate (0.03).
+    assert apply_decision_policy("ghost_net", 0.04, uncalibrated) is None
 
 
 def test_evaluation_can_disable_the_floors(uncalibrated):
