@@ -3,6 +3,8 @@ import csv
 import io
 import json
 import logging
+import math
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -39,6 +41,28 @@ CSV_FIELDS = [
     "model_version",
     "timestamp",
 ]
+
+
+#: Download metadata per format. One table, read by both the generator (file
+#: extension on disk) and the download endpoint (media type + filename), so a
+#: new format cannot be half-wired. `application/geo+json` is the IANA type
+#: RFC 7946 registers; GIS tools key on it and on the `.geojson` extension.
+FORMAT_MEDIA = {
+    ReportFormat.CSV: ("text/csv", "csv"),
+    ReportFormat.JSON: ("application/json", "json"),
+    ReportFormat.GEOJSON: ("application/geo+json", "geojson"),
+}
+
+#: Contract classes the AI may only offer for review, never claim. The backend
+#: does not persist the contract's per-detection `review_only` flag, so the
+#: GeoJSON export re-derives it from the class. This MIRRORS
+#: ai/ghostnet/decision.py REVIEW_ONLY_CLASSES -- keep the two in step.
+REVIEW_ONLY_CLASSES = frozenset({"ghost_net"})
+
+# infer.py folds the detector's finer class into evidence_summary.notes as
+# "detector class: wreck" when the contract vocabulary is coarser (a wreck
+# reports as `debris`). Pulled out so a GIS user can style on it.
+_DETECTOR_CLASS_RE = re.compile(r"detector class:\s*([A-Za-z0-9_\-]+)")
 
 
 def get_report_or_404(db: Session, report_id: uuid.UUID) -> Report:
@@ -189,6 +213,100 @@ def _render_json(report: Report, detections: list[Detection]) -> bytes:
     return json.dumps(payload, indent=2).encode("utf-8")
 
 
+def _detector_class(d: Detection) -> str | None:
+    notes = (d.evidence_summary or {}).get("notes")
+    if not isinstance(notes, str):
+        return None
+    match = _DETECTOR_CLASS_RE.search(notes)
+    return match.group(1) if match else None
+
+
+def _point_geometry(d: Detection) -> tuple[dict | None, str]:
+    """The feature geometry and why it is (or is not) there.
+
+    A detection with no usable position still goes in the file with
+    `geometry: null` (RFC 7946 sec. 3.2 allows it). Dropping it would make a
+    target vanish from the map with nothing to say it was ever found.
+    """
+    lat, lon = d.latitude, d.longitude
+    if lat is None or lon is None:
+        return None, "no_position"
+    if not (math.isfinite(lat) and math.isfinite(lon)) or not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        return None, "invalid_position"
+    # RFC 7946 sec. 3.1.1: longitude FIRST, WGS84 -- the reverse of how every
+    # other report column orders them.
+    return {"type": "Point", "coordinates": [lon, lat]}, "located"
+
+
+def _finite_or_none(value: float | None) -> float | None:
+    # json.dumps writes NaN as a bare `NaN`, which is not JSON and breaks
+    # strict GeoJSON parsers.
+    return value if value is None or math.isfinite(value) else None
+
+
+def _geojson_feature(d: Detection) -> dict:
+    geometry, position_status = _point_geometry(d)
+    return {
+        "type": "Feature",
+        "id": str(d.id),
+        "geometry": geometry,
+        "properties": {
+            "detection_id": d.detection_ref,
+            "class": d.detection_class,
+            "detector_class": _detector_class(d),
+            "raw_score": _finite_or_none(d.raw_score),
+            "calibrated_confidence": _finite_or_none(d.calibrated_confidence),
+            "uncertainty": d.uncertainty,
+            "priority": d.priority,
+            "review_status": d.review_status,
+            "review_only": d.detection_class in REVIEW_ONLY_CLASSES,
+            # Kept as plain properties too, so a null-geometry row still says
+            # what was stored. position_error_m is the radius a GIS user
+            # buffers the point by to draw its uncertainty circle.
+            "latitude": _finite_or_none(d.latitude),
+            "longitude": _finite_or_none(d.longitude),
+            "position_error_m": _finite_or_none(d.position_error_m),
+            "position_status": position_status,
+            "localization_method": d.localization_method,
+            "width_m": _finite_or_none(d.width),
+            "length_m": _finite_or_none(d.length),
+            "area_m2": _finite_or_none(d.area),
+            "dimension_status": d.dimension_status,
+            "survey_id": str(d.survey_id),
+            "frame_id": str(d.frame_id),
+            "model_version": d.model_version,
+            "evidence_summary": d.evidence_summary,
+            "created_at": d.created_at.isoformat(),
+        },
+    }
+
+
+def _render_geojson(report: Report, detections: list[Detection]) -> bytes:
+    # Points only. Mask polygons (mask_reference) are future work: they live in
+    # pixel space and need the frame's geo transform to become WGS84 rings.
+    features = [_geojson_feature(d) for d in detections]
+    unlocated = [f for f in features if f["geometry"] is None]
+    payload = {
+        "type": "FeatureCollection",
+        # A foreign member (RFC 7946 sec. 6.1): parsers ignore it, people
+        # reading the file do not. The counts make a short map obvious --
+        # "12 detections, 9 on the map" -- instead of silently short.
+        "metadata": {
+            "survey_id": str(report.survey_id),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "report_type": report.type,
+            "filters": report.filters,
+            "crs": "WGS84 (EPSG:4326), coordinates [longitude, latitude]",
+            "detection_count": len(features),
+            "located_count": len(features) - len(unlocated),
+            "unlocated_count": len(unlocated),
+            "unlocated_detection_ids": [f["properties"]["detection_id"] for f in unlocated],
+        },
+        "features": features,
+    }
+    return json.dumps(payload, indent=2).encode("utf-8")
+
+
 async def _generate_report(report_id: uuid.UUID) -> None:
     db = db_module.SessionLocal()
     try:
@@ -208,10 +326,11 @@ async def _generate_report(report_id: uuid.UUID) -> None:
 
         if report.format == ReportFormat.CSV:
             content = _render_csv(detections)
-            ext = "csv"
+        elif report.format == ReportFormat.GEOJSON:
+            content = _render_geojson(report, detections)
         else:
             content = _render_json(report, detections)
-            ext = "json"
+        _, ext = FORMAT_MEDIA[ReportFormat(report.format)]
 
         from app.storage.local import get_storage_backend
 

@@ -82,7 +82,7 @@ function ReportsPageContent() {
               Build shareable report artifacts for surveys, filtered queues, and single detections.
             </h2>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-300">
-              Turn live operational data into CSV or JSON deliverables for review teams, compliance workflows, and downstream analysis.
+              Turn live operational data into CSV, JSON or GeoJSON deliverables for review teams, compliance workflows, and downstream analysis.
             </p>
           </Panel>
 
@@ -151,6 +151,7 @@ function ReportsPageContent() {
               >
                 <option value="csv">CSV</option>
                 <option value="json">JSON</option>
+                <option value="geojson">GeoJSON (GIS)</option>
               </select>
             </div>
             <div className="flex items-end">

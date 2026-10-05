@@ -8,6 +8,15 @@ export function FormatIcon({ format }: { format: string }) {
       </svg>
     );
   }
+  if (f === "geojson") {
+    // A map pin, so a GIS export is told apart from the plain JSON at a glance.
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="inline-block text-slate-400" aria-hidden>
+        <path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+        <circle cx="12" cy="10" r="2.3" stroke="currentColor" strokeWidth="1.4" />
+      </svg>
+    );
+  }
   if (f === "json") {
     return (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="inline-block text-slate-400" aria-hidden>

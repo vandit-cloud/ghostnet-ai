@@ -76,6 +76,10 @@ class ReportType(str, enum.Enum):
 class ReportFormat(str, enum.Enum):
     CSV = "csv"
     JSON = "json"
+    # RFC 7946 FeatureCollection, so a survey's targets open straight in QGIS /
+    # ArcGIS without a CSV import wizard guessing which column is longitude.
+    # "geojson" fits the reports.format String(10) column, so no migration.
+    GEOJSON = "geojson"
 
 
 class ReportStatus(str, enum.Enum):
