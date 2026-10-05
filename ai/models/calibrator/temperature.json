@@ -1,11 +1,60 @@
 {
-  "temperature": 2.722031,
+  "format_version": 2,
+  "method": "temperature",
+  "temperature": 1.202033,
+  "global_fitted_on": [
+    "wreck",
+    "plane",
+    "debris",
+    "ghost_net"
+  ],
+  "min_positives": 30,
+  "classes": {
+    "wreck": {
+      "n": 554,
+      "positives": 148,
+      "method": "temperature",
+      "temperature": 1.145089,
+      "ece_before": 0.082173,
+      "ece_after": 0.074073
+    },
+    "plane": {
+      "n": 21,
+      "positives": 8,
+      "fallback": true,
+      "reason": "8 matched positives on val < 30; a per-class fit on so few is noise; the global temperature 1.2020 is used"
+    },
+    "debris": {
+      "n": 22,
+      "positives": 6,
+      "fallback": true,
+      "reason": "6 matched positives on val < 30; a per-class fit on so few is noise; the global temperature 1.2020 is used"
+    },
+    "ghost_pot": {
+      "n": 638,
+      "positives": 439,
+      "fallback": true,
+      "reason": "temperature fit ran into the search bound (20); its errors are not a temperature problem; the global temperature 1.2020 is used",
+      "rejected_fit": {
+        "method": "temperature",
+        "temperature": 20.0
+      }
+    },
+    "ghost_net": {
+      "n": 4,
+      "positives": 1,
+      "fallback": true,
+      "reason": "1 matched positives on val < 30; a per-class fit on so few is noise; the global temperature 1.2020 is used"
+    }
+  },
   "fitted_on": "val",
   "weights": "ai\\models\\trained\\ghostnet.pt",
-  "n_predictions": 1604,
-  "n_correct": 611,
+  "weights_sha256": "4ba7703e0b5f1613c9fa878652f26b32f19f7a36706b0f6bc82764c7e61122bd",
+  "n_predictions": 1239,
+  "n_correct": 602,
   "iou_threshold": 0.5,
+  "nms_iou": 0.5,
   "conf_threshold": 0.05,
-  "ece_before": 0.217835,
-  "ece_after": 0.089091
+  "ece_before": 0.304769,
+  "ece_after": 0.276292
 }

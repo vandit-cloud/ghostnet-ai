@@ -79,9 +79,15 @@ def _priority_for(
     vocabulary matching the Uncertainty enum, and it stays meaningful across a
     retrain -- which a hardcoded 0.85 does not.
 
-    Note `low` is currently unreachable too (its edge is 0.75, above the
-    model's 0.728 ceiling), so in practice this sees `medium` and `high`. The
-    branch is kept because a future model will reach it.
+    `low` was unreachable under that global T (edge 0.75, ceiling 0.728). The
+    per-class calibrator (ai/experiments/calib-perclass/RESULTS.md) reaches
+    0.91 on the test split, and with the edges unchanged the 2,394 test
+    detections now triage as HIGH 362 / MEDIUM 450 / LOW 1,582 (was 0 / 963 /
+    1,431); the 362 'low' calls are 94% correct. CRITICAL is still never
+    produced: it needs a `ghost_net` in the `low` band, detector net boxes top
+    out at 0.21 calibrated on test, and U-Net net candidates are uncalibrated and
+    capped at `medium` on purpose. Making CRITICAL reachable is the
+    size-aware priority work (docs/FEATURE_PROMPT_SIZE_AWARE_PRIORITY.md 4.3).
     """
     band = (uncertainty or "").lower()
 

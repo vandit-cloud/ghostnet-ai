@@ -76,12 +76,22 @@ def test_the_calibrated_net_floor_is_documented_as_non_binding(uncal):
     """Guards the finding, not the code: with raw_conf_threshold = 0.10 and the
     fitted T, the lowest calibrated confidence that can reach the policy is
     already above every artificial floor. If this ever fails, calibration
-    changed and the floors became live again -- re-read decision.py note 5."""
+    changed and the floors became live again -- re-read decision.py note 5.
+
+    Checked PER CLASS against the shipped calibrator: with per-class maps the
+    lowest reachable score differs by class (wreck 0.128, the rest 0.139 at
+    raw 0.10), and the net floor is reached from the NET raw gate (0.03 ->
+    0.053), not the general one. Leaving the old floors in place under the new
+    calibrator cut ghost_pot test recall 0.429 -> 0.303 with no setting
+    changed; this is the test that would have caught it.
+    """
     from ghostnet.decision import calibrate
 
-    lowest_reachable = calibrate(uncal.raw_conf_threshold, uncal)
-    assert lowest_reachable > uncal.review_floor_net
-    assert lowest_reachable > uncal.review_floor_artificial
+    for cls in ("wreck", "plane", "debris", "ghost_pot"):
+        lowest = calibrate(uncal.raw_conf_threshold, uncal, model_class=cls)
+        assert lowest > uncal.review_floor_artificial, cls
+    lowest_net = calibrate(uncal.raw_conf_threshold_net, uncal, model_class="ghost_net")
+    assert lowest_net > uncal.review_floor_net
 
 
 def test_review_only_flag_reaches_the_payload_and_defaults_off():
