@@ -538,9 +538,15 @@ def is_edge_sliver(
         this is a setting and why the caller reports the count rather than
         dropping them quietly.
 
-    The proper fix is NMS in SURVEY coordinates, merging the two halves an
-    object splits into instead of judging each half alone. That is the work
-    `_offsets`'s own docstring defers, and this rule does not replace it.
+    With overlapping tiles (Settings.tile_overlap, 0.25 by default) the cost
+    moves. At an INTERNAL seam a real object up to the overlap width (160 px)
+    is whole in the neighbouring tile, so deleting its clipped sliver here
+    loses nothing -- and `ghostnet.merge` folds the remaining sightings into
+    one in survey coordinates. At the survey's OUTER border (far range, the
+    first and last ping) there is no neighbour and the cost is what it always
+    was. The rule is deliberately NOT relaxed at internal seams: the artefact
+    itself appears there too (tile x0=1280 above), and the merge cannot remove
+    an artefact the neighbouring tile never produced.
 
     Returns False when the frame size is unknown (0 or negative), because a
     rule about proportions cannot be evaluated without them.

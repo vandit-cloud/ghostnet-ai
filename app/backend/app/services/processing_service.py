@@ -16,6 +16,7 @@ from app.models.survey import Survey
 from app.realtime.manager import manager
 from app.schemas.ai_contract import AIFrameMetadata
 from app.services import detection_service
+from app.services.seam_merge_service import SeamMerger
 from app.services.ai_service import AIServiceAdapter, get_ai_adapter
 
 logger = logging.getLogger("ghostnet.processing")
@@ -239,6 +240,9 @@ async def _run_job(job_id: uuid.UUID) -> None:
 
         frames = survey_frames_in_order(db, survey_id)
         adapter: AIServiceAdapter = get_ai_adapter()
+        # Frames tiled from one .xtf/.sdf overlap, so one object can arrive
+        # from two of them; this keeps it to one row. See seam_merge_service.
+        seams = SeamMerger.create()
 
         for stage in (JobStage.DECODING, JobStage.PREPROCESSING):
             job.stage = stage
@@ -299,12 +303,17 @@ async def _run_job(job_id: uuid.UUID) -> None:
                 job.stage = JobStage.SAVING
                 for ai_detection in result.detections:
                     try:
-                        detection = detection_service.persist_ai_detection(db, survey_id, frame, ai_detection)
-                        job.detections_found += 1
+                        if seams is not None:
+                            detection, outcome = seams.persist(db, survey_id, frame, ai_detection)
+                        else:
+                            detection = detection_service.persist_ai_detection(db, survey_id, frame, ai_detection)
+                            outcome = "created"
+                        if outcome == "created":
+                            job.detections_found += 1
                         db.commit()
                         await _emit(
                             str(survey_id),
-                            "detection.created",
+                            "detection.created" if outcome == "created" else "detection.updated",
                             {"detection_id": str(detection.id), "frame_index": frame_index},
                         )
                     except detection_service.DetectionValidationError as exc:
@@ -337,6 +346,11 @@ async def _run_job(job_id: uuid.UUID) -> None:
                 },
             )
 
+        if seams is not None and seams.merged:
+            logger.info(
+                "survey %s: %d seam duplicate(s) from overlapping frames merged; each survivor "
+                "lists them under evidence_summary.merged_seam_duplicates", survey_id, seams.merged,
+            )
         job.stage = JobStage.DONE
         job.completed_at = datetime.now(timezone.utc)
         if job.frames_failed == 0:
