@@ -110,14 +110,17 @@ def _priority_for(
     return Priority.LOW
 
 
-def persist_ai_detection(
-    db: Session,
+def _fields_from_ai(
     survey_id: uuid.UUID,
     frame: SonarFrame,
     ai_detection: AIDetection,
-) -> Detection:
-    validate_ai_detection(ai_detection)
+) -> dict:
+    """Column values for a Detection row built from one AI detection.
 
+    Shared by `persist_ai_detection` (a new row) and `replace_with_ai_detection`
+    (a seam merge putting a better sighting into an existing row), so the two
+    cannot drift on how a contract field maps to a column.
+    """
     bbox = ai_detection.bbox or [None, None, None, None]
     dims = ai_detection.dimensions
 
@@ -129,7 +132,7 @@ def persist_ai_detection(
     if ai_detection.latitude is not None and ai_detection.longitude is not None:
         location_wkt = f"SRID=4326;POINT({ai_detection.longitude} {ai_detection.latitude})"
 
-    detection = Detection(
+    return dict(
         detection_ref=ai_detection.detection_id,
         survey_id=survey_id,
         frame_id=frame.id,
@@ -159,11 +162,40 @@ def persist_ai_detection(
             ai_detection.class_,
             ai_detection.uncertainty,
         ),
-        review_status=ReviewStatus.PENDING,
         model_version=ai_detection.model_version,
-        evidence_summary=ai_detection.evidence_summary or {},
+        evidence_summary=dict(ai_detection.evidence_summary or {}),
     )
+
+
+def persist_ai_detection(
+    db: Session,
+    survey_id: uuid.UUID,
+    frame: SonarFrame,
+    ai_detection: AIDetection,
+) -> Detection:
+    validate_ai_detection(ai_detection)
+    detection = Detection(review_status=ReviewStatus.PENDING, **_fields_from_ai(survey_id, frame, ai_detection))
     db.add(detection)
+    db.flush()
+    return detection
+
+
+def replace_with_ai_detection(
+    db: Session,
+    detection: Detection,
+    frame: SonarFrame,
+    ai_detection: AIDetection,
+) -> Detection:
+    """Overwrite a PENDING row with a better sighting of the same object.
+
+    The row keeps its primary key, so every link to it -- the map pin, a
+    review-queue entry, an open detail page -- still resolves, now to the
+    better view. Review status is deliberately not touched: callers only do
+    this to rows nobody has reviewed (see seam_merge_service).
+    """
+    validate_ai_detection(ai_detection)
+    for key, value in _fields_from_ai(detection.survey_id, frame, ai_detection).items():
+        setattr(detection, key, value)
     db.flush()
     return detection
 

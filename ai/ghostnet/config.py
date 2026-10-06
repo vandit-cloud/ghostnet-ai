@@ -24,6 +24,18 @@ def _env_path(var: str, default: Path) -> Path:
     return Path(raw).expanduser().resolve() if raw else default
 
 
+def _env_float(var: str, default: float) -> float:
+    """A numeric environment override, or the default when unset or unreadable.
+
+    Unreadable falls back rather than raising: Settings is built at import
+    time, and a typo in an env var must not stop the server starting.
+    """
+    try:
+        return float(os.environ.get(var, default))
+    except (TypeError, ValueError):
+        return default
+
+
 def _read_json(path: Path) -> dict:
     """Read a small JSON sidecar, or {} when it is missing or unreadable.
 
@@ -169,6 +181,41 @@ class Settings:
     #: Min extent parallel to the border, as a fraction of that axis. A real
     #: object clipped by a seam is rarely also a near-full-length strip.
     edge_sliver_min_extent: float = 0.40
+
+    # --- overlapping tiles and the seam merge -----------------------------
+    #: Fraction of a 640 px tile shared with each neighbour. 0 (the default)
+    #: is the original seamless tiling, tile for tile. With overlap a seam can
+    #: no longer cut an object in half with no tile seeing the whole of it,
+    #: and ghostnet.merge folds the duplicate sightings into one.
+    #:
+    #: OFF by default because the gain is unproven and the cost is not.
+    #: Measured 6 Oct 2026 (ai/experiments/tile-overlap/measure.py), 0 -> 0.25:
+    #:   NBP0505 demo line: 40 -> 65 tiles, 4.6 -> 7.9 s, 2 -> 1 detections
+    #:   Klein 2019, 50 files: 1191 -> 1707 tiles, 169 -> 201 s, 48 -> 57
+    #:   alarms (71 before 14 seam duplicates merged); 30 new, 16 lost.
+    #: Moving the grid reshuffles alarms near the floor, and neither survey has
+    #: ground truth to say the new ones are real -- Klein's are mostly rock.
+    #: Turn it on (GHOSTNET_TILE_OVERLAP=0.25) once a labelled survey shows it
+    #: recovers seam-cut targets.
+    tile_overlap: float = field(
+        default_factory=lambda: _env_float("GHOSTNET_TILE_OVERLAP", 0.0)
+    )
+    #: Merge detections of one object reported from two overlapping tiles.
+    #: See ghostnet.merge for the rule. Off only for debugging the merge.
+    seam_merge: bool = True
+    #: Two same-class boxes from different tiles are one object when, in
+    #: survey pixels, their IoU reaches this...
+    seam_merge_iou: float = 0.30
+    #: ...or the smaller box lies this much inside the larger -- the case of an
+    #: object one tile clips at its border and the other sees whole, where IoU
+    #: is low because the clipped box is small...
+    seam_merge_containment: float = 0.60
+    #: ...or their centres are this close. The same pixels scored in two tiles
+    #: give near-identical boxes, so this only absorbs the detector placing a
+    #: box a little differently with different context. Deliberately below the
+    #: 50 px a rival pipeline uses: pots in a string sit tens of pixels apart,
+    #: and merging two real pots is a lost detection, not a tidied duplicate.
+    seam_merge_centre_px: float = 24.0
 
     # Uncertainty band edges on calibrated confidence.
     uncertainty_low_edge: float = 0.75
