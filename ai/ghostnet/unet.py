@@ -121,17 +121,28 @@ def load_checkpoint(path: Path, device: str):
 
 
 def predict_prob(model, gray: np.ndarray, device: str, size: int = IMGSZ) -> np.ndarray:
-    """Net probability per pixel, float32 at the chip's NATIVE resolution."""
-    import torch
-    dev = torch_device(device)
-    on_cuda = dev.startswith("cuda")
+    """Net probability per pixel, float32 at the chip's NATIVE resolution.
+
+    `model` is the torch U-Net or a ghostnet.runtime.OnnxUNet. Only the logits
+    differ between them; the letterbox before and the crop and resize after
+    are this one function for both, so the runtimes cannot drift apart.
+    """
     h, w = gray.shape
     canvas, (s, x0, y0) = letterbox(gray, size)
-    # autocast is named for the device it runs on: asking for "cuda" autocast
-    # on a CPU-only build warns on every call, even when disabled.
-    with torch.no_grad(), torch.autocast(device_type="cuda" if on_cuda else "cpu", enabled=on_cuda):
-        logits = model(to_tensor(canvas).to(dev))
-    prob = torch.sigmoid(logits.float())[0, 0].cpu().numpy()
+    if hasattr(model, "logits") and hasattr(model, "session"):
+        # Same arithmetic as to_tensor(), without importing torch.
+        x = (canvas.astype(np.float32) / 127.5 - 1.0)[None, None]
+        logits = model.logits(x).astype(np.float32)
+        prob = (1.0 / (1.0 + np.exp(-logits)))[0, 0]
+    else:
+        import torch
+        dev = torch_device(device)
+        on_cuda = dev.startswith("cuda")
+        # autocast is named for the device it runs on: asking for "cuda" autocast
+        # on a CPU-only build warns on every call, even when disabled.
+        with torch.no_grad(), torch.autocast(device_type="cuda" if on_cuda else "cpu", enabled=on_cuda):
+            logits = model(to_tensor(canvas).to(dev))
+        prob = torch.sigmoid(logits.float())[0, 0].cpu().numpy()
     nh, nw = max(1, round(h * s)), max(1, round(w * s))
     prob = prob[y0:y0 + nh, x0:x0 + nw]
     return cv2.resize(prob, (w, h), interpolation=cv2.INTER_LINEAR)

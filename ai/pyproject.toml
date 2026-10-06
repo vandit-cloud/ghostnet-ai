@@ -29,6 +29,12 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "jsonschema>=4.21"]
+# The CPU runtime (ghostnet.runtime): serves verified .onnx exports when there
+# is no GPU. Optional -- without it everything runs under torch, just slower
+# (detector + net U-Net 0.61 s/tile on CPU vs 0.44 s with ONNX Runtime).
+onnx = ["onnxruntime>=1.18"]
+# What ai/scripts/export_onnx.py needs to MAKE the exports.
+export = ["onnx>=1.16", "onnxruntime>=1.18"]
 
 [tool.setuptools]
 packages = ["ghostnet"]

@@ -162,6 +162,20 @@ def _load_unet(weights: Path, checkpoint: dict, settings: Settings) -> UNetNetMo
     return UNetNetModel(model, checkpoint, settings.device)
 
 
+def _load_unet_onnx(weights: Path, settings: Settings) -> UNetNetModel:
+    """The U-Net's verified ONNX export (Settings already checked the
+    sidecar's hashes and parity), wrapped like the torch model. encoder and
+    imgsz come from the export's sidecar, so the 98 MB .pt is not read."""
+    from .runtime import OnnxUNet, onnx_path_for, sidecar_path_for
+
+    if load_channels(settings) is not None:
+        raise ValueError("a channels spec is configured, but a U-Net takes one grey channel")
+    onnx = onnx_path_for(weights)
+    meta = json.loads(sidecar_path_for(onnx).read_text(encoding="utf-8"))
+    session = OnnxUNet(onnx, threads=settings.onnx_threads)
+    return UNetNetModel(session, {"encoder": meta.get("encoder", "?"), "imgsz": meta.get("imgsz")}, "cpu")
+
+
 def _file_key(path: Path) -> tuple:
     try:
         st = path.stat()
@@ -178,7 +192,10 @@ def load_net_model(settings: Settings = SETTINGS):
     if weights is None:
         return None
     weights = Path(weights)
-    path_key = str(weights.resolve())
+    # The runtime is part of the key: the .pt and its .onnx are one model in
+    # two executors, and a Settings asking for the other must not be handed
+    # this one.
+    path_key = str(weights.resolve()) + "|" + settings.net_runtime_active
     if _NET_MODEL is not None and _NET_KEY == path_key:
         return _NET_MODEL
     with _NET_LOCK:
@@ -197,8 +214,9 @@ def load_net_model(settings: Settings = SETTINGS):
         try:
             from .unet import read_checkpoint
 
-            checkpoint = read_checkpoint(weights)
-            if checkpoint is not None:
+            if settings.net_runtime_active == "onnx":
+                model = _load_unet_onnx(weights, settings)
+            elif (checkpoint := read_checkpoint(weights)) is not None:
                 model = _load_unet(weights, checkpoint, settings)
             else:
                 from ultralytics import YOLO
