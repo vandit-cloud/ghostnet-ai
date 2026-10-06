@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".tif", ".tiff"}
-SONAR_LOG_EXTENSIONS = {".xtf", ".jsf"}
+SONAR_LOG_EXTENSIONS = {".xtf", ".sdf", ".jsf"}
 
 
 def _extension(filename: str) -> str:

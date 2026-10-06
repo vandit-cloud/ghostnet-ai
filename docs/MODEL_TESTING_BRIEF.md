@@ -86,7 +86,7 @@ a claim the data does not support.
   survey: same AUV, same sonar, same pipeline, separated from training only by
   a 156-second gap in the timestamps. It measures tracking through unseen
   seabed, **not** generalisation to debris elsewhere. The only independent
-  debris is 14 boxes from sonar_detect. Report both.
+  debris is 14 boxes from sonar_detect.[^sonardetect] Report both.
 - **`ghost_net`** — the ground truth is *ours*. 298 boxes hand-drawn on 73 chips
   that the source dataset ships as classification-only, by one annotator, from
   one region. The convention is documented with worked examples in
@@ -143,3 +143,5 @@ Please distinguish **a bug** (the code does something other than what it says)
 from **a limitation** (the model is weak because a class has 39 training boxes).
 The second is documented in `docs/AI_TRAINING_HANDOFF.md` and does not need
 rediscovering; the first is worth a great deal.
+
+[^sonardetect]: Reviewed frame by frame on 26 Sep 2026 (`ai/experiments/sonardetect-review/REVIEW.md`). 7 of these 14 boxes are in two frames that are not clean sonar: `SONARDETECT__000163` is a slide with photographs and `SONARDETECT__000183` is a composed figure with a zoomed inset. They stay in the test split, so every run remains scored on the same data, but only **7 boxes from 5 frames** are clean independent debris. Quote it as "14 boxes, 7 of them from clean frames".

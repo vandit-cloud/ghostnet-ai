@@ -1,0 +1,25 @@
+{
+  "run": "gvU1n-unet-hardneg-s2",
+  "task": "semantic segmentation (U-Net)",
+  "classes": [
+    "ghost_net"
+  ],
+  "encoder": "resnet34",
+  "encoder_weights": "imagenet",
+  "in_channels": 1,
+  "data": "E:\\New folder\\ai\\data\\net_seg_hardneg",
+  "train_chips": 153,
+  "train_empty_chips": 102,
+  "seed": 2,
+  "epochs": 300,
+  "batch": 4,
+  "lr": 0.0003,
+  "imgsz": 640,
+  "loss": "BCE + Dice (batch-aggregated)",
+  "augment": "flip lr/ud, rescale 0.5-1.5 + random placement, gain 0.6-1.4, bias +-25; no rotation",
+  "selection": "best val Dice @0.5 (val has no empty chips)",
+  "best_val_dice": 0.6008569874932028,
+  "git_commit": "9fc9f1ad904828cc6303cb032e78be0f382169a1",
+  "cli": "ai/scripts/train_net_unet.py --name gvU1n-unet-hardneg-s2 --data E:/New folder/ai/data/net_seg_hardneg --seed 2",
+  "caveat": "test split is 11 chips -- upper bound only; review candidate, not a detection claim."
+}

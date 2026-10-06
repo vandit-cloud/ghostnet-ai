@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useMemo } from "react";
 
@@ -8,29 +9,9 @@ import { DetectionTable } from "@/components/DetectionTable";
 import { FilterSelect } from "@/components/FilterBar";
 import { Panel } from "@/components/Panel";
 import { EmptyState, ErrorState, LoadingSkeleton } from "@/components/States";
+import { CLASS_OPTIONS, PRIORITY_OPTIONS, REVIEW_OPTIONS } from "@/features/detections/filterOptions";
 import { useDetections } from "@/features/detections/hooks";
 import { useSurveys } from "@/features/surveys/hooks";
-
-const CLASS_OPTIONS = [
-  { value: "ghost_net", label: "Ghost Net" },
-  { value: "debris", label: "Debris" },
-  { value: "natural_object", label: "Natural Object" },
-  { value: "unknown", label: "Unknown" },
-];
-
-const PRIORITY_OPTIONS = [
-  { value: "critical", label: "Critical" },
-  { value: "high", label: "High" },
-  { value: "medium", label: "Medium" },
-  { value: "low", label: "Low" },
-];
-
-const REVIEW_OPTIONS = [
-  { value: "pending", label: "Pending" },
-  { value: "unknown", label: "Unknown" },
-  { value: "accepted_artificial", label: "Accepted - Artificial" },
-  { value: "rejected_natural", label: "Rejected - Natural" },
-];
 
 export default function DetectionsPage() {
   return (
@@ -68,6 +49,17 @@ function DetectionsPageContent() {
     () => (surveys?.items ?? []).map((s) => ({ value: s.id, label: s.name })),
     [surveys]
   );
+
+  // A filtered report needs a survey and at least one filter; otherwise it
+  // would be a full-survey export under a "filtered" label (B4).
+  const reportHref = useMemo(() => {
+    if (!survey_id || !(detection_class || priority || review_status)) return null;
+    const params = new URLSearchParams({ survey_id, type: "filtered_detections" });
+    if (detection_class) params.set("detection_class", detection_class);
+    if (priority) params.set("priority", priority);
+    if (review_status) params.set("review_status", review_status);
+    return `/app/reports?${params.toString()}`;
+  }, [survey_id, detection_class, priority, review_status]);
 
   const { data, isLoading, isError, refetch } = useDetections({
     survey_id,
@@ -128,6 +120,14 @@ function DetectionsPageContent() {
             <FilterSelect label="Class" value={detection_class ?? ""} options={CLASS_OPTIONS} onChange={(v) => updateParam("detection_class", v)} />
             <FilterSelect label="Priority" value={priority ?? ""} options={PRIORITY_OPTIONS} onChange={(v) => updateParam("priority", v)} />
             <FilterSelect label="Review Status" value={review_status ?? ""} options={REVIEW_OPTIONS} onChange={(v) => updateParam("review_status", v)} />
+            {reportHref ? (
+              <Link
+                href={reportHref}
+                className="border border-imperial px-4 py-2.5 text-xs font-medium uppercase tracking-[0.2em] text-imperial transition hover:bg-imperial hover:text-paper"
+              >
+                Report on these filters
+              </Link>
+            ) : null}
             <div className="ml-auto text-sm text-slate-400">
               {data
                 ? `Showing ${data.items.length} of ${data.total} detections` +

@@ -4,27 +4,29 @@ import clsx from "clsx";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { ApiError } from "@/api/client";
 import { AppShell } from "@/components/AppShell";
-import {
-  formatDuration,
-  PipelineStagePreview,
-  ProcessingProgress,
-  STAGE_DESCRIPTIONS,
-} from "@/components/ProcessingProgress";
+import { formatDuration, PipelineStagePreview } from "@/components/ProcessingProgress";
 import { StatusIndicator } from "@/components/StatusIndicator";
 import { LoadingSkeleton } from "@/components/States";
 import { useToastStore } from "@/components/Toast";
 import { useDetections } from "@/features/detections/hooks";
-import { useCancelJob, useLatestJob, useStartProcessing, useSurveyJobs } from "@/features/processing/hooks";
+import {
+  useCancelJob,
+  useLatestJob,
+  useStartProcessing,
+  useSurveyFrames,
+  useSurveyJobs,
+} from "@/features/processing/hooks";
+import { ProcessingSplitView } from "@/features/processing/ProcessingSplitView";
 import { useCreateReport } from "@/features/reports/hooks";
 import { useFrameImage } from "@/features/sonar/hooks";
 import { useSurvey } from "@/features/surveys/hooks";
 import { useSurveyFiles } from "@/features/upload/hooks";
 import { useSurveyRealtime } from "@/hooks/useRealtime";
-import type { Detection, JobStage, ProcessingJob, SurveyFile } from "@/types";
+import type { Detection, ProcessingJob, RealtimeEvent, SurveyFile } from "@/types";
 import { formatConfidence, formatDateTime } from "@/utils/format";
 
 const HeroWaterBackdrop = dynamic(
@@ -65,13 +67,45 @@ export default function ProcessingPage() {
   const startProcessing = useStartProcessing(surveyId);
   const cancelJob = useCancelJob(surveyId);
   const push = useToastStore((s) => s.push);
-  const connectionStatus = useSurveyRealtime(surveyId);
+  // One socket for the page. The split view needs the raw per-frame events
+  // (which frame finished, did it fail), so they are fanned out to it here
+  // rather than opening a second connection.
+  const listeners = useRef(new Set<(e: RealtimeEvent) => void>());
+  const connectionStatus = useSurveyRealtime(surveyId, (e) => listeners.current.forEach((fn) => fn(e)));
+  const subscribe = useCallback((fn: (e: RealtimeEvent) => void) => {
+    listeners.current.add(fn);
+    return () => {
+      listeners.current.delete(fn);
+    };
+  }, []);
+  const { data: frames } = useSurveyFrames(job ? surveyId : undefined);
+  // Every detection of the run, for the markers and the summary. The page
+  // size is the API's ceiling; the job's own count stays the source of truth.
+  const { data: detectionPage } = useDetections({ survey_id: surveyId, page_size: 200 }, { enabled: Boolean(job) });
+
+  // The results below the scene wait until the scene has shown the run
+  // finishing, so the page reads top to bottom in the order things happened.
+  const [presented, setPresented] = useState(false);
 
   const isRunning = Boolean(job && RUNNING_STATUSES.includes(job.status));
   const isFinished = Boolean(job && FINISHED_STATUSES.includes(job.status));
   const isStopped = Boolean(job && (job.status === "FAILED" || job.status === "CANCELLED"));
 
-  const log = useStageLog(job);
+  // Has the file set changed since the last run? The page always shows the
+  // survey's latest job, so after a file was added, removed or replaced it
+  // used to open on that OLD run, already finished -- a replay of files that
+  // are no longer the survey. Frames are created at upload, so a different
+  // frame count means a file came or went, and a file uploaded after the run
+  // was created means one was added (or swapped for another of the same size).
+  const checkingFiles = Boolean(job && !isRunning && (!files || !frames));
+  const filesChanged = Boolean(
+    job &&
+      !isRunning &&
+      files &&
+      frames &&
+      (frames.length !== job.frames_total ||
+        files.some((f) => f.validation_status === "VALID" && new Date(f.created_at) > new Date(job.created_at)))
+  );
 
   async function handleStart(forceRestart = false) {
     try {
@@ -86,6 +120,26 @@ export default function ProcessingPage() {
         push("Unable to start processing.", "error");
       }
     }
+  }
+
+  /** Run the survey again because its files changed. The backend refuses a
+   *  second run while the old detections exist (the 409 guard), so this sends
+   *  force_restart when there are any, and asks first only when doing so would
+   *  throw away review decisions -- not for a survey nobody has reviewed. */
+  function handleRunChanged() {
+    const detections = survey?.detection_count ?? 0;
+    const reviewed = Math.max(0, detections - (survey?.review_count ?? 0));
+    if (
+      reviewed > 0 &&
+      !window.confirm(
+        `The files changed since the last run. Running again replaces its ${detections} detection` +
+          `${detections === 1 ? "" : "s"}, including ${reviewed} review decision${reviewed === 1 ? "" : "s"}.
+
+Continue?`
+      )
+    )
+      return;
+    void handleStart(detections > 0);
   }
 
   function handleReprocess() {
@@ -110,51 +164,38 @@ export default function ProcessingPage() {
         </p>
       )}
 
-      {jobLoading ? (
+      {jobLoading || checkingFiles ? (
         <div className="panel p-6">
           <LoadingSkeleton rows={3} label="Restoring processing status…" />
         </div>
-      ) : !job ? (
+      ) : !job || filesChanged ? (
         <NotStarted
           surveyId={surveyId}
           fileCount={survey?.file_count ?? 0}
           source={survey?.source ?? null}
           sonarType={survey?.sonar_type ?? null}
           files={files}
-          onStart={() => handleStart()}
+          onStart={() => (job ? handleRunChanged() : handleStart())}
           starting={startProcessing.isPending}
+          previousRun={job && filesChanged ? job : null}
         />
       ) : (
-        <div className="panel p-6">
-          <ProcessingProgress job={job} />
+        <div className="space-y-6">
+          <ProcessingSplitView
+            job={job}
+            surveyId={surveyId}
+            frames={frames}
+            detections={detectionPage?.items ?? []}
+            subscribe={subscribe}
+            onCancel={() => cancelJob.mutate(job.id)}
+            cancelling={cancelJob.isPending || !isRunning}
+            onPresented={setPresented}
+          />
 
-          {log.length > 0 && (
-            <div className="mt-4 max-h-32 overflow-y-auto border border-abyss-700 bg-abyss-900/40 p-3 font-mono text-[11px] text-slate-400">
-              {log.map((entry, i) => (
-                <div key={i} className="flex gap-2">
-                  <span className="shrink-0 text-ink-3">{entry.time}</span>
-                  <span>{entry.message}</span>
-                </div>
-              ))}
-            </div>
-          )}
+          {isFinished && presented && <CompletionPanel job={job} surveyId={surveyId} onReprocess={handleReprocess} />}
 
-          {isRunning && (
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={() => cancelJob.mutate(job.id)}
-                disabled={cancelJob.isPending}
-                className="rounded-md border border-alert-critical/50 px-4 py-1.5 text-sm text-alert-critical hover:bg-alert-critical/10"
-              >
-                Cancel Processing
-              </button>
-            </div>
-          )}
-
-          {isFinished && <CompletionPanel job={job} surveyId={surveyId} onReprocess={handleReprocess} />}
-
-          {isStopped && (
-            <div className="mt-6 rounded-md border border-abyss-600 bg-abyss-800/40 p-5">
+          {isStopped && presented && (
+            <div className="rounded-md border border-abyss-600 bg-abyss-800/40 p-5">
               <p className="text-sm text-slate-200">
                 {job.status === "CANCELLED" ? "This run was cancelled before it finished." : "This run failed."}{" "}
                 {job.frames_processed > 0 &&
@@ -186,36 +227,6 @@ export default function ProcessingPage() {
   );
 }
 
-/** Tracks stage transitions as they're observed from the polled/pushed job
- * object and turns them into a small live log -- there is no backend event
- * history to read, so this is a client-observed timeline, not a server-logged
- * one, and it resets whenever a new job (a fresh run) starts. */
-function useStageLog(job: ProcessingJob | null | undefined) {
-  const [log, setLog] = useState<{ time: string; message: string }[]>([]);
-  const prevStageRef = useRef<JobStage | null>(null);
-  const prevJobIdRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!job) return;
-    if (prevJobIdRef.current !== job.id) {
-      prevJobIdRef.current = job.id;
-      prevStageRef.current = null;
-      setLog([]);
-    }
-    if (prevStageRef.current !== job.stage) {
-      prevStageRef.current = job.stage;
-      setLog((entries) =>
-        [
-          { time: new Date().toLocaleTimeString(), message: `${job.stage} — ${STAGE_DESCRIPTIONS[job.stage]}` },
-          ...entries,
-        ].slice(0, 20)
-      );
-    }
-  }, [job]);
-
-  return log;
-}
-
 /** The pre-launch screen: what's about to be processed, a preview of the
  * pipeline it will walk through, and the one button that starts it. This used
  * to be a single button on an otherwise blank panel with no context at all. */
@@ -227,6 +238,7 @@ function NotStarted({
   files,
   onStart,
   starting,
+  previousRun = null,
 }: {
   surveyId: string;
   fileCount: number;
@@ -235,6 +247,9 @@ function NotStarted({
   files: SurveyFile[] | undefined;
   onStart: () => void;
   starting: boolean;
+  /** Set when the survey was processed before but its files have changed
+   *  since: the screen then offers a fresh run instead of the stale one. */
+  previousRun?: ProcessingJob | null;
 }) {
   return (
     <div className="space-y-6">
@@ -244,17 +259,30 @@ function NotStarted({
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-atlantic-deep via-atlantic/55 to-atlantic/10" />
         <div className="relative z-10 flex flex-col items-center gap-4 px-6 py-12 text-center">
-          <p className="text-[11px] uppercase tracking-[0.28em] text-skytint/85">Ready To Launch</p>
+          <p className="text-[11px] uppercase tracking-[0.28em] text-skytint/85">
+            {previousRun ? "Files Changed" : "Ready To Launch"}
+          </p>
           <p className="max-w-lg text-sm leading-6 text-paper/85">
-            This survey has not been processed yet. A run decodes every uploaded file into frames, scores each one
-            against the trained model, and geotags whatever clears the detection threshold.
+            {previousRun ? (
+              <>
+                The survey&apos;s files changed after the last run ({previousRun.frames_total} frame
+                {previousRun.frames_total === 1 ? "" : "s"}, {previousRun.detections_found} detection
+                {previousRun.detections_found === 1 ? "" : "s"}), so that run no longer describes it. Processing again
+                scores the current files from scratch and replaces the old results.
+              </>
+            ) : (
+              <>
+                This survey has not been processed yet. A run decodes every uploaded file into frames, scores each one
+                against the trained model, and geotags whatever clears the detection threshold.
+              </>
+            )}
           </p>
           <button
             onClick={onStart}
             disabled={starting || fileCount === 0}
             className="rounded-md bg-cyan-accent px-5 py-2 text-sm font-medium text-abyss-950 hover:bg-cyan-accent/90 disabled:opacity-50"
           >
-            {starting ? "Starting…" : "Start Processing"}
+            {starting ? "Starting…" : previousRun ? "Process Current Files" : "Start Processing"}
           </button>
           {fileCount === 0 && (
             <p className="text-xs text-paper/70">
@@ -344,7 +372,7 @@ function CompletionPanel({
 
   return (
     <div
-      className={`mt-6 rounded-md border p-5 ${
+      className={`rounded-md border p-5 ${
         partial ? "border-alert-high/40 bg-alert-high/10" : "border-emerald-500/40 bg-emerald-400/5"
       }`}
     >

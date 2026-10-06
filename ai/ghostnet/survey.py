@@ -1,4 +1,4 @@
-"""Turn a raw sonar file into detections: XTF -> waterfall -> tiles -> detect().
+"""Turn a raw sonar file into detections: XTF/SDF -> waterfall -> tiles -> detect().
 
     from ghostnet import detect_survey
     result = detect_survey("line01.XTF", out_dir="frames/line01")
@@ -40,6 +40,7 @@ handles a column far from nadir without special-casing.
 
 from __future__ import annotations
 
+import itertools
 import math
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -51,6 +52,7 @@ from pyproj import Geod
 from .config import SETTINGS, Settings
 from .contract import FramePosition
 from .infer import detect
+from . import sdf
 from .xtf import Ping, iter_pings, read_file_header, waterfall
 
 _GEOD = Geod(ellps="WGS84")
@@ -119,6 +121,36 @@ def _along_track_res_m(pings: list[Ping]) -> float | None:
     return steps[len(steps) // 2]
 
 
+@dataclass
+class _SonarRead:
+    """What either reader hands the tiler: pings split into independent segments."""
+
+    sonar: str | None
+    segments: list[list[Ping]]
+    pings_read: int
+    pings_without_geometry: int
+    #: Set by a reader that resampled to a known row spacing; None to measure it.
+    along_track_res_m: float | None
+    warnings: list[str]
+
+
+def _read_sonar(path: Path, max_pings: int | None) -> _SonarRead:
+    """Dispatch on extension. Raises on a file the reader cannot use.
+
+    An .xtf is one segment of native pings. An .sdf (Klein 5000 V2) comes back
+    as several segments, split where range changed, already resampled to square
+    pixels and cleaned of settings-change transients -- see `ghostnet.sdf`.
+    """
+    if path.suffix.lower() == ".sdf":
+        r = sdf.read_survey(path, max_pings=max_pings)
+        return _SonarRead(r.sonar_name, r.segments, r.pings_read, r.pings_without_geometry,
+                          r.along_track_res_m, list(r.warnings))
+    header = read_file_header(path)
+    pings = list(iter_pings(path, header=header, with_samples=True, limit=max_pings))
+    return _SonarRead(header.sonar_name, [pings] if pings else [], len(pings),
+                      sum(1 for p in pings if not p.has_geometry), None, [])
+
+
 def _meta_for_tile(
     ping: Ping,
     *,
@@ -179,8 +211,13 @@ def _iter_tiles(
     tile: int,
     step: float | None,
     warnings: list[str],
+    ping_base: int = 0,
 ) -> Iterator[SurveyFrame]:
-    """Cut the pings into tiles, write each one, and yield it with its geometry."""
+    """Cut the pings into tiles, write each one, and yield it with its geometry.
+
+    `ping_base` is this segment's first row within the whole file, so frame ids
+    stay unique when a file is tiled as several segments.
+    """
     import cv2
     import numpy as np
 
@@ -219,7 +256,7 @@ def _iter_tiles(
             crop = np.ascontiguousarray(wf[:, c0:c0 + tile])
             if crop.shape[1] < MIN_ROWS:
                 continue
-            frame_id = "%s__p%06d__x%05d" % (survey_id, r0, c0)
+            frame_id = "%s__p%06d__x%05d" % (survey_id, ping_base + r0, c0)
             image_path = out_dir / (frame_id + ".png")
             if not cv2.imwrite(str(image_path), crop):
                 warnings.append("could not write " + image_path.name + "; frame skipped")
@@ -243,7 +280,7 @@ def _iter_tiles(
                 image_path=image_path,
                 meta=meta,
                 position=position,
-                ping_offset=r0,
+                ping_offset=ping_base + r0,
             )
 
 
@@ -267,13 +304,15 @@ def iter_survey_frames(
     xtf_path = Path(xtf_path)
     out_dir = Path(out_dir)
     survey_id = survey_id or xtf_path.stem
-    header = read_file_header(xtf_path)
-    pings = list(iter_pings(xtf_path, header=header, with_samples=True, limit=max_pings))
-    if not pings:
+    read = _read_sonar(xtf_path, max_pings)
+    if not read.segments:
         return
-    step = _along_track_res_m([p for p in pings if p.has_geometry] or pings)
     out_dir.mkdir(parents=True, exist_ok=True)
-    yield from _iter_tiles(pings, out_dir, survey_id, tile, step, [])
+    base = 0
+    for pings in read.segments:
+        step = read.along_track_res_m or _along_track_res_m([p for p in pings if p.has_geometry] or pings)
+        yield from _iter_tiles(pings, out_dir, survey_id, tile, step, [], ping_base=base)
+        base += len(pings)
 
 
 def detect_survey(
@@ -287,7 +326,7 @@ def detect_survey(
     """Read a sonar file, cut it into frames, and score every frame.
 
     Args:
-        xtf_path: a .xtf side-scan file.
+        xtf_path: a .xtf side-scan file, or a Klein 5000 V2 .sdf.
         out_dir:  where the frame images are written. Created if absent.
         survey_id: defaults to the file's stem.
         tile: frame size in pixels. Leave at 640 unless the model changed.
@@ -327,24 +366,24 @@ def detect_survey(
         "warnings": [],
     }
 
+    fmt = "SDF" if xtf_path.suffix.lower() == ".sdf" else "XTF"
     try:
-        header = read_file_header(xtf_path)
-        out["sonar"] = header.sonar_name
-        pings = list(iter_pings(xtf_path, header=header, with_samples=True, limit=max_pings))
+        read = _read_sonar(xtf_path, max_pings)
     except Exception as exc:
         out["warnings"].append(
-            "could not read " + xtf_path.name + " as XTF (" + type(exc).__name__
+            "could not read " + xtf_path.name + " as " + fmt + " (" + type(exc).__name__
             + "); no frames produced"
         )
         return out
 
-    out["pings_read"] = len(pings)
-    if not pings:
+    out["sonar"] = read.sonar
+    out["pings_read"] = read.pings_read
+    out["warnings"].extend(read.warnings)
+    if not read.segments:
         out["warnings"].append("no sonar pings found in " + xtf_path.name)
         return out
 
-    usable = [p for p in pings if p.has_geometry]
-    out["pings_without_geometry"] = len(pings) - len(usable)
+    out["pings_without_geometry"] = read.pings_without_geometry
     if out["pings_without_geometry"]:
         # Worth saying out loud: these frames still get scored, they just come
         # back without coordinates. Silence here reads as "the model found
@@ -352,15 +391,25 @@ def detect_survey(
         out["warnings"].append(
             "%d of %d pings lack the altitude or range needed for a position; "
             "frames covering them are scored but not placed"
-            % (out["pings_without_geometry"], len(pings))
+            % (out["pings_without_geometry"], read.pings_read)
         )
 
-    step = _along_track_res_m(usable or pings)
-    out["along_track_res_m"] = round(step, 4) if step else None
+    steps = [
+        read.along_track_res_m or _along_track_res_m([p for p in pings if p.has_geometry] or pings)
+        for pings in read.segments
+    ]
+    known = [s for s in steps if s]
+    out["along_track_res_m"] = round(known[0], 4) if known else None
 
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    for frame in _iter_tiles(pings, out_dir, survey_id, tile, step, out["warnings"]):
+    frames: list = []
+    base = 0
+    for pings, step in zip(read.segments, steps):
+        frames.append(_iter_tiles(pings, out_dir, survey_id, tile, step, out["warnings"], ping_base=base))
+        base += len(pings)
+
+    for frame in itertools.chain.from_iterable(frames):
         out["frames_written"] += 1
         payload = detect(frame.image_path, frame.meta, settings)
 

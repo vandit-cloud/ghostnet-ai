@@ -86,7 +86,7 @@ that does nothing. There is no mystery here, only a data shortage.
 stretch of the same SubPipe track the training boxes come from — same AUV, same
 sonar, same pipeline, separated by a 156-second gap in the timestamps. It
 measures tracking through unseen seabed, NOT generalisation to debris
-elsewhere. The only independent debris is the 14 sonar_detect boxes. Report
+elsewhere. The only independent debris is the 14 sonar_detect boxes.[^sonardetect] Report
 both; never quote 629 alone.
 
 **`ghost_net` ground truth is ours.** 298 boxes hand-drawn on the 73 fishing-net
@@ -575,7 +575,7 @@ convergence — the shape of the tail is the whole answer.
   actually deployed.
 - "Detects debris, validated on 629 held-out boxes." 615 of those are the same
   SubPipe survey. Say "one held-out survey track" or quote the 14 independent
-  boxes.
+  boxes.[^sonardetect]
 - Any figure from the validation split.
 
 **The scope boundary, stated plainly:** held-out test tiles come from the same
@@ -624,8 +624,10 @@ type, expect a large drop. Say so before being asked; it is worth marks.
   means lowering `raw_conf_threshold` toward 0.0225, which buys recall
   (0.534 → 0.670) at roughly double the false alarms. Unresolved on purpose —
   it is a policy call, not a bug.
-- **`debris` has no independent test data worth the name** — 14 boxes. Every
+- **`debris` has no independent test data worth the name** — 14 boxes.[^sonardetect] Every
   other debris number is one SubPipe survey.
 - **`check_annotations.py` thresholds are calibrated for nets in survey tiles**
   (35% per box, 75% union). For the plane chips they must be relaxed with
   `--max-cover 0.95 --max-union 0.95`, or almost everything false-alarms.
+
+[^sonardetect]: Reviewed frame by frame on 26 Sep 2026 (`ai/experiments/sonardetect-review/REVIEW.md`). 7 of these 14 boxes are in two frames that are not clean sonar: `SONARDETECT__000163` is a slide with photographs and `SONARDETECT__000183` is a composed figure with a zoomed inset. They stay in the test split, so every run remains scored on the same data, but only **7 boxes from 5 frames** are clean independent debris. Quote it as "14 boxes, 7 of them from clean frames".

@@ -114,6 +114,11 @@ export interface Detection {
   uncertainty: Uncertainty | null;
   bbox: BBox;
   mask_reference: string | null;
+  /** Outline polygon [[x, y], ...] in frame pixels, same frame as `bbox`.
+   *  Null when only a box exists. Optional so older API payloads still type. */
+  mask_polygon?: number[][] | null;
+  /** A review candidate, not a claim: never count it as a detection found. */
+  review_only?: boolean;
   latitude: number | null;
   longitude: number | null;
   position_error_m: number | null;
@@ -189,6 +194,14 @@ export interface SystemComponentStatus {
 export interface SystemStatus {
   components: SystemComponentStatus[];
   checked_at: string;
+}
+
+/** A survey frame positioned in processing order: `index` is the
+ *  `frame_index` that frame.processed / detection.created events carry. */
+export interface SurveyFrame {
+  id: string;
+  index: number;
+  frame_id: string;
 }
 
 export interface RealtimeEvent {

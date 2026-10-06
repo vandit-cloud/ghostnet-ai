@@ -80,7 +80,8 @@ export function MapLegend() {
         Position uncertainty
       </div>
       <div className="flex items-center gap-2">
-        <span className="h-2 w-4 rounded-sm bg-imperial/20" />
+        {/* Matches the corridor polygon in MapView: ATLANTIC, fill 0.1. */}
+        <span className="h-2 w-4 rounded-sm border border-atlantic/35 bg-atlantic/10" />
         Sonar coverage
       </div>
     </div>

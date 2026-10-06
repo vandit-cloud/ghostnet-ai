@@ -1,4 +1,6 @@
+import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -31,6 +33,23 @@ logging.basicConfig(level=logging.INFO)
 settings = get_settings()
 
 
+def _warm_ai() -> None:
+    """Load and prime the detector so the first survey processed is not the slow one.
+
+    Nothing touched the models until the first processing job built its
+    adapter, so that job paid for loading both models and for the GPU's first
+    inference: 19-23 s for a 40-frame survey against 9.6 s warm, measured on
+    the RTX 3050 on 29 Sep 2026. The models are cached at module level, so
+    doing it once here is enough.
+    """
+    try:
+        from app.services.ai_service import get_ai_adapter
+
+        get_ai_adapter()
+    except Exception:
+        logging.getLogger("ghostnet.startup").exception("AI warm-up failed; the first job will load the models")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db = SessionLocal()
@@ -38,6 +57,10 @@ async def lifespan(app: FastAPI):
         ensure_seed_admin(db)
     finally:
         db.close()
+    # Off the event loop, so /health and login answer while it runs. The test
+    # suite starts the app for every client and must not load GPU models.
+    if os.environ.get("GHOSTNET_SKIP_WARMUP") != "1":
+        asyncio.get_running_loop().run_in_executor(None, _warm_ai)
     yield
 
 

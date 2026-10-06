@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState, type MouseEvent } from "react";
 
 import { PriorityBadge, ReviewStatusBadge, UncertaintyLabel } from "@/components/Badges";
 import { MeterBar } from "@/components/MeterBar";
@@ -35,7 +36,17 @@ export function DetectionTable({
   detections: Detection[];
   showSurvey?: boolean;
 }) {
+  const router = useRouter();
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 } | null>(null);
+
+  // The whole row opens the detection, since rows highlight on hover and
+  // "click the row" is what anyone does. A click that lands on a link or
+  // button inside the row (the survey name) keeps its own target, and the
+  // ID stays a real <Link> for keyboard use and middle-click.
+  function openRow(e: MouseEvent<HTMLTableRowElement>, id: string) {
+    if ((e.target as HTMLElement).closest("a, button")) return;
+    router.push(`/app/detections/${id}`);
+  }
 
   const rows = useMemo(() => {
     if (!sort) return detections;
@@ -85,7 +96,11 @@ export function DetectionTable({
         </thead>
         <tbody>
           {rows.map((d) => (
-            <tr key={d.id} className="border-t border-abyss-700 hover:bg-abyss-800/40">
+            <tr
+              key={d.id}
+              onClick={(e) => openRow(e, d.id)}
+              className="cursor-pointer border-t border-abyss-700 hover:bg-abyss-800/40"
+            >
               <td className="px-4 py-3">
                 <Link href={`/app/detections/${d.id}`} className="font-mono font-medium text-cyan-accent hover:underline">
                   {d.detection_ref}

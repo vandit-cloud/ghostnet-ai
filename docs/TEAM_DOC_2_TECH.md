@@ -443,7 +443,7 @@ hand-edited.
 | China-Offshore-SSS-AI | ~2,072 images | **Contains 73 chips of real side-scan fishing net**, filed under a clutter class because that survey hunts pipelines and treats a net as noise |
 | SCTD | 327 images | Pascal VOC XML boxes |
 | Marine-PULSE | 88 images | Imported for **background only** |
-| SonarDetect | 70 images | Already YOLO; classes remapped, contaminated frames screened out |
+| SonarDetect | 70 images | Already YOLO; classes remapped, contaminated frames screened. A later review by eye found 14 of 70 still contaminated; they are kept and footnoted[^sonardetect] |
 | GHOSTNET-HAND (ours) | 73 images | **The only class whose ground truth we produced.** Boxes hand-drawn, one per net panel, screened by `check_annotations.py`, convention documented |
 | GHOSTNET-SYNTH (ours) | 1,364 images | Real net returns composited onto real seabed. Built for gv6; **did not work** |
 | PLANE-HAND (ours) | 60 images | Pinned **train-only** |
@@ -724,3 +724,5 @@ The headline survey — `demo/NBP0505_line01B_demo.xtf` — is a real, unedited 
 | `docs/HANDOFF.md` | The contract versioning rules |
 | `docs/OPERATOR_MANUAL.md` | The application, click by click |
 | `docs/MODEL_CAPABILITY_EVIDENCE.md` | Evidence behind the capability claims |
+
+[^sonardetect]: Reviewed frame by frame on 26 Sep 2026 (`ai/experiments/sonardetect-review/REVIEW.md`). 7 of these 14 boxes are in two frames that are not clean sonar: `SONARDETECT__000163` is a slide with photographs and `SONARDETECT__000183` is a composed figure with a zoomed inset. They stay in the test split, so every run remains scored on the same data, but only **7 boxes from 5 frames** are clean independent debris. Quote it as "14 boxes, 7 of them from clean frames".

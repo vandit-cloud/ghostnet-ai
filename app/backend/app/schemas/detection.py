@@ -36,6 +36,11 @@ class DetectionOut(BaseModel):
     uncertainty: Uncertainty | None
     bbox: BBox
     mask_reference: str | None
+    #: Outline polygon [[x, y], ...] in the same pixel frame as bbox, or None
+    #: when only a box exists. Draw with the same scale as the box.
+    mask_polygon: list[list[float]] | None = None
+    #: A review candidate, not a claim: do not count it as a detection found.
+    review_only: bool = False
     latitude: float | None
     longitude: float | None
     position_error_m: float | None

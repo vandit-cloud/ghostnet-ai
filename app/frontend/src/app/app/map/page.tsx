@@ -12,6 +12,7 @@ import { FilterSelect } from "@/components/FilterBar";
 import { MapLegend } from "@/components/MapLegend";
 import { SonarViewer } from "@/components/SonarViewer";
 import { EmptyState, ErrorState, LoadingSkeleton } from "@/components/States";
+import { CLASS_OPTIONS, PRIORITY_OPTIONS, REVIEW_OPTIONS } from "@/features/detections/filterOptions";
 import { useDetection } from "@/features/detections/hooks";
 import { useSurveyMap } from "@/features/map/hooks";
 import { useSurveys } from "@/features/surveys/hooks";
@@ -24,27 +25,6 @@ const MapView = dynamic(() => import("@/components/MapView").then((mod) => mod.M
   loading: () => <LoadingSkeleton rows={1} label="Loading map…" />,
 });
 
-const CLASS_OPTIONS = [
-  { value: "ghost_net", label: "Ghost Net" },
-  { value: "debris", label: "Debris" },
-  { value: "natural_object", label: "Natural Object" },
-  { value: "unknown", label: "Unknown" },
-];
-
-const PRIORITY_OPTIONS = [
-  { value: "critical", label: "Critical" },
-  { value: "high", label: "High" },
-  { value: "medium", label: "Medium" },
-  { value: "low", label: "Low" },
-];
-
-const REVIEW_OPTIONS = [
-  { value: "pending", label: "Pending" },
-  { value: "unknown", label: "Unknown" },
-  { value: "accepted_artificial", label: "Accepted — Artificial" },
-  { value: "rejected_natural", label: "Rejected — Natural" },
-];
-
 export default function MapPage() {
   return (
     <Suspense fallback={<AppShell title="GIS Map"><LoadingSkeleton rows={4} label="Loading map…" /></AppShell>}>
@@ -56,7 +36,7 @@ export default function MapPage() {
 function MapPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { data: surveys } = useSurveys(1, 100);
+  const { data: surveys, isLoading: surveysLoading } = useSurveys(1, 100);
 
   const surveyId = searchParams.get("survey_id") ?? surveys?.items[0]?.id;
   const detectionClass = searchParams.get("detection_class") ?? undefined;
@@ -223,7 +203,12 @@ function MapPageContent() {
         </div>
       )}
 
-      {!surveyId ? (
+      {/* The default survey comes from the survey list, so until that list
+          arrives there is no surveyId -- which used to render "No surveys
+          available." for a beat on every sidebar visit before the map. */}
+      {!surveyId && surveysLoading ? (
+        <LoadingSkeleton rows={4} label="Loading map…" />
+      ) : !surveyId ? (
         <EmptyState title="No surveys available." description="Create a survey to view detections on the map." />
       ) : isLoading ? (
         <LoadingSkeleton rows={4} label="Loading map…" />
@@ -261,7 +246,7 @@ function MapPageContent() {
                     Full Investigation →
                   </Link>
                 </div>
-                <SonarViewer frameId={selectedDetection.frame_id} bbox={selectedDetection.bbox} />
+                <SonarViewer frameId={selectedDetection.frame_id} bbox={selectedDetection.bbox} polygon={selectedDetection.mask_polygon} />
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                   <span>{formatConfidence(selectedDetection.calibrated_confidence)}</span>
                   <UncertaintyLabel level={selectedDetection.uncertainty} />

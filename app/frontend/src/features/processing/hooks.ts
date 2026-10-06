@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "@/api/client";
-import type { ProcessingJob } from "@/types";
+import type { ProcessingJob, SurveyFrame } from "@/types";
 
 const ACTIVE_STATUSES: ProcessingJob["status"][] = ["QUEUED", "VALIDATING", "PROCESSING"];
 
@@ -83,6 +83,13 @@ export function useStartProcessing(surveyId: string) {
       queryClient.setQueryData(["job", job.id], job);
       // A new run means a new row in the history the comparison reads.
       queryClient.invalidateQueries({ queryKey: ["survey-jobs", surveyId] });
+      // force_restart deleted the previous run's detections on the server.
+      // Detections only refetch on `detection.created`, so a fresh run that
+      // finds nothing kept drawing the discarded ones as contacts in its scene.
+      queryClient.invalidateQueries({ queryKey: ["detections"] });
+      queryClient.invalidateQueries({ queryKey: ["survey-map", surveyId] });
+      queryClient.invalidateQueries({ queryKey: ["survey", surveyId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
     },
   });
 }
@@ -96,5 +103,16 @@ export function useCancelJob(surveyId: string) {
       queryClient.invalidateQueries({ queryKey: ["active-job", surveyId] });
       queryClient.invalidateQueries({ queryKey: ["latest-job", surveyId] });
     },
+  });
+}
+
+/** The survey's frames in the order a run processes them. Fixed for the life
+ * of the survey's uploads, so it is fetched once and never polled. */
+export function useSurveyFrames(surveyId: string | undefined) {
+  return useQuery({
+    queryKey: ["survey-frames", surveyId],
+    queryFn: () => apiFetch<SurveyFrame[]>(`/surveys/${surveyId}/frames`),
+    enabled: Boolean(surveyId),
+    staleTime: 5 * 60 * 1000,
   });
 }

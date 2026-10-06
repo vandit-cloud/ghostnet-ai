@@ -5,7 +5,7 @@ Public surface, deliberately small:
     from ghostnet import detect, detect_batch, warmup, CONTRACT_VERSION
 """
 
-from . import preprocess, xtf
+from . import preprocess, sdf, xtf
 from .config import SETTINGS, Settings
 from .contract import CONTRACT_VERSION, Detection, FrameResult, validate
 from .infer import detect, detect_batch, load_model, warmup
@@ -18,7 +18,7 @@ __all__ = [
     # one frame
     "detect",
     "detect_batch",
-    # a whole sonar file: xtf -> waterfall -> tiles -> detections
+    # a whole sonar file: xtf/sdf -> waterfall -> tiles -> detections
     "detect_survey",
     # tiling only, for a consumer that scores through its own pipeline
     "iter_survey_frames",
@@ -38,6 +38,7 @@ __all__ = [
     # config, and the two modules a caller may want directly
     "Settings",
     "SETTINGS",
+    "sdf",
     "xtf",
     "preprocess",
     "__version__",

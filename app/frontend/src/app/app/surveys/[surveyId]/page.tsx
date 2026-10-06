@@ -40,6 +40,8 @@ export default function SurveyDetailPage() {
   const [heading, setHeading] = useState("");
   const [range, setRange] = useState("");
 
+  const [uploading, setUploading] = useState<string | null>(null);
+
   async function handleFiles(selected: File[]) {
     const metadata: Record<string, number> = {};
     if (latitude) metadata.latitude = Number(latitude);
@@ -48,14 +50,26 @@ export default function SurveyDetailPage() {
     if (heading) metadata.heading = Number(heading);
     if (range) metadata.range = Number(range);
 
-    for (const file of selected) {
-      try {
-        await uploadFile.mutateAsync({ file, metadata: Object.keys(metadata).length ? metadata : undefined });
-      } catch {
-        push(`Failed to upload ${file.name}.`, "error");
+    // "Upload complete." used to be pushed even when every file had failed.
+    let failed = 0;
+    try {
+      for (const [i, file] of selected.entries()) {
+        setUploading(
+          selected.length > 1 ? `Uploading ${file.name} (${i + 1} of ${selected.length})…` : `Uploading ${file.name}…`
+        );
+        try {
+          await uploadFile.mutateAsync({ file, metadata: Object.keys(metadata).length ? metadata : undefined });
+        } catch {
+          failed++;
+          push(`Failed to upload ${file.name}.`, "error");
+        }
       }
+    } finally {
+      setUploading(null);
     }
-    push("Upload complete.", "success");
+    const ok = selected.length - failed;
+    if (ok && !failed) push(ok === 1 ? `Uploaded ${selected[0].name}.` : `Uploaded ${ok} files.`, "success");
+    else if (ok) push(`Uploaded ${ok} of ${selected.length} files — ${failed} failed.`, "error");
   }
 
   async function handleRemoveFile(fileId: string) {
@@ -180,7 +194,11 @@ export default function SurveyDetailPage() {
             Optional metadata applied to files uploaded below. Leave blank if unavailable — coordinates are never
             invented. Sonar range (per-side scan width) drives the map&apos;s coverage-corridor overlay.
           </p>
-          <UploadDropzone onFilesSelected={handleFiles} accept=".xtf,.jsf,.tif,.tiff,.png,.jpg,.jpeg" />
+          <UploadDropzone
+            onFilesSelected={handleFiles}
+            accept=".xtf,.sdf,.jsf,.tif,.tiff,.png,.jpg,.jpeg"
+            busy={uploading}
+          />
         </section>
 
         <section className="panel p-4">

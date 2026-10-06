@@ -9,7 +9,7 @@ from app.core.deps import get_current_user, require_roles
 from app.core.errors import ApiError
 from app.models.enums import Role
 from app.models.user import User
-from app.schemas.processing import ProcessingJobOut, ProcessingStartRequest
+from app.schemas.processing import ProcessingJobOut, ProcessingStartRequest, SurveyFrameOut
 from app.services import audit_service, processing_service, survey_service
 
 settings = get_settings()
@@ -106,3 +106,14 @@ def cancel_job(
         db, actor=user, action="processing.cancelled", entity_type="job", entity_id=str(job_id), request=request
     )
     return ProcessingJobOut.model_validate(job)
+
+
+@router.get("/surveys/{survey_id}/frames", response_model=list[SurveyFrameOut])
+def list_survey_frames(survey_id: uuid.UUID, db: Session = Depends(get_db)) -> list[SurveyFrameOut]:
+    """The survey's frames in processing order, so the processing page can
+    paint each real frame as its `frame.processed` event arrives. `index` is
+    the `frame_index` those events carry. Ids only: the images themselves come
+    from /frames/{id}/image, one request per frame, when they are needed."""
+    survey_service.get_survey_or_404(db, survey_id)
+    frames = processing_service.survey_frames_in_order(db, survey_id)
+    return [SurveyFrameOut(id=f.id, index=i, frame_id=f.frame_id) for i, f in enumerate(frames)]

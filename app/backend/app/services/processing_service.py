@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import threading
 import uuid
 from datetime import datetime, timezone
 
@@ -21,6 +22,17 @@ logger = logging.getLogger("ghostnet.processing")
 
 _running_tasks: dict[str, asyncio.Task] = {}
 _cancel_flags: set[str] = set()
+
+#: Inference runs on a worker thread (see `_analyze`), and this keeps it to one
+#: frame at a time across all jobs -- which is what running it on the event
+#: loop used to guarantee implicitly. The models are shared module-level
+#: objects, and two jobs scoring at once would contend for one 4 GB GPU anyway.
+_INFERENCE_LOCK = threading.Lock()
+
+
+def _analyze(adapter: AIServiceAdapter, **kwargs):
+    with _INFERENCE_LOCK:
+        return adapter.analyze_frame(**kwargs)
 
 ACTIVE_JOB_STATUSES = (JobStatus.QUEUED, JobStatus.VALIDATING, JobStatus.PROCESSING)
 
@@ -93,6 +105,24 @@ def list_jobs_for_survey(db: Session, survey_id: uuid.UUID, limit: int = 10) -> 
         .filter(ProcessingJob.survey_id == survey_id)
         .order_by(ProcessingJob.created_at.desc())
         .limit(min(limit, MAX_JOB_HISTORY))
+        .all()
+    )
+
+
+def survey_frames_in_order(db: Session, survey_id: uuid.UUID) -> list[SonarFrame]:
+    """A survey's frames in the order a processing run walks them.
+
+    The run used to iterate a bare `.all()`, whose order Postgres does not
+    promise, so "frame 3 just finished" named nothing a client could look up.
+    Ping time first (the order the towfish recorded them), then frame_id and
+    the primary key so frames without a timestamp still sort the same way on
+    every call. GET /surveys/{id}/frames returns this same list, and
+    `frame_index` in the realtime events is a position in it.
+    """
+    return (
+        db.query(SonarFrame)
+        .filter(SonarFrame.survey_id == survey_id)
+        .order_by(SonarFrame.timestamp.asc().nulls_last(), SonarFrame.frame_id.asc(), SonarFrame.id.asc())
         .all()
     )
 
@@ -207,7 +237,7 @@ async def _run_job(job_id: uuid.UUID) -> None:
         db.commit()
         await _emit(str(survey_id), "job.updated", {"job_id": str(job_id), "status": job.status, "stage": job.stage})
 
-        frames = db.query(SonarFrame).filter(SonarFrame.survey_id == survey_id).all()
+        frames = survey_frames_in_order(db, survey_id)
         adapter: AIServiceAdapter = get_ai_adapter()
 
         for stage in (JobStage.DECODING, JobStage.PREPROCESSING):
@@ -218,7 +248,7 @@ async def _run_job(job_id: uuid.UUID) -> None:
 
         job.status = JobStatus.PROCESSING
 
-        for frame in frames:
+        for frame_index, frame in enumerate(frames):
             if str(job_id) in _cancel_flags:
                 job.status = JobStatus.CANCELLED
                 job.completed_at = datetime.now(timezone.utc)
@@ -252,7 +282,14 @@ async def _run_job(job_id: uuid.UUID) -> None:
                     layback_m=frame.layback_m,
                     nadir_row=frame.nadir_row,
                 )
-                result = adapter.analyze_frame(
+                # Off the event loop. Called directly, inference blocked every
+                # other request for the whole run: frame images the processing
+                # page needs for its waterfall took 0.6-1.1 s instead of
+                # 0.12 s (measured 29 Sep 2026), so the first run showed
+                # "LOADING RETURNS" while the towfish ran ahead of its pictures.
+                result = await asyncio.to_thread(
+                    _analyze,
+                    adapter,
                     survey_id=str(survey_id),
                     frame_id=frame.frame_id,
                     image_path=frame.image_reference,
@@ -268,16 +305,18 @@ async def _run_job(job_id: uuid.UUID) -> None:
                         await _emit(
                             str(survey_id),
                             "detection.created",
-                            {"detection_id": str(detection.id)},
+                            {"detection_id": str(detection.id), "frame_index": frame_index},
                         )
                     except detection_service.DetectionValidationError as exc:
                         logger.warning("Rejected invalid AI detection for frame %s: %s", frame.frame_id, exc.reason)
                         db.rollback()
 
                 job.frames_processed += 1
+                frame_failed = False
             except Exception:
                 logger.exception("Frame processing failed for %s", frame.frame_id)
                 job.frames_failed += 1
+                frame_failed = True
 
             job.progress = int(((job.frames_processed + job.frames_failed) / max(job.frames_total, 1)) * 100)
             db.commit()
@@ -289,6 +328,12 @@ async def _run_job(job_id: uuid.UUID) -> None:
                     "frames_processed": job.frames_processed,
                     "frames_failed": job.frames_failed,
                     "progress": job.progress,
+                    # Which frame just finished, so the processing page can
+                    # paint that frame (or mark it failed) rather than guess.
+                    # frame_index is its position in survey_frames_in_order().
+                    "frame_index": frame_index,
+                    "frame_id": str(frame.id),
+                    "failed": frame_failed,
                 },
             )
 

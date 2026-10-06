@@ -1,0 +1,20 @@
+{
+  "run": "gv9r-netseg-ridge3-s0",
+  "task": "segment",
+  "classes": [
+    "ghost_net"
+  ],
+  "weights_init": "E:/New folder/ai/models/pretrained/yolo11s-seg.pt",
+  "data": "E:/New folder/ai/data/net_seg_ridge3/data.yaml",
+  "seed": 0,
+  "epochs": 1000,
+  "batch": 4,
+  "imgsz": 640,
+  "rect": false,
+  "mosaic": 1.0,
+  "no_colour_aug": true,
+  "device": "cuda",
+  "git_commit": "9fc9f1ad904828cc6303cb032e78be0f382169a1",
+  "cli": "ai/scripts/train_net_seg.py --data E:/New folder/ai/data/net_seg_ridge3/data.yaml --weights E:/New folder/ai/models/pretrained/yolo11s-seg.pt --name gv9r-netseg-ridge3-s0 --epochs 1000 --seed 0 --no-colour-aug",
+  "caveat": "test split is 11 chips -- upper bound only. NOT comparable with gv5 mAP50: different task, label geometry and metric. Report under Tier 1 of EXPERIMENT_GV7_PLAN.md 10.5 as a review candidate, never a detection claim."
+}

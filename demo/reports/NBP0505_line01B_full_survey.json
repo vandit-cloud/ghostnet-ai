@@ -1,18 +1,18 @@
 {
-  "survey_id": "b183a189-907c-4260-8795-6699523a4bab",
-  "generated_at": "2026-09-05T08:13:29.645257+00:00",
+  "survey_id": "e664f0a0-47c3-4983-8ceb-9175046270fe",
+  "generated_at": "2026-09-28T11:32:20.522687+00:00",
   "report_type": "full_survey",
   "filters": {},
   "detections": [
     {
-      "detection_id": "D-2F811B25",
-      "frame_id": "48d262d9-7365-4af7-acca-609523bd8c16",
+      "detection_id": "D-CF9CC70C",
+      "frame_id": "fc20b8d7-b046-48ad-92ae-86cb3cfb0ca7",
       "class": "debris",
-      "raw_score": 0.112,
-      "calibrated_confidence": 0.3185,
+      "raw_score": 0.1115,
+      "calibrated_confidence": 0.3181,
       "uncertainty": "high",
-      "latitude": -46.346100814019806,
-      "longitude": -73.7273604582446,
+      "latitude": -46.34610209128998,
+      "longitude": -73.72735963723564,
       "position_error_m": 3.18,
       "dimensions": {
         "width": 12.93,
@@ -27,17 +27,17 @@
         "shadow_context": "not_evaluated: the shadow would fall outside this frame",
         "notes": "detector class: wreck"
       },
-      "created_at": "2026-09-05T13:43:24.684097+05:30"
+      "created_at": "2026-09-28T11:32:01.607916+00:00"
     },
     {
-      "detection_id": "D-76EF0D98",
-      "frame_id": "3b624209-4f6d-4029-885e-68af4c7e15f9",
+      "detection_id": "D-0704F6CB",
+      "frame_id": "7698cada-babc-4201-b1a6-5b14a5f13305",
       "class": "debris",
-      "raw_score": 0.1968,
-      "calibrated_confidence": 0.3736,
+      "raw_score": 0.1966,
+      "calibrated_confidence": 0.3735,
       "uncertainty": "high",
-      "latitude": -46.34628604826851,
-      "longitude": -73.72667374196891,
+      "latitude": -46.34628619079869,
+      "longitude": -73.7266735669925,
       "position_error_m": 3.76,
       "dimensions": {
         "width": 13.8,
@@ -52,7 +52,32 @@
         "shadow_context": "confirmed: the port flank is 44% darker than the near flank, consistent with an object standing proud of the seabed",
         "notes": "detector class: wreck"
       },
-      "created_at": "2026-09-05T13:43:25.292535+05:30"
+      "created_at": "2026-09-28T11:32:02.835481+00:00"
+    },
+    {
+      "detection_id": "D-47669239",
+      "frame_id": "f6f08c65-a5a5-477a-ad67-a27e2c807eb5",
+      "class": "debris",
+      "raw_score": 0.1563,
+      "calibrated_confidence": 0.3499,
+      "uncertainty": "high",
+      "latitude": -46.336677043137236,
+      "longitude": -73.72724259965247,
+      "position_error_m": 4.54,
+      "dimensions": {
+        "width": 3.23,
+        "length": 1131.1,
+        "status": "estimated"
+      },
+      "priority": "low",
+      "review_status": "pending",
+      "model_version": "gv5-yolo11s",
+      "evidence_summary": {
+        "artificial_verification": "positive",
+        "shadow_context": "confirmed: the starboard flank is 29% darker than the near flank, consistent with an object standing proud of the seabed",
+        "notes": ""
+      },
+      "created_at": "2026-09-28T11:32:06.818994+00:00"
     }
   ]
 }

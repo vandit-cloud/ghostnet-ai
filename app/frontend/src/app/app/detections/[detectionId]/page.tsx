@@ -84,7 +84,7 @@ export default function DetectionDetailPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div>
           <h3 className="mb-2 text-sm font-semibold text-slate-200">Sonar Evidence</h3>
-          <SonarViewer frameId={detection.frame_id} bbox={detection.bbox} />
+          <SonarViewer frameId={detection.frame_id} bbox={detection.bbox} polygon={detection.mask_polygon} />
         </div>
 
         {/* everything else: progressively disclosed, one section open by default */}

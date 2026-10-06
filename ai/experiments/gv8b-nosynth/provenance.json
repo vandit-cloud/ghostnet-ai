@@ -1,0 +1,164 @@
+{
+  "created_utc": "2026-09-22T20:10:08.119480+00:00",
+  "git_commit": "9fc9f1a",
+  "weights_init": "E:/New folder/ai/models/pretrained/yolo11s.pt",
+  "args": {
+    "model": "E:/New folder/ai/models/pretrained/yolo11s.pt",
+    "data": "E:/New folder/ai/data/processed/data_nosynth.yaml",
+    "name": "gv8b-nosynth",
+    "epochs": 20,
+    "imgsz": 640,
+    "batch": 4,
+    "patience": 25,
+    "workers": 0,
+    "init_weights": null,
+    "seed": 0,
+    "device": null,
+    "resume": false,
+    "force": true,
+    "allow_dataset_drift": false,
+    "dry_run": false,
+    "mosaic": null,
+    "close_mosaic": null,
+    "scale": null,
+    "cls": null,
+    "box": null,
+    "dfl": null,
+    "lr0": null,
+    "lrf": null,
+    "cos_lr": false,
+    "optimizer": null
+  },
+  "device": "0",
+  "torch": "2.13.0+cu126",
+  "cuda_available": true,
+  "gpu": "NVIDIA GeForce RTX 3050 Laptop GPU",
+  "dataset_build": {
+    "sources": [
+      "AI4SHIPWRECKS",
+      "CHINA-OFFSHORE",
+      "GHOSTNET-HAND",
+      "GHOSTNET-SYNTH",
+      "GHOSTVISION",
+      "MARINE-PULSE",
+      "PLANE-HAND",
+      "SCTD",
+      "SONARDETECT",
+      "SUBPIPE"
+    ],
+    "images_per_source": {
+      "AI4SHIPWRECKS": 6976,
+      "CHINA-OFFSHORE": 2072,
+      "GHOSTNET-HAND": 73,
+      "GHOSTNET-SYNTH": 1364,
+      "GHOSTVISION": 6655,
+      "MARINE-PULSE": 88,
+      "PLANE-HAND": 60,
+      "SCTD": 327,
+      "SONARDETECT": 70,
+      "SUBPIPE": 2049
+    },
+    "exact_duplicates_dropped": {
+      "SCTD": 30
+    },
+    "split_sizes": {
+      "train": 13896,
+      "val": 1492,
+      "test": 4346
+    },
+    "background_per_split": {
+      "train": 6041,
+      "val": 820,
+      "test": 2930
+    },
+    "boxes_per_class_per_split": {
+      "train": {
+        "ghost_net": 2246,
+        "plane": 100,
+        "wreck": 1373,
+        "debris": 1556,
+        "ghost_pot": 7434
+      },
+      "val": {
+        "ghost_net": 47,
+        "plane": 9,
+        "wreck": 285,
+        "ghost_pot": 1213,
+        "debris": 37
+      },
+      "test": {
+        "ghost_net": 36,
+        "plane": 9,
+        "wreck": 836,
+        "debris": 629,
+        "ghost_pot": 567
+      }
+    },
+    "frames_per_class_per_split": {
+      "train": {
+        "ghost_net": 1415,
+        "plane": 99,
+        "wreck": 586,
+        "debris": 1481,
+        "ghost_pot": 4274
+      },
+      "val": {
+        "ghost_net": 11,
+        "plane": 9,
+        "wreck": 136,
+        "ghost_pot": 500,
+        "debris": 16
+      },
+      "test": {
+        "ghost_net": 11,
+        "plane": 9,
+        "wreck": 440,
+        "debris": 622,
+        "ghost_pot": 334
+      }
+    },
+    "declared_classes": [
+      "wreck",
+      "plane",
+      "debris",
+      "ghost_pot",
+      "ghost_net"
+    ],
+    "ratios": [
+      0.7,
+      0.15,
+      0.15
+    ],
+    "seed": 0,
+    "warnings": [],
+    "dataset_version": "test4346-8bfbcc102487",
+    "fingerprints": {
+      "dataset_version": "test4346-8bfbcc102487",
+      "splits": {
+        "train": {
+          "n_images": 13896,
+          "n_labels": 13896,
+          "n_background": 6041,
+          "image_list": "64939cdf884d682a7067479faed84166339828492b7e1fbb202ce2ec62d14070",
+          "label_content": "bffa394f1c0a4fe652176de726e2e03df499b92690cb4ea28b4b7a5d9cbdae02"
+        },
+        "val": {
+          "n_images": 1492,
+          "n_labels": 1492,
+          "n_background": 820,
+          "image_list": "8e18545d3c80ca58f305d5df226389b5bbaf5b5b86c55fafc4db689088a5667a",
+          "label_content": "427ad98049bf33715bfbb50053b27bbdffba37747e5d2cb50dbb7c23683e8ef9"
+        },
+        "test": {
+          "n_images": 4346,
+          "n_labels": 4346,
+          "n_background": 2930,
+          "image_list": "8bfbcc1024874fe8d9b176d1758a0a354f47a5d5b8cd46f67dc7b2e92a7c6dd6",
+          "label_content": "09b61d8a64353cb3249f62dda516c046bb00f850a4f854fe39e72800ae28b434"
+        }
+      },
+      "note": "dataset_version is keyed on the TEST split only, because test is the ruler and train/val are allowed to grow. Compare `splits.test` digests to assert comparability with an earlier run."
+    }
+  },
+  "hyperparameter_overrides": {}
+}

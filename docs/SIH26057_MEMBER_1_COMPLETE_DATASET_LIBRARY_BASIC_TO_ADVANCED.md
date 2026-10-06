@@ -206,9 +206,8 @@ Not a ready ghost-net detector dataset.
 Real investigation-site SSS packages, including processed and sometimes raw SSS data, JSF files, GeoTIFF mosaics and target lists.
 
 ### Example sources
-https://pinta.bsh.de/O-1.3?lang=en
-https://pinta.bsh.de/N-3.8?lang=en
-https://pinta.bsh.de/N-3.5?lang=en&tab=daten
+Portal: https://pinta.bsh.de — sites **O-1.3**, **N-3.8**, **N-3.5** (tab *Daten*).
+(BSH's linking policy asks for the portal root, not a deep link.)
 
 ### Best use
 - raw/processed SSS parser development
@@ -753,10 +752,8 @@ https://zenodo.org/records/10209445
 DeeperSense tools:
 https://github.com/DeeperSense/deepersense-seafloorscan
 
-BSH/PINTA examples:
-https://pinta.bsh.de/O-1.3?lang=en
-https://pinta.bsh.de/N-3.8?lang=en
-https://pinta.bsh.de/N-3.5?lang=en&tab=daten
+BSH/PINTA examples — portal: https://pinta.bsh.de
+(sites **O-1.3**, **N-3.8**, **N-3.5**; linking policy asks for the root, not a deep link)
 
 ## Discovery
 

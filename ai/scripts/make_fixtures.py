@@ -45,8 +45,13 @@ def example_full() -> FrameResult:
                 cls="ghost_net",
                 raw_score=0.91,
                 calibrated_confidence=0.83,
-                uncertainty="low",
+                # What the net segmentation model emits since contract 1.3.0:
+                # an outline inside the bbox, review_only, and never a "low"
+                # band on an uncalibrated score.
+                uncertainty="medium",
                 bbox=[320, 180, 190, 120],
+                mask=[[330, 290], [345, 298], [508, 192], [494, 182]],
+                review_only=True,
                 latitude=20.123456,
                 longitude=70.123456,
                 position_error_m=4.5,

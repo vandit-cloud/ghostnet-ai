@@ -19,10 +19,12 @@ below as it was found.
 | **B1** dashboard counts all surveys | **fixed** | every stat scoped to the survey the card names |
 | **B2** no survey on a detection row | **fixed** | Survey column plus a Survey filter |
 | **D1** IPv6 fallback on every call | **fixed** | frontend addresses `127.0.0.1` |
-| **B3** selected-detection report | open | needs a `reports.detection_id` migration |
-| **B4** filtered-detections report | open | page never sends `filters` |
-| **B5** bbox bounds ignore the filter | open | |
-| **C1-C7** API robustness | open | lenient, not broken, except C1 |
+| **B3** selected-detection report | **fixed** 26 Sep | detection id kept in the report's `filters`, no migration |
+| **B4** filtered-detections report | **fixed** 26 Sep | Reports page sends `filters`; unknown or empty filters are a 422 |
+| **B5** bbox bounds ignore the filter | **fixed** 26 Sep | filtered bounds frame the kept markers, not the whole track |
+| **C1** report on an unknown survey | **fixed** 26 Sep | 404 SURVEY_NOT_FOUND |
+| **C2** selected report without an id | **fixed** 26 Sep | 422 DETECTION_ID_REQUIRED |
+| **C3-C7** API robustness | open | lenient, not broken |
 | **F1** starboard half of every frame mirrored | **fixed** | sample order detected per channel; nadir now lands at the centre |
 | **F2** uploaded images never produced a detection | **fixed** | the frame stored a storage key where the detector needed a path |
 | **F3** boxes hugging the tile edge | **fixed** | shape-based suppression in the decision layer, reported not silent |
@@ -238,7 +240,16 @@ survey, and the Detections page has a Survey filter alongside Class / Priority /
 Review Status. The column hides itself when the page is already scoped to one
 survey rather than repeating the same name down every row.
 
-### B3 · A "selected detection" report contains the whole survey — **M2**
+### B3 · A "selected detection" report contains the whole survey — **M2** — FIXED
+
+**Fixed 26 Sep.** `create_report` now stores the detection id in the report's
+`filters` (`{"detection_id": ...}`), the column that already records a
+report's scope, so it survives into the background generator without a
+migration. The detection must belong to the report's survey (404 otherwise),
+and a selected report whose id is somehow missing comes out empty, never as
+the whole survey. Regression tests: `app/backend/tests/test_report_scope.py`.
+
+*As found:*
 
 Ask for a report on one detection and you get all of them, labelled
 `type: selected_detection`. Verified byte-identical to the full-survey export:
@@ -264,7 +275,16 @@ cmp: IDENTICAL
 This is a data-correctness bug, not cosmetic: the export claims a scope it does
 not have. Needs a migration to fix properly.
 
-### B4 · "Filtered detections" reports are also unfiltered — **M2**
+### B4 · "Filtered detections" reports are also unfiltered — **M2** — FIXED
+
+**Fixed 26 Sep.** The Reports page shows Class / Priority / Review Status
+filters when the type is *Filtered Detections* and sends them; the Detections
+page has a "Report on these filters" link that carries its active filters over.
+The backend refuses an unknown filter key (422 UNKNOWN_REPORT_FILTER) and a
+filtered report with no filter (422 REPORT_FILTERS_REQUIRED), because either
+would export the whole survey under a "filtered" label.
+
+*As found:*
 
 Same output as full survey. The backend *can* filter
 (`report_service.py:62-71` reads `class`, `priority`, `review_status`,
@@ -274,7 +294,14 @@ object — it posts only `survey_id`, `type`, `format`
 and does nothing. Either wire the Detections page's active filters through, or
 remove the option until it works.
 
-### B5 · A bbox that excludes every marker still zooms to the whole survey — **M2**
+### B5 · A bbox that excludes every marker still zooms to the whole survey — **M2** — FIXED
+
+**Fixed 26 Sep.** Unfiltered, the bounds still cover markers plus track.
+With any bbox or filter, they cover the markers the filter kept; if it kept
+none, the requested bbox, then the track. The map caps the fit at zoom 16,
+since one kept marker is a zero-area box.
+
+*As found:*
 
 The marker filter works (0 markers returned), but `bounds` is computed from
 markers **plus the unfiltered track**
@@ -290,8 +317,8 @@ or the next person writing a client, hits them.
 
 | # | probe | now | should be | owner |
 |---|---|---|---|---|
-| C1 | `POST /reports` with an unknown `survey_id` | **500 INTERNAL_ERROR** | 404 SURVEY_NOT_FOUND | M2 |
-| C2 | `POST /reports` `type=selected_detection`, no `detection_id` | 202 Accepted | 422 | M2 |
+| C1 | `POST /reports` with an unknown `survey_id` | **500 INTERNAL_ERROR** | 404 SURVEY_NOT_FOUND | M2 — **fixed 26 Sep** |
+| C2 | `POST /reports` `type=selected_detection`, no `detection_id` | 202 Accepted | 422 | M2 — **fixed 26 Sep** |
 | C3 | `GET /surveys/<unknown>/jobs/active` | 200 `null` | 404 | M2 |
 | C4 | `GET /detections?detection_class=dragon` | 200, empty list | 422 — a typo should not look like "no results" | M2 |
 | C5 | `GET /detections?review_status=maybe` | 200, empty list | 422 | M2 |
@@ -499,5 +526,8 @@ Recorded so nobody spends a day on them.
 2. **Should the Dashboard follow a survey or the whole fleet?** — **decided:
    follow the survey.** The card leads with a survey name, so the numbers
    beside it are that survey's.
-3. **B3 needs a migration** (`reports.detection_id`). Still open. Worth batching
-   with any other schema change rather than shipping alone.
+3. **B3 needs a migration** (`reports.detection_id`). — **decided: no
+   migration.** The id lives in the report's `filters` JSON, which is already
+   the record of what a report covers. A column would add a foreign key to a
+   detection that re-processing can delete, for a report that is generated
+   once and never re-read from that id.

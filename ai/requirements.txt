@@ -16,6 +16,13 @@ torchvision==0.28.0+cu126
 
 ultralytics==8.4.134
 
+# The ghost_net U-Net (ghostnet.unet): architecture from smp, ResNet-34
+# encoder from timm. Only needed when a U-Net net model is configured, which
+# the promoted ghostnet_net.pt is. Encoder weights are never downloaded at
+# inference (weights=None), so huggingface_hub's version does not matter here.
+segmentation-models-pytorch==0.5.0
+timm==1.0.30
+
 # headless: no libGL dependency, so the same pin works on Windows, Linux and in Docker.
 # If you ever need cv2.imshow locally, swap to opencv-python of the same version.
 opencv-python-headless==5.0.0.93

@@ -11,7 +11,20 @@ import type { BBox } from "@/types";
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 4;
 
-export function SonarViewer({ frameId, bbox }: { frameId: string; bbox: BBox | null }) {
+/** Outline polygon [[x, y], ...] in frame pixels -- the same frame and origin
+ *  as `bbox` (AI contract 1.3.0). Only nets from the segmentation model carry
+ *  one; everything else is box-only and passes null. */
+type Polygon = number[][];
+
+export function SonarViewer({
+  frameId,
+  bbox,
+  polygon = null,
+}: {
+  frameId: string;
+  bbox: BBox | null;
+  polygon?: Polygon | null;
+}) {
   const { url, isLoading, isError } = useFrameImage(frameId);
   const imgRef = useRef<HTMLImageElement>(null);
   const [scale, setScale] = useState<{ x: number; y: number } | null>(null);
@@ -146,6 +159,7 @@ export function SonarViewer({ frameId, bbox }: { frameId: string; bbox: BBox | n
   }
 
   const hasBox = bbox && bbox.x !== null && bbox.y !== null && bbox.w !== null && bbox.h !== null;
+  const hasPolygon = Array.isArray(polygon) && polygon.length >= 3;
 
   return (
     <div className="relative inline-block max-w-full">
@@ -223,9 +237,16 @@ export function SonarViewer({ frameId, bbox }: { frameId: string; bbox: BBox | n
             className="block max-w-full select-none"
             draggable={false}
           />
+          {/* With an outline, the box is demoted to a faint dashed frame: a
+            * net is a thin diagonal chain, so its box is mostly seabed, and a
+            * solid box would point the reviewer at the wrong pixels. */}
           {hasBox && scale && (
             <div
-              className="pointer-events-none absolute border-2 shadow-[0_0_0_1px_rgba(0,0,0,0.6)]"
+              className={
+                hasPolygon
+                  ? "pointer-events-none absolute border border-dashed opacity-50"
+                  : "pointer-events-none absolute border-2 shadow-[0_0_0_1px_rgba(0,0,0,0.6)]"
+              }
               style={{
                 borderColor: DETECTION,
                 left: (bbox!.x as number) * scale.x,
@@ -234,6 +255,26 @@ export function SonarViewer({ frameId, bbox }: { frameId: string; bbox: BBox | n
                 height: (bbox!.h as number) * scale.y,
               }}
             />
+          )}
+          {hasPolygon && scale && imgRef.current && (
+            <svg
+              className="pointer-events-none absolute left-0 top-0"
+              width={imgRef.current.clientWidth}
+              height={imgRef.current.clientHeight}
+              aria-label="Detected outline"
+            >
+              <polygon
+                points={polygon!.map(([x, y]) => `${x * scale.x},${y * scale.y}`).join(" ")}
+                fill={DETECTION}
+                fillOpacity={0.18}
+                stroke={DETECTION}
+                strokeWidth={2}
+                strokeLinejoin="round"
+                // Constant on-screen width while zoomed, like the box border.
+                vectorEffect="non-scaling-stroke"
+                style={{ filter: "drop-shadow(0 0 1px rgba(0,0,0,0.8))" }}
+              />
+            </svg>
           )}
         </div>
       </div>

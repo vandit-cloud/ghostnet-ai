@@ -1,0 +1,394 @@
+{
+  "created_utc": "2026-09-26T17:10:44.951693+00:00",
+  "git_commit": "d5b22c39f8da4d4435ab86c38e27e3d8ff79a2f0",
+  "weights": "E:\\ghostnet-docker-demo\\ai\\models\\trained\\ghostnet.pt",
+  "model_version": "gv5-yolo11s",
+  "dataset_version": "test4346-8bfbcc102487",
+  "n_images": 4346,
+  "n_background": 2930,
+  "limited": false,
+  "val_kwargs": {
+    "imgsz": 640,
+    "batch": 4,
+    "conf": "default",
+    "iou": "default"
+  },
+  "raw_gate": 0.1,
+  "conditions": {
+    "clean": {
+      "val": {
+        "map50": 0.3524533264892557,
+        "map50_95": 0.1995202196303569,
+        "precision": 0.5795186756013797,
+        "recall": 0.3608544708647908,
+        "per_class": {
+          "wreck": {
+            "map50": 0.2793568095783433,
+            "recall": 0.3157894736842105,
+            "precision": 0.41697130609562577
+          },
+          "plane": {
+            "map50": 0.2904477416946622,
+            "recall": 0.3333333333333333,
+            "precision": 0.31434021558772934
+          },
+          "debris": {
+            "map50": 0.8694875510194557,
+            "recall": 0.8553259141494436,
+            "precision": 0.7975742457660202
+          },
+          "ghost_pot": {
+            "map50": 0.31419677635424026,
+            "recall": 0.2998236331569665,
+            "precision": 0.36870761055752305
+          },
+          "ghost_net": {
+            "map50": 0.008777753799577058,
+            "recall": 0.0,
+            "precision": 1.0
+          }
+        }
+      },
+      "background": {
+        "tiles": 2930,
+        "flagged": 229,
+        "boxes": 385,
+        "rate": 0.07815699658703072
+      }
+    },
+    "speckle_0.20": {
+      "val": {
+        "map50": 0.31008970522726387,
+        "map50_95": 0.17905122972989665,
+        "precision": 0.542802933194177,
+        "recall": 0.31599629204100743,
+        "per_class": {
+          "wreck": {
+            "map50": 0.24087757349380642,
+            "recall": 0.2942583732057416,
+            "precision": 0.3038512618568921
+          },
+          "plane": {
+            "map50": 0.22897692307692308,
+            "recall": 0.2501553063334757,
+            "precision": 0.24177538110009963
+          },
+          "debris": {
+            "map50": 0.864267471717096,
+            "recall": 0.8521462639109698,
+            "precision": 0.7649337845109445
+          },
+          "ghost_pot": {
+            "map50": 0.2017941561978621,
+            "recall": 0.18342151675485008,
+            "precision": 0.40345423850294876
+          },
+          "ghost_net": {
+            "map50": 0.014532401650631835,
+            "recall": 0.0,
+            "precision": 1.0
+          }
+        }
+      },
+      "background": {
+        "tiles": 2930,
+        "flagged": 144,
+        "boxes": 223,
+        "rate": 0.049146757679180884
+      }
+    },
+    "speckle_0.35": {
+      "val": {
+        "map50": 0.2628255809681669,
+        "map50_95": 0.15759380218477834,
+        "precision": 0.6393417573850405,
+        "recall": 0.24613150670942208,
+        "per_class": {
+          "wreck": {
+            "map50": 0.1718581833836494,
+            "recall": 0.18421052631578946,
+            "precision": 0.4099602751602756
+          },
+          "plane": {
+            "map50": 0.21609523809523812,
+            "recall": 0.2222222222222222,
+            "precision": 0.3049257208685267
+          },
+          "debris": {
+            "map50": 0.8442481819264622,
+            "recall": 0.8171701112877583,
+            "precision": 0.8221173672340204
+          },
+          "ghost_pot": {
+            "map50": 0.034197363706546614,
+            "recall": 0.007054673721340388,
+            "precision": 0.6597054236623794
+          },
+          "ghost_net": {
+            "map50": 0.04772893772893773,
+            "recall": 0.0,
+            "precision": 1.0
+          }
+        }
+      },
+      "background": {
+        "tiles": 2930,
+        "flagged": 68,
+        "boxes": 83,
+        "rate": 0.023208191126279865
+      }
+    },
+    "speckle_0.50": {
+      "val": {
+        "map50": 0.2205978341206533,
+        "map50_95": 0.13916361886566908,
+        "precision": 0.7091427721071887,
+        "recall": 0.2121576825911191,
+        "per_class": {
+          "wreck": {
+            "map50": 0.11292095061438417,
+            "recall": 0.10406698564593302,
+            "precision": 0.4328512014873649
+          },
+          "plane": {
+            "map50": 0.198003663003663,
+            "recall": 0.2222222222222222,
+            "precision": 0.31782642428588503
+          },
+          "debris": {
+            "map50": 0.7812733481940107,
+            "recall": 0.7344992050874404,
+            "precision": 0.7950362347626937
+          },
+          "ghost_pot": {
+            "map50": 0.0011758241758241758,
+            "recall": 0.0,
+            "precision": 1.0
+          },
+          "ghost_net": {
+            "map50": 0.009615384615384616,
+            "recall": 0.0,
+            "precision": 1.0
+          }
+        }
+      },
+      "background": {
+        "tiles": 2930,
+        "flagged": 40,
+        "boxes": 42,
+        "rate": 0.013651877133105802
+      }
+    },
+    "contrast_0.50": {
+      "val": {
+        "map50": 0.3051617621461684,
+        "map50_95": 0.16564163667250922,
+        "precision": 0.36647070760053235,
+        "recall": 0.313341650390154,
+        "per_class": {
+          "wreck": {
+            "map50": 0.2942367103126707,
+            "recall": 0.32057416267942584,
+            "precision": 0.45528002093956565
+          },
+          "plane": {
+            "map50": 0.20359459459459459,
+            "recall": 0.2222222222222222,
+            "precision": 0.22664448214764354
+          },
+          "debris": {
+            "map50": 0.7630162161052505,
+            "recall": 0.6200317965023847,
+            "precision": 0.844464611735262
+          },
+          "ghost_pot": {
+            "map50": 0.26087522837771426,
+            "recall": 0.4038800705467372,
+            "precision": 0.3059644231801908
+          },
+          "ghost_net": {
+            "map50": 0.00408606134061198,
+            "recall": 0.0,
+            "precision": 0.0
+          }
+        }
+      },
+      "background": {
+        "tiles": 2930,
+        "flagged": 171,
+        "boxes": 249,
+        "rate": 0.0583617747440273
+      }
+    },
+    "contrast_0.25": {
+      "val": {
+        "map50": 0.08546332050251879,
+        "map50_95": 0.04982673872633128,
+        "precision": 0.38981151572429834,
+        "recall": 0.11536635076366757,
+        "per_class": {
+          "wreck": {
+            "map50": 0.1430359344625085,
+            "recall": 0.11244019138755981,
+            "precision": 0.4560170367235425
+          },
+          "plane": {
+            "map50": 0.13425,
+            "recall": 0.1111111111111111,
+            "precision": 0.13857238143026665
+          },
+          "debris": {
+            "map50": 0.022376449731901442,
+            "recall": 0.011128775834658187,
+            "precision": 0.2004652214937736
+          },
+          "ghost_pot": {
+            "map50": 0.12765421831818402,
+            "recall": 0.3421516754850088,
+            "precision": 0.1540029389739088
+          },
+          "ghost_net": {
+            "map50": 0.0,
+            "recall": 0.0,
+            "precision": 1.0
+          }
+        }
+      },
+      "background": {
+        "tiles": 2930,
+        "flagged": 107,
+        "boxes": 151,
+        "rate": 0.03651877133105802
+      }
+    },
+    "blur_9": {
+      "val": {
+        "map50": 0.2062267572499136,
+        "map50_95": 0.10103777715355083,
+        "precision": 0.5673010430985481,
+        "recall": 0.2281390790743374,
+        "per_class": {
+          "wreck": {
+            "map50": 0.07191553757556118,
+            "recall": 0.02396934148130855,
+            "precision": 0.8002951498336458
+          },
+          "plane": {
+            "map50": 0.14034656084656083,
+            "recall": 0.2222222222222222,
+            "precision": 0.0804906074490266
+          },
+          "debris": {
+            "map50": 0.6844751476529387,
+            "recall": 0.6266625232106797,
+            "precision": 0.7880722438025903
+          },
+          "ghost_pot": {
+            "map50": 0.13439654017450722,
+            "recall": 0.2678413084574764,
+            "precision": 0.16764721440747796
+          },
+          "ghost_net": {
+            "map50": 0.0,
+            "recall": 0.0,
+            "precision": 1.0
+          }
+        }
+      },
+      "background": {
+        "tiles": 2930,
+        "flagged": 292,
+        "boxes": 488,
+        "rate": 0.09965870307167235
+      }
+    },
+    "blur_21": {
+      "val": {
+        "map50": 0.060694354646953184,
+        "map50_95": 0.033419521253971435,
+        "precision": 0.6377528123984997,
+        "recall": 0.08348113905389447,
+        "per_class": {
+          "wreck": {
+            "map50": 0.011179487179487179,
+            "recall": 0.0035885167464114833,
+            "precision": 0.867856048489219
+          },
+          "plane": {
+            "map50": 0.12258620689655174,
+            "recall": 0.1111111111111111,
+            "precision": 0.2561123064211381
+          },
+          "debris": {
+            "map50": 0.0746495167985446,
+            "recall": 0.03815580286168521,
+            "precision": 0.931748660972562
+          },
+          "ghost_pot": {
+            "map50": 0.09505656236018241,
+            "recall": 0.26455026455026454,
+            "precision": 0.13304704610957924
+          },
+          "ghost_net": {
+            "map50": 0.0,
+            "recall": 0.0,
+            "precision": 1.0
+          }
+        }
+      },
+      "background": {
+        "tiles": 2930,
+        "flagged": 170,
+        "boxes": 248,
+        "rate": 0.05802047781569966
+      }
+    },
+    "dropout_10": {
+      "val": {
+        "map50": 0.09893119257762997,
+        "map50_95": 0.031227079835942112,
+        "precision": 0.12022369171153384,
+        "recall": 0.2431065572964438,
+        "per_class": {
+          "wreck": {
+            "map50": 0.05321070835332467,
+            "recall": 0.2332535885167464,
+            "precision": 0.07779651256217543
+          },
+          "plane": {
+            "map50": 0.030455963723517575,
+            "recall": 0.1111111111111111,
+            "precision": 0.10094212338618683
+          },
+          "debris": {
+            "map50": 0.24133221215724712,
+            "recall": 0.6136724960254372,
+            "precision": 0.2097802565630385
+          },
+          "ghost_pot": {
+            "map50": 0.1485695769761608,
+            "recall": 0.25749559082892415,
+            "precision": 0.21259956604626845
+          },
+          "ghost_net": {
+            "map50": 0.021087501677899707,
+            "recall": 0.0,
+            "precision": 0.0
+          }
+        }
+      },
+      "background": {
+        "tiles": 2930,
+        "flagged": 774,
+        "boxes": 1643,
+        "rate": 0.2641638225255973
+      }
+    }
+  },
+  "reproduction": "REPRODUCED \u2014 mAP50 0.3525 (recorded 0.3525), empty-seabed rate 7.82% (recorded 7.82%)",
+  "recorded": [
+    "Empty-seabed false alarms, clean, raw gate 0.10: 7.82% (229 tiles) \u2014 `ai/experiments/gv5-yolo11s/background_metrics.json`",
+    "Wreck recall by share of frame: <0.2% 0.112 (16/143), 0.2-0.5% 0.060 (11/184), 0.5-2% 0.075 (13/174), >2% 0.525 (176/335) \u2014 `ai/experiments/gv5-yolo11s/wreck_recall_by_size.json`",
+    "ghost_net U-Net (gvU1n, 3 seeds): fires on 1.3% of empty seabed chips, on China-Offshore only; 11 test chips \u2014 `ai/experiments/unet-scoring/RESULTS.md`. Not re-measured under degradation here: 11 chips cannot carry a curve."
+  ]
+}

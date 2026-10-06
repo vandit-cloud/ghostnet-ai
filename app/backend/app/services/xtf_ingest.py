@@ -1,4 +1,4 @@
-"""Explode an uploaded .xtf sonar file into SonarFrame rows.
+"""Explode an uploaded .xtf or .sdf sonar file into SonarFrame rows.
 
 Before this, `file_service` created frames only for image extensions
 (.png/.jpg/.tif), so uploading the file the sonar actually writes stored a
@@ -32,7 +32,7 @@ across looks free. It is not: `depth` on this model is read by the AI adapter as
 context, and the geometry needs ALTITUDE -- height above the seabed, a different
 quantity. Populating `depth` invites exactly the substitution that produces a
 map which looks right and is wrong by a variable amount. The geometry travels
-through `metadata_source="xtf"`, which tells the adapter it can derive its own.
+through `metadata_source="xtf"` (or `"sdf"`), which tells the adapter it can derive its own.
 """
 
 import logging
@@ -46,10 +46,11 @@ from app.models.sonar_frame import SonarFrame
 
 logger = logging.getLogger("ghostnet.ingest")
 
-#: Sonar container formats this module can explode. `.jsf` is accepted by the
-#: upload whitelist but there is no JSF reader, so it is NOT here -- and
-#: `ingest_xtf` says so rather than failing silently.
-SUPPORTED = {".xtf"}
+#: Sonar container formats this module can explode. `.sdf` is Klein SonarPro
+#: (System 5000 V2, pageVersion 5004), read by `ghostnet.sdf`. `.jsf` is
+#: accepted by the upload whitelist but there is no JSF reader, so it is NOT
+#: here -- and `ingest_xtf` says so rather than failing silently.
+SUPPORTED = {".xtf", ".sdf"}
 
 #: Tiles are written beside the uploaded file, in a folder named after it, so a
 #: survey's frames stay together and are servable by the frames image endpoint.
@@ -100,14 +101,14 @@ def ingest_xtf(
     if ext not in SUPPORTED:
         return 0, [
             f"{ext or 'this file'} cannot be split into frames automatically; "
-            "only .xtf is supported. Upload pre-cut images, or convert the file first."
+            "only .xtf and Klein .sdf are supported. Upload pre-cut images, or convert the file first."
         ]
 
     try:
         from ghostnet import iter_survey_frames
     except ImportError:
         return 0, [
-            "the AI package is not installed on this server, so .xtf files cannot "
+            "the AI package is not installed on this server, so .xtf and .sdf files cannot "
             "be split into frames. Install it from the repository root with: "
             "pip install -e ./ai --no-deps"
         ]
@@ -146,7 +147,7 @@ def ingest_xtf(
                     along_track_res_m=meta.get("along_track_res_m"),
                     layback_m=meta.get("layback_m"),
                     nadir_row=meta.get("nadir_row"),
-                    metadata_source="xtf",
+                    metadata_source=ext.lstrip("."),
                     quality_status="ok" if position else "no_navigation",
                 )
             )
@@ -154,7 +155,7 @@ def ingest_xtf(
     except Exception as exc:
         logger.exception("failed to ingest %s", path.name)
         return 0, [
-            f"{path.name} could not be read as an XTF sonar file "
+            f"{path.name} could not be read as an {ext.lstrip('.').upper()} sonar file "
             f"({type(exc).__name__}); no frames were created."
         ]
 

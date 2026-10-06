@@ -88,7 +88,54 @@ def main() -> int:
                     help="train even though the test split does not match build_report.json. "
                          "The run is then not comparable to earlier runs; record that in notes.md")
     ap.add_argument("--dry-run", action="store_true", help="print the config and check the data, train nothing")
+
+    # Hyperparameter overrides, added 2026-09-21.
+    #
+    # Until now this script passed NO augmentation or loss gains, so every run
+    # in ai/experiments/ used Ultralytics defaults -- including mosaic=1.0,
+    # which divides every box's frame-area fraction by about four. The two
+    # classes that fail to fit their own training data are exactly the two
+    # whose median box that shrinks below the stride-8 floor (ghost_pot 0.476%
+    # -> 0.119%, wreck 0.525% -> 0.131%), while the three classes with large
+    # medians fit fine. That is a hypothesis with arithmetic behind it and no
+    # experiment, because the one no-mosaic control ever run
+    # (gv7e-ctrl-nomosaic) was on the SEGMENTATION track, 1 class, 51 chips.
+    #
+    # Every flag here defaults to None and is only forwarded when set, so an
+    # unflagged run is byte-for-byte the old behaviour and every past run
+    # stays comparable. `vars(args)` already lands in provenance.json, so an
+    # override cannot be applied without being recorded.
+    hp = ap.add_argument_group(
+        "hyperparameters",
+        "Unset = Ultralytics default = what every run before 2026-09-21 used.")
+    hp.add_argument("--mosaic", type=float, default=None,
+                    help="default 1.0. 0.0 to test the small-object hypothesis above")
+    hp.add_argument("--close-mosaic", type=int, default=None,
+                    help="default 10: mosaic off for the final N epochs")
+    hp.add_argument("--scale", type=float, default=None,
+                    help="default 0.5. Compounds with mosaic on object scale")
+    hp.add_argument("--cls", type=float, default=None,
+                    help="classification loss gain, default 0.5. plane lands 6/7 boxes "
+                         "correctly and calls them wreck, so this is a measured failure")
+    hp.add_argument("--box", type=float, default=None, help="box loss gain, default 7.5")
+    hp.add_argument("--dfl", type=float, default=None, help="dfl loss gain, default 1.5")
+    hp.add_argument("--lr0", type=float, default=None, help="default 0.01")
+    hp.add_argument("--lrf", type=float, default=None,
+                    help="final LR fraction, default 0.01. Train loss is still falling "
+                         "when the schedule runs out; 0.05 keeps more LR late")
+    hp.add_argument("--cos-lr", action="store_true", help="cosine schedule instead of linear")
+    hp.add_argument("--optimizer", default=None, help="auto | SGD | AdamW")
     args = ap.parse_args()
+
+    # Only forward what was actually asked for: passing a None through to
+    # model.train() would override the default with nothing.
+    overrides = {k: v for k, v in (
+        ("mosaic", args.mosaic), ("close_mosaic", args.close_mosaic),
+        ("scale", args.scale), ("cls", args.cls), ("box", args.box),
+        ("dfl", args.dfl), ("lr0", args.lr0), ("lrf", args.lrf),
+        ("optimizer", args.optimizer),
+        ("cos_lr", True if args.cos_lr else None),
+    ) if v is not None}
 
     data_path = Path(args.data)
     if not data_path.exists():
@@ -159,8 +206,46 @@ def main() -> int:
             print(f"--resume needs a checkpoint at {show(checkpoint)}, which does not exist.")
             print("Drop --resume to start a fresh run, or pass --name for the run you meant.")
             return 1
+        # EXISTING IS NOT THE SAME AS RESUMABLE, and the difference destroys
+        # runs. Ultralytics STRIPS the optimiser state out of last.pt when
+        # training finishes normally, so a COMPLETED run leaves a checkpoint
+        # that exists, loads, and carries no epoch counter. Passing resume=True
+        # to it prints one WARNING line -- "not a resumable training
+        # checkpoint ... Starting new training instead" -- and then trains from
+        # epoch 1 into the same directory, overwriting results.csv, best.pt and
+        # last.pt. The finished run is gone, and the only surviving record of it
+        # is whatever the console log captured.
+        #
+        # That happened here on 2026-09-22: gv8-ctrl20 completed all 20 epochs
+        # and was interrupted during its test evaluation. --resume looked like
+        # the cheap fix, and it silently replaced the finished run with a
+        # 2-epoch one. Only the log survived.
+        #
+        # So: refuse. A finished run needs its test metrics recomputed from
+        # best.pt, not a resume.
+        try:
+            import torch as _torch
+            ckpt = _torch.load(checkpoint, map_location="cpu", weights_only=False)
+            resumable = isinstance(ckpt, dict) and ckpt.get("optimizer") is not None
+            trained_epoch = ckpt.get("epoch", -1) if isinstance(ckpt, dict) else -1
+        except Exception as exc:                      # unreadable is not resumable
+            print(f"could not read {show(checkpoint)}: {exc}")
+            return 1
+        if not resumable or trained_epoch < 0:
+            print()
+            print(f"  {show(checkpoint)} exists but is NOT resumable:")
+            print("  it has no optimiser state, which means that run FINISHED.")
+            print()
+            print("  Resuming it would restart from epoch 1 and overwrite the")
+            print("  finished weights and results.csv. Refusing. Instead:")
+            print()
+            print(f"    python ai/scripts/evaluate.py --weights {show(checkpoint.parent / 'best.pt')}")
+            print("                        recompute metrics without retraining")
+            print("    --name <other>      train a separate run")
+            print("    --force             discard the finished run and start over")
+            return 1
         weights = str(checkpoint)
-        print(f"  resuming from {show(checkpoint)}")
+        print(f"  resuming from {show(checkpoint)} (trained through epoch {trained_epoch + 1})")
 
     # The test split is the ruler. Assert it has not moved before spending
     # hours measuring against it -- EXPERIMENT_GV7_PLAN.md 1.5. A source with no
@@ -209,13 +294,23 @@ def main() -> int:
         "cuda_available": torch.cuda.is_available(),
         "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
         "dataset_build": json.loads(build_report.read_text()) if build_report.exists() else None,
+        # Explicit, even when empty: "{}" in a provenance record is the positive
+        # statement "this run used stock hyperparameters", which is different
+        # from a missing key meaning "this script could not record them".
+        "hyperparameter_overrides": overrides,
     }
 
     print(f"\n  model    {weights}")
     print(f"  data     {data_path}")
     print(f"  device   {device}" + (f" ({provenance['gpu']})" if provenance["gpu"] else ""))
     print(f"  epochs   {args.epochs}   batch {args.batch}   imgsz {args.imgsz}   AMP on")
-    print(f"  output   ai/experiments/{name}\n")
+    print(f"  output   ai/experiments/{name}")
+    if overrides:
+        print("  hparams  " + "  ".join(f"{k}={v}" for k, v in overrides.items())
+              + "   <-- NOT comparable with unflagged runs on hyperparameters")
+    else:
+        print("  hparams  stock (mosaic=1.0 cls=0.5 scale=0.5 lr0=0.01 lrf=0.01)")
+    print()
 
     if provenance["dataset_build"]:
         b = provenance["dataset_build"]
@@ -260,6 +355,7 @@ def main() -> int:
         plots=True,
         val=True,
         deterministic=True,
+        **overrides,
     )
 
     # Final numbers on the held-out TEST split, not the validation split the

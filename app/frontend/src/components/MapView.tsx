@@ -259,7 +259,9 @@ function FitAndFocus({
     if (focusPoint) {
       map.flyTo(focusPoint, Math.max(map.getZoom(), 14), { duration: 0.8 });
     } else if (bounds && !hasFitOnce.current) {
-      map.fitBounds(bounds, { padding: [48, 48] });
+      // Filtered bounds can collapse to one marker (a zero-area box), which
+      // Leaflet would fit at its maximum zoom.
+      map.fitBounds(bounds, { padding: [48, 48], maxZoom: 16 });
       hasFitOnce.current = true;
     }
   }, [bounds, focusPoint, map]);

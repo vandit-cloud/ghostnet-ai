@@ -27,3 +27,11 @@ class ProcessingJobOut(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class SurveyFrameOut(BaseModel):
+    """One frame of a survey, positioned in processing order."""
+
+    id: uuid.UUID
+    index: int
+    frame_id: str

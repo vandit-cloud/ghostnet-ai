@@ -92,6 +92,12 @@ class Channel:
     #: that would decode an 8-bit file as garbage that still renders as a
     #: plausible-looking sonar image -- wrong, but not obviously wrong.
     bytes_per_sample: int = 2
+    #: Sample order when the FORMAT fixes it, else None to measure it. The
+    #: brightness test in `_samples_are_near_first` assumes a bright near end,
+    #: which holds for these EdgeTech files but not for a Klein 5000 V2, whose
+    #: first samples are the dark water column (mean 6 against 40 at the far
+    #: end). Klein's spec fixes the order, so `ghostnet.sdf` sets this to True.
+    near_first: bool | None = None
 
 
 @dataclass
@@ -343,14 +349,20 @@ def waterfall(pings: list[Ping], normalise: bool = True):
     # Pass 1: accumulate a mean amplitude profile per channel number, so the
     # orientation decision is made once over the whole chunk.
     profiles: dict[int, list] = {}
+    declared: dict[int, bool] = {}
     for ping in pings:
         for chan in ping.channels:
+            if chan.near_first is not None:
+                declared[chan.number] = chan.near_first
+                continue
             data = channel_samples(chan)
             if data is not None and data.size:
                 profiles.setdefault(chan.number, []).append(data)
 
-    near_first: dict[int, bool] = {}
+    near_first: dict[int, bool] = dict(declared)
     for number, stack in profiles.items():
+        if number in declared:
+            continue
         width = min(len(d) for d in stack)
         mean_profile = np.mean([d[:width] for d in stack], axis=0)
         near_first[number] = _samples_are_near_first(mean_profile)

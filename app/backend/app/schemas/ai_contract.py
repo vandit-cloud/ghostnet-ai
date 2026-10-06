@@ -105,7 +105,11 @@ class AIDetection(BaseModel):
     calibrated_confidence: float | None = None
     uncertainty: str | None = None
     bbox: list[float] | None = None
-    mask: str | None = None
+    #: Outline polygon [[x, y], ...], same pixel frame as bbox. Was typed `str`
+    #: while the AI only ever sent null; contract 1.3.0 fills it for nets.
+    mask: list[list[float]] | None = None
+    #: A review candidate, not a claim (contract 1.2.0). Absent means False.
+    review_only: bool = False
     latitude: float | None = None
     longitude: float | None = None
     position_error_m: float | None = None

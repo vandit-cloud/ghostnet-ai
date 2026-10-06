@@ -269,3 +269,34 @@ rule as everywhere else in this contract: no position rather than a made-up one.
 Populated automatically for any frame produced by `detect_survey()` or
 `iter_survey_frames()` from a `.xtf`, because the values are in the ping
 headers. `null` for a bare image with no metadata.
+
+### 1.3.0 — `mask` can now carry a polygon (minor, but check your types)
+
+`Detection.mask` has been in the contract since 1.0 and was always `null`. From
+1.3.0 it is filled for `ghost_net` when the optional net segmentation model is
+configured (`GHOSTNET_NET_WEIGHTS`):
+
+```json
+"bbox": [320, 180, 190, 120],
+"mask": [[330, 290], [345, 298], [508, 192], [494, 182]],
+"review_only": true
+```
+
+- **Same pixel frame and origin as `bbox`**: integer `[x, y]` pairs, top-left
+  origin. Draw it with the same scale you already apply to the box.
+- **Still `null` for every other class**, and for nets when no segmentation
+  model is configured. Treat `null` as "box only", not as an error.
+- **Nets stay `review_only: true`.** A better outline is still a candidate.
+- **Why a minor bump for an old key:** nothing ever filled it, so a consumer
+  could have mistyped it without anything failing. The backend had it as a
+  string. Check yours.
+- **Which model fills it (26 Sep 2026):** a U-Net, `gvU1n-unet-hardneg-s1`,
+  promoted to `ai/models/trained/ghostnet_net.pt` by
+  `ai/scripts/promote_net_model.py`. A promoted file is used automatically;
+  `GHOSTNET_NET_WEIGHTS=none` switches it off. A YOLO-seg checkpoint still
+  works in the same slot.
+- **`provenance.net_model_version` says whether it ran.** It names the model
+  only on frames where the net model produced the nets. When it is configured
+  but did not run (failed to load, unreadable frame, a crash on that frame) it
+  reads `none (configured net model did not run on this frame)`, and the
+  frame's nets came from the box detector.

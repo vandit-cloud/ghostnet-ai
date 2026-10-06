@@ -1,0 +1,25 @@
+{
+  "run": "gvU1-unet-s0",
+  "task": "semantic segmentation (U-Net)",
+  "classes": [
+    "ghost_net"
+  ],
+  "encoder": "resnet34",
+  "encoder_weights": "imagenet",
+  "in_channels": 1,
+  "data": "E:\\New folder\\ai\\data\\net_seg",
+  "train_chips": 51,
+  "train_empty_chips": 0,
+  "seed": 0,
+  "epochs": 300,
+  "batch": 4,
+  "lr": 0.0003,
+  "imgsz": 640,
+  "loss": "BCE + Dice (batch-aggregated)",
+  "augment": "flip lr/ud, rescale 0.5-1.5 + random placement, gain 0.6-1.4, bias +-25; no rotation",
+  "selection": "best val Dice @0.5 (val has no empty chips)",
+  "best_val_dice": 0.5779274378118786,
+  "git_commit": "9fc9f1ad904828cc6303cb032e78be0f382169a1",
+  "cli": "ai/scripts/train_net_unet.py --name gvU1-unet-s0 --data E:/New folder/ai/data/net_seg --seed 0",
+  "caveat": "test split is 11 chips -- upper bound only; review candidate, not a detection claim."
+}
