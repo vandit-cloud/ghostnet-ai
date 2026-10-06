@@ -51,6 +51,10 @@ logger = logging.getLogger(__name__)
 # Ultralytics predict() is not documented as thread-safe -- FastAPI runs
 # non-async routes in a threadpool, so concurrent uploads WILL collide here.
 _MODEL = None
+#: The file _MODEL was loaded from. The .pt and its .onnx export are both "the
+#: model", and a Settings that selects the other runtime must get the other
+#: one rather than whichever happened to load first.
+_MODEL_KEY: str | None = None
 _MODEL_LOCK = threading.Lock()
 _PREDICT_LOCK = threading.Lock()
 
@@ -70,20 +74,28 @@ def load_model(settings: Settings = SETTINGS):
     so a bad weights file took down the whole API at startup rather than
     degrading to the empty-detections path this package is built around.
     """
-    global _MODEL, _MODEL_ERROR
-    if _MODEL is not None:
+    global _MODEL, _MODEL_ERROR, _MODEL_KEY
+    weights = settings.detector_model_path
+    key = str(weights)
+    if _MODEL is not None and _MODEL_KEY == key:
         return _MODEL
     with _MODEL_LOCK:
-        if _MODEL is not None:
+        if _MODEL is not None and _MODEL_KEY == key:
             return _MODEL
-        weights = settings.weights_path
         if weights is None or not Path(weights).exists():
             return None
         try:
             from ultralytics import YOLO
 
-            model = YOLO(str(weights))
-            model.to(settings.device)
+            if settings.runtime_active == "onnx":
+                # The SAME YOLO() front end, so letterbox, NMS and Results
+                # are Ultralytics' code for both runtimes -- see
+                # ghostnet.runtime. An exported model has no .to(): its
+                # device is the `device` argument at predict time.
+                model = YOLO(str(weights), task="detect")
+            else:
+                model = YOLO(str(weights))
+                model.to(settings.device)
         except Exception as exc:
             # Not latched: the path is re-read next call, so replacing a bad
             # file recovers a running process instead of needing a restart.
@@ -94,7 +106,7 @@ def load_model(settings: Settings = SETTINGS):
             )
             return None
         _MODEL_ERROR = None
-        _MODEL = model
+        _MODEL, _MODEL_KEY = model, key
         return _MODEL
 
 
@@ -107,6 +119,8 @@ def warmup(settings: Settings = SETTINGS) -> bool:
     value is still about the box detector alone: without it nothing is
     detected at all, whereas a failed net model only falls back.
     """
+    if settings.runtime_note:
+        logger.warning("%s", settings.runtime_note)
     loaded = load_model(settings) is not None
     if settings.net_weights_path is not None:
         if load_net_model(settings) is None and net_model_error():
@@ -411,6 +425,10 @@ def detect(
     stale = calibration_mismatch(settings)
     if stale:
         result.warnings.append(stale)
+    if settings.runtime_note:
+        # A requested runtime that was not honoured. The results are still
+        # right -- just slower, or on a different executor than asked for.
+        result.warnings.append(settings.runtime_note)
 
     geom = _geometry_from_meta(meta)
     fix_lat, fix_lon = _num(meta, "latitude"), _num(meta, "longitude")

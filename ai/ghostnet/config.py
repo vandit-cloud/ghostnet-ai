@@ -74,6 +74,16 @@ class Settings:
 
     # --- inference ---------------------------------------------------------
     device: str = field(default_factory=resolve_device)
+    #: auto | torch | onnx -- see ghostnet.runtime for the rule. Env
+    #: GHOSTNET_RUNTIME. The RESOLVED choice is in `runtime_active` (and
+    #: `net_runtime_active`), and provenance records it in every payload.
+    runtime: str = field(default_factory=lambda: os.environ.get("GHOSTNET_RUNTIME", "auto"))
+    #: Threads ONNX Runtime may use per session; None lets it pick (all
+    #: physical cores). Env GHOSTNET_ONNX_THREADS.
+    onnx_threads: int | None = field(
+        default_factory=lambda: int(os.environ["GHOSTNET_ONNX_THREADS"])
+        if os.environ.get("GHOSTNET_ONNX_THREADS", "").strip().isdigit() else None
+    )
     imgsz: int = 640
     #: Frames per model call in detect_batch. 8 is where this GPU stops idling
     #: (see _predict_many): 3.6 frames/s at batch 1, 64 at batch 8. Higher
@@ -217,6 +227,12 @@ class Settings:
     #: Version of the net segmentation model, or "none" when not configured.
     net_model_version: str = "none"
 
+    # Resolved in __post_init__ from `runtime`; never passed in.
+    runtime_active: str = field(default="torch", init=False)
+    net_runtime_active: str = field(default="torch", init=False)
+    #: Why a requested runtime was not honoured, or None. detect() warns with it.
+    runtime_note: str | None = field(default=None, init=False)
+
     def __post_init__(self) -> None:
         if self.weights_path is None:
             # GHOSTNET_WEIGHTS wins, then the promoted model, then nothing.
@@ -295,9 +311,46 @@ class Settings:
                     pass  # leave the sentinel; an unparseable file is "unknown"
 
         self._resolve_net_model()
+        self._resolve_runtime()
 
         if self.device == "cpu":
             self.half = False  # fp16 on CPU is slower, not faster
+
+    def _resolve_runtime(self) -> None:
+        """Settle torch vs ONNX for the detector and the net model.
+
+        ONNX Runtime here is the CPU path, so choosing it moves the whole
+        pipeline to the CPU: a forced GHOSTNET_RUNTIME=onnx on a CUDA machine
+        is how the CPU deployment is reproduced on the development laptop.
+        The net model follows the detector onto ONNX only when its own export
+        verifies; otherwise it runs under torch on the same (CPU) device.
+        """
+        from . import runtime as rt
+
+        requested, note = rt.requested_runtime(self.runtime)
+        problem = None
+        if requested != "torch" and not (requested == "auto" and self.device != "cpu"):
+            problem = rt.onnx_problem_for(self.weights_path)
+        active, fallback = rt.choose(requested, self.device, problem)
+        self.runtime_active = active
+        self.runtime_note = note or fallback
+        self.net_runtime_active = "torch"
+        if active == "onnx":
+            self.device = "cpu"
+            if self.net_weights_path is not None and rt.verify_onnx(self.net_weights_path) is None:
+                self.net_runtime_active = "onnx"
+
+    @property
+    def detector_model_path(self) -> Path | None:
+        """The file the detector is actually loaded from: the .pt, or its
+        verified .onnx export when the ONNX runtime is active."""
+        if self.weights_path is None:
+            return None
+        if self.runtime_active == "onnx":
+            from .runtime import onnx_path_for
+
+            return onnx_path_for(self.weights_path)
+        return Path(self.weights_path)
 
     def _resolve_net_model(self) -> None:
         """Same resolution order and naming rules as the detector's weights."""
@@ -356,10 +409,17 @@ class Settings:
             "preprocessing_version": self.preprocessing,
             "calibration_version": self.calibration_version,
         }
+        # Which executor produced the numbers. ONNX and torch agree to within
+        # the parity gates in ghostnet.runtime, not bit for bit, so a stored
+        # result must say which one it came from.
+        from .runtime import label
+
+        out["runtime"] = label(self.runtime_active, self.device)
         # Only when configured, so a detector-only payload is byte-for-byte
         # what it was before the net model existed.
         if self.net_weights_path is not None:
             out["net_model_version"] = self.net_model_version
+            out["net_runtime"] = label(self.net_runtime_active, self.device)
         return out
 
 

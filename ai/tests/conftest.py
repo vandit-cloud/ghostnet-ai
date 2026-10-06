@@ -14,3 +14,9 @@ runs.
 import os
 
 os.environ["GHOSTNET_NET_WEIGHTS"] = "none"
+
+# Same reasoning for the runtime: on a machine without a GPU, `auto` picks
+# ONNX whenever a verified export sits in ai/models/trained/, so the suite
+# would test a different executor depending on what happens to be exported.
+# Tests of the selection itself pass `runtime=` explicitly (test_runtime.py).
+os.environ["GHOSTNET_RUNTIME"] = "torch"
